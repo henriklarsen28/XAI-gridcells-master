@@ -5,7 +5,6 @@ from PIL import Image
 def read_map(map_file):
     with open(map_file, "r", encoding="utf-8-sig") as f:
         lines = f.readlines()
-        print(lines)
     return lines
 
 
