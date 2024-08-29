@@ -8,10 +8,11 @@ class SunburstMazeDiscrete:
         self.action_space = list(range(3))
         self.orientation = 0  # 0 = Up, 1 = Right, 2 = Down, 3 = Left
         self.position = self.select_start_position()
+        #self.last_position = None
 
     def select_start_position(self) -> tuple:
         # TODO: Maybe implement random selection
-        return (27, 10)
+        return (26, 10)
 
     def reset(self) -> tuple:
         """
@@ -19,7 +20,7 @@ class SunburstMazeDiscrete:
         Returns:
             tuple: The starting position of the agent.
         """
-
+        #self.last_position = None
         self.position = self.select_start_position()
         return self.position
 
@@ -50,6 +51,8 @@ class SunburstMazeDiscrete:
         - If the orientation is 2 (Down), the agent's position is incremented by 1 in the y-axis.
         - If the orientation is 3 (Left), the agent's position is decremented by 1 in the x-axis.
         """
+        
+        #self.last_position = self.position
 
         if self.orientation == 0:  # Up
             self.position = (self.position[0] - 1, self.position[1])
@@ -62,6 +65,7 @@ class SunburstMazeDiscrete:
 
         if self.orientation == 3:  # Left
             self.position = (self.position[0], self.position[1] - 1)
+
 
     def turn_left(self):
         """
@@ -87,13 +91,21 @@ class SunburstMazeDiscrete:
         self.orientation = (self.orientation + 1) % 4
 
     def show_map(self):
-        show_map(self.map)
+        show_map(self.map, self.position, orientation=self.orientation)
 
 
 def main():
+
+    import time
+
     env = SunburstMazeDiscrete("map_v1/map.csv")
-    print(env.reset())
     env.show_map()
+
+    actions = [0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    for action in actions:
+        env.step(action)
+        env.show_map()
+        time.sleep(0.5)
 
 
 if __name__ == "__main__":

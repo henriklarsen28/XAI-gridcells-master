@@ -20,11 +20,24 @@ def build_map(map_file):
     return map
 
 
-def show_map(env_map: np.array):
+def symbol_orientation(orientation: int = 0):
+    symbol = {0: ",", 1: "-", 2: ".", 3: "+"}
+    return symbol[orientation]
+
+
+def show_map(env_map: np.array, position: tuple, orientation: int = 0):
 
     # Walls are black if the value is -1 and white if the value is 1
-
-    colours = {"1":(0, 0, 0), "0":(255, 255, 255), "2":(0,255,0)}
+    orientation_symbol = symbol_orientation(orientation)
+    colors = {
+        "1": (0, 0, 0),  # Border
+        "0": (255, 255, 255),  # Walkable
+        "2": (0, 255, 0),  # Goal
+        ",": (255, 0, 0),  # Up
+        "-": (0, 255, 255),  # Right
+        ".": (0, 0, 255),  # Down
+        "+": (255, 255, 0),  # Left
+    }
 
     scale = 20
 
@@ -39,17 +52,26 @@ def show_map(env_map: np.array):
         for j in range(width):
             for y in range(scale):
                 for x in range(scale):
-                    pixels[j * scale + x, i * scale + y] = colours[env_map[i, j]]
+                    pixels[j * scale + x, i * scale + y] = colors[env_map[i, j]]
 
+    print(colors[orientation_symbol])
+    print(position)
+    for y in range(scale):
+        for x in range(scale):
+
+            pixels[position[1] * scale + x, position[0] * scale + y] = colors[
+                orientation_symbol
+            ]
+    print(pixels)
     img.show()
 
 
 def main():
 
-    map_file = "../Samfundet_map_1.csv"
-    map = build_map(map_file)
-    print(map)
-    show_map(map)
+    map_file = "map_v1/map.csv"
+    map_env = build_map(map_file)
+    print(map_env)
+    show_map(map_env, (27, 10))
 
 
 if __name__ == "__main__":
