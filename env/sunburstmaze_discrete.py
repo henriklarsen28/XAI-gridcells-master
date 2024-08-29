@@ -118,6 +118,8 @@ class SunburstMazeDiscrete(gym.Env):
         - If the orientation is 2 (Down), the agent's position is incremented by 1 in the y-axis.
         - If the orientation is 3 (Left), the agent's position is decremented by 1 in the x-axis.
         """
+        
+        #self.last_position = self.position
 
         if self.orientation == 0:  # Up
             self.position = (self.position[0] - 1, self.position[1])
@@ -130,6 +132,7 @@ class SunburstMazeDiscrete(gym.Env):
 
         if self.orientation == 3:  # Left
             self.position = (self.position[0], self.position[1] - 1)
+
 
     def turn_left(self):
         """
