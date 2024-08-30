@@ -21,11 +21,31 @@ def build_map(map_file):
 
 
 def symbol_orientation(orientation: int = 0):
+    """
+    Returns the symbol corresponding to the given orientation.
+
+    Parameters:
+    - orientation (int): The orientation value. Default is 0.
+
+    Returns:
+    - symbol (str): The symbol corresponding to the given orientation.
+    """
     symbol = {0: ",", 1: "-", 2: ".", 3: "+"}
     return symbol[orientation]
 
 
 def show_map(env_map: np.array, position: tuple, orientation: int = 0):
+    """
+    Displays the environment map with the current position and orientation highlighted.
+
+    Args:
+        env_map (np.array): The environment map represented as a numpy array.
+        position (tuple): The current position in the map.
+        orientation (int, optional): The current orientation. Defaults to 0.
+
+    Returns:
+        None
+    """
 
     # Walls are black if the value is -1 and white if the value is 1
     orientation_symbol = symbol_orientation(orientation)
@@ -67,7 +87,7 @@ def show_map(env_map: np.array, position: tuple, orientation: int = 0):
 
 
 def main():
-
+    # Load and print the map
     map_file = "map_v1/map.csv"
     map_env = build_map(map_file)
     print(map_env)
