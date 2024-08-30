@@ -9,15 +9,14 @@ def read_map(map_file):
 
 
 def build_map(map_file):
-
     lines = read_map(map_file)
-    env_map = []
+    map = []
     for line in lines:
-        env_map.append(line.strip().split(","))
+        map.append([int(x) for x in line.strip().split(",")])
 
-    env_map = np.array(env_map)
+    map = np.array(map)
 
-    return env_map
+    return map
 
 
 def symbol_orientation(orientation: int = 0):
@@ -85,9 +84,14 @@ def show_map(env_map: np.array, position: tuple, orientation: int = 0):
     print(pixels)
     img.show()
 
+    # print the size of the map
+    print("Map size: ", env_map.shape)
+
 
 def main():
+
     # Load and print the map
+
     map_file = "map_v1/map.csv"
     map_env = build_map(map_file)
     print(map_env)
