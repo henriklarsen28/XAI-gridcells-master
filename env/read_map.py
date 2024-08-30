@@ -33,10 +33,10 @@ def show_map(env_map: np.array, position: tuple, orientation: int = 0):
         "1": (0, 0, 0),  # Border
         "0": (255, 255, 255),  # Walkable
         "2": (0, 255, 0),  # Goal
-        ",": (255, 0, 0),  # Up
-        "-": (0, 255, 255),  # Right
-        ".": (0, 0, 255),  # Down
-        "+": (255, 255, 0),  # Left
+        ",": (255, 0, 0),  # Up (red)
+        "-": (0, 255, 255),  # Right (cyan)
+        ".": (0, 0, 255),  # Down (blue)
+        "+": (255, 255, 0),  # Left (yellow)
     }
 
     scale = 20
