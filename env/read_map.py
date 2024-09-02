@@ -54,4 +54,5 @@ def main():
     show_map(map)
 
 
-if __name__ == "__mai
+if __name__ == "__main__":
+    main()

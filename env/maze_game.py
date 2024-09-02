@@ -72,4 +72,93 @@ for i in range(3):  # Change 10 to the number of sprites you want to extract
 """
 
 sprite_right = sprite
-sprite_left = pygame.tr
+sprite_left = pygame.transform.flip(sprite, True, False)
+sprite_down = pygame.transform.rotate(sprite_left, 90)
+sprite_up = pygame.transform.rotate(sprite, 90)
+
+"""# Animation variables
+current_frame = 0
+frame_count = len(sprite)"""
+
+
+class Player:
+    def __init__(self):
+        self.x = X
+        self.y = Y
+
+    def move(self, dx, dy, maze):
+        new_x = self.x + dx
+        new_y = self.y + dy
+        if (
+            0 <= new_x < mazeWidth
+            and 0 <= new_y < mazeHeight
+            and maze[new_y][new_x] != 1
+        ):
+            self.x = new_x
+            self.y = new_y
+
+    def draw(self):
+        # pygame.draw.rect(screen, GREEN, (self.x * cellSize, self.y * cellSize, cellSize, cellSize))
+        win.blit(
+            sprite, (self.x * cellSize, self.y * cellSize, spriteWidth, spriteHeight)
+        )
+
+
+# set up the maze
+def draw_maze(screen, maze):
+    for y in range(mazeHeight):
+        for x in range(mazeWidth):
+            if maze[y][x] == 1:
+                pygame.draw.rect(
+                    screen, black, (x * cellSize, y * cellSize, cellSize, cellSize)
+                )
+            elif maze[y][x] == 2:
+                pygame.draw.rect(
+                    screen, green, (x * cellSize, y * cellSize, cellSize, cellSize)
+                )
+
+
+player = Player()
+run = True
+while run:
+    pygame.time.delay(100)  # delays the game so it doesn't run too fast
+    for event in pygame.event.get():  # event from user
+        if event.type == pygame.QUIT:  # if user quits
+            run = False
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_LEFT]:
+        # flip sprite
+        sprite = sprite_left
+        player.move(-1, 0, env)
+        print(player.x, player.y)
+
+    if keys[pygame.K_RIGHT]:
+        sprite = sprite_right
+        player.move(1, 0, env)
+        print(player.x, player.y)
+
+    if keys[pygame.K_UP]:
+        sprite = sprite_up
+        player.move(0, -1, env)
+        print(player.x, player.y)
+
+    if keys[pygame.K_DOWN]:
+        sprite = sprite_down
+        player.move(0, 1, env)
+        print(player.x, player.y)
+
+    win.fill(white)  # fill screen before drawing
+    draw_maze(win, env)
+    player.draw()
+
+    # Draw the current sprite
+    # win.blit(sprite, (x, y, spriteWidth, spriteHeight))
+    # Update the frame
+    # current_frame = (current_frame + 1) % frame_count
+
+    # pygame.draw.rect(win, (255, 0, 0), (x, y, width, height)) # draw rectangle
+    # pygame.display.update()
+    # Update the display
+    pygame.display.flip()
+
+pygame.quit()
