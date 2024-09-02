@@ -2,8 +2,8 @@ import random as rd
 
 import gymnasium as gym
 import numpy as np
-from gymnasium import spaces
 import pygame
+from gymnasium import spaces
 
 from env.file_manager import build_map, show_map
 
@@ -12,12 +12,12 @@ def action_encoding(action: int) -> str:
 
     action_dict = {0: "forward", 1: "left", 2: "right"}
 
-    raise action_dict[action]
+    return action_dict[action]
 
 
 class SunburstMazeDiscrete(gym.Env):
 
-    metadata = {"render.modes": ["human", "rgb_array"], "render_fps": 4}
+    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
     def __init__(self, render_mode=None, maze_file=None):
         self.map_file = maze_file
@@ -35,9 +35,9 @@ class SunburstMazeDiscrete(gym.Env):
         )
 
         self._action_to_direction = {
-            0: self.move_forward,
-            1: self.turn_left,
-            2: self.turn_right,
+            "forward": self.move_forward,
+            "left": self.turn_left,
+            "right": self.turn_right,
         }
         self.orientation = 0  # 0 = Up, 1 = Right, 2 = Down, 3 = Left
 
@@ -57,7 +57,7 @@ class SunburstMazeDiscrete(gym.Env):
 
     def _get_info(self):
 
-        pass
+        return {"position": self.position, "orientation": self.orientation}
 
     def reset(self, seed=None, options=None) -> tuple:
 
@@ -166,16 +166,8 @@ class SunburstMazeDiscrete(gym.Env):
         Returns:
             None
         """
+        action = action_encoding(action)
         self._action_to_direction[action]()
-
-        """
-        if action == "forward":
-            self.move_forward()
-        if action == "left":
-            self.turn_left()
-        if action == "right":
-            self.turn_right()
-        """
 
         terminated = self.is_goal()
         reward = self.reward()
@@ -188,16 +180,30 @@ class SunburstMazeDiscrete(gym.Env):
         return observation, reward, terminated, info, False, info
 
     def is_goal(self):
-        pass
+        """
+        Checks if the current position is a goal position.
+        Returns:
+            bool: True if the current position is a goal position, False otherwise.
+        """
+        if int(self.map[self.position[0]][self.position[1]]) == 2:
+            return True
+        return False
 
     def reward(self):
-        raise NotImplementedError
+        """
+        Calculates the reward for the current state.
+        Returns:
+            int: The reward value.
+        """
+        if self.is_goal():
+            return 100
 
-    
+        return -1
+
     def render(self):
         if self.render_mode == "rgb_array":
             return self._render_frame()
-        
+
     def _render_frame(self):
         raise NotImplementedError
 
@@ -205,10 +211,9 @@ class SunburstMazeDiscrete(gym.Env):
     def show_map(self):
         show_map(self.map, self.position, orientation=self.orientation)
 
-    def close(self):
+    def close(self):  # TODO: Not tested
         if self.window is not None:
             pygame.display.quit()
-            pygame.quit()
 
 
 def main():
