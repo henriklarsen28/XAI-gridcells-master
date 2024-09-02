@@ -26,7 +26,7 @@ def perform_action(action, env, legal_actions):
     else:
         print("Illegal action")
         print("Legal actions: ", legal_actions)
-    return legal_actions
+    return legal_actions, env
 
 
 def play_with_keyboard():
@@ -66,8 +66,7 @@ def play_with_keyboard():
                     action = "right"
             else:
                 action = None
-            legal_actions = perform_action(action, env, legal_actions)
-
+            legal_actions, env = perform_action(action, env, legal_actions)
     print("Exiting...")
 
 

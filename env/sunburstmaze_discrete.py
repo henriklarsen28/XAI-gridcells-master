@@ -1,5 +1,10 @@
 import random as rd
 
+import gymnasium as gym
+import numpy as np
+from gymnasium import spaces
+import pygame
+
 from env.file_manager import build_map, show_map
 
 
@@ -10,31 +15,57 @@ def action_encoding(action: int) -> str:
     raise action_dict[action]
 
 
-class SunburstMazeDiscrete:
+class SunburstMazeDiscrete(gym.Env):
 
-    def __init__(self, map_file: str):
-        self.map_file = map_file
-        self.map = build_map(map_file)
-        self.action_space = ["forward", "left", "right"]
+    metadata = {"render.modes": ["human", "rgb_array"], "render_fps": 4}
+
+    def __init__(self, render_mode=None, maze_file=None):
+        self.map_file = maze_file
+        self.map = build_map(maze_file)
+        self.height = self.map.shape[0]
+        self.width = self.map.shape[1]
+
+        self.window_size = (self.width * 20, self.height * 20)  # 20 X scale
+
+        # Three possible actions: forward, left, right
+        self.action_space = spaces.Discrete(3)
+
+        self.observation_space = spaces.Box(
+            low=0, high=2, shape=(self.height, self.width), dtype=np.uint8
+        )
+
+        self._action_to_direction = {
+            0: self.move_forward,
+            1: self.turn_left,
+            2: self.turn_right,
+        }
         self.orientation = 0  # 0 = Up, 1 = Right, 2 = Down, 3 = Left
+
         self.position = self.select_start_position()
         # self.last_position = None
+
+        assert (
+            render_mode is None or render_mode in self.metadata["render.modes"]
+        ), f"Invalid render mode: {render_mode}"
+        self.render_mode = render_mode
+        self.window = None
+        self.clock = None
 
     def select_start_position(self) -> tuple:
         # TODO: Maybe implement random selection
         return (26, 10)
 
-    def reset(self) -> tuple:
-        """
-        Resets the environment to its initial state.
-        Returns:
-            tuple: A tuple of legal actions available in the current state.
-        """
+    def _get_info(self):
 
+        pass
+
+    def reset(self, seed=None, options=None) -> tuple:
+
+        super().reset(seed=seed)
         # self.last_position = None
         self.map = build_map(self.map_file)
         self.position = self.select_start_position()
-        return self.legal_actions()
+        return self.legal_actions, self._get_info()
 
     def can_move_forward(self) -> bool:
         """
@@ -135,24 +166,49 @@ class SunburstMazeDiscrete:
         Returns:
             None
         """
+        self._action_to_direction[action]()
 
+        """
         if action == "forward":
             self.move_forward()
         if action == "left":
             self.turn_left()
         if action == "right":
             self.turn_right()
+        """
 
-        return self.legal_actions()
+        terminated = self.is_goal()
+        reward = self.reward()
+        observation = self.legal_actions()
+        info = self._get_info()
+
+        if self.render_mode == "human":
+            self._render_frame()
+
+        return observation, reward, terminated, info, False, info
 
     def is_goal(self):
         pass
 
     def reward(self):
-        pass
+        raise NotImplementedError
 
+    
+    def render(self):
+        if self.render_mode == "rgb_array":
+            return self._render_frame()
+        
+    def _render_frame(self):
+        raise NotImplementedError
+
+    # TODO: Remove this later
     def show_map(self):
         show_map(self.map, self.position, orientation=self.orientation)
+
+    def close(self):
+        if self.window is not None:
+            pygame.display.quit()
+            pygame.quit()
 
 
 def main():
