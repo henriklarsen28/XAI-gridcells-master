@@ -10,13 +10,13 @@ def read_map(map_file):
 
 def build_map(map_file):
     lines = read_map(map_file)
-    map = []
+    env_map = []
     for line in lines:
-        map.append([int(x) for x in line.strip().split(",")])
+        env_map.append([int(x) for x in line.strip().split(",")])
 
-    map = np.array(map)
+    env_map = np.array(env_map)
 
-    return map
+    return env_map
 
 
 def symbol_orientation(orientation: int = 0):
