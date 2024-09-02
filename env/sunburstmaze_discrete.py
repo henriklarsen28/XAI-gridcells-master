@@ -5,7 +5,10 @@ import numpy as np
 import pygame
 from gymnasium import spaces
 
-from env.file_manager import build_map, show_map
+
+from .file_manager import build_map, show_map
+
+from .maze_game import Maze
 
 
 def action_encoding(action: int) -> str:
@@ -19,11 +22,11 @@ class SunburstMazeDiscrete(gym.Env):
 
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
-    def __init__(self, render_mode=None, maze_file=None):
+    def __init__(self, maze_file=None, render_mode=None):
         self.map_file = maze_file
-        self.map = build_map(maze_file)
-        self.height = self.map.shape[0]
-        self.width = self.map.shape[1]
+        self.env_map = build_map(maze_file)
+        self.height = self.env_map.shape[0]
+        self.width = self.env_map.shape[1]
 
         self.window_size = (self.width * 20, self.height * 20)  # 20 X scale
 
@@ -45,15 +48,24 @@ class SunburstMazeDiscrete(gym.Env):
         # self.last_position = None
 
         assert (
-            render_mode is None or render_mode in self.metadata["render.modes"]
+            render_mode is None or render_mode in self.metadata["render_modes"]
         ), f"Invalid render mode: {render_mode}"
+
         self.render_mode = render_mode
+        self.render_maze = None
+        if self.render_mode == "human":
+            framerate = self.metadata["render_fps"]
+
+            self.render_maze = Maze(
+                self.map_file, self.env_map, self.width, self.height, framerate, self.position, self.orientation
+            )
+
         self.window = None
         self.clock = None
 
     def select_start_position(self) -> tuple:
         # TODO: Maybe implement random selection
-        return (26, 10)
+        return (10, 2)
 
     def _get_info(self):
 
@@ -63,7 +75,7 @@ class SunburstMazeDiscrete(gym.Env):
 
         super().reset(seed=seed)
         # self.last_position = None
-        self.map = build_map(self.map_file)
+        self.env_map = build_map(self.map_file)
         self.position = self.select_start_position()
         return self.legal_actions, self._get_info()
 
@@ -87,7 +99,7 @@ class SunburstMazeDiscrete(gym.Env):
             raise ValueError("Invalid orientation")
 
         # Check if the cell in front of the agent is a wall
-        if int(self.map[next_position[0]][next_position[1]]) == 1:
+        if int(self.env_map[next_position[0]][next_position[1]]) == 1:
             return False
 
         return True
@@ -118,8 +130,8 @@ class SunburstMazeDiscrete(gym.Env):
         - If the orientation is 2 (Down), the agent's position is incremented by 1 in the y-axis.
         - If the orientation is 3 (Left), the agent's position is decremented by 1 in the x-axis.
         """
-        
-        #self.last_position = self.position
+
+        # self.last_position = self.position
 
         if self.orientation == 0:  # Up
             self.position = (self.position[0] - 1, self.position[1])
@@ -132,7 +144,6 @@ class SunburstMazeDiscrete(gym.Env):
 
         if self.orientation == 3:  # Left
             self.position = (self.position[0], self.position[1] - 1)
-
 
     def turn_left(self):
         """
@@ -188,7 +199,7 @@ class SunburstMazeDiscrete(gym.Env):
         Returns:
             bool: True if the current position is a goal position, False otherwise.
         """
-        if int(self.map[self.position[0]][self.position[1]]) == 2:
+        if int(self.env_map[self.position[0]][self.position[1]]) == 2:
             return True
         return False
 
@@ -204,15 +215,15 @@ class SunburstMazeDiscrete(gym.Env):
         return -1
 
     def render(self):
-        if self.render_mode == "rgb_array":
+        if self.render_mode == "rgb_array" or self.render_mode == "human":
             return self._render_frame()
 
     def _render_frame(self):
-        raise NotImplementedError
+        self.render_maze.draw_frame(self.env_map, self.position, self.orientation)
 
     # TODO: Remove this later
     def show_map(self):
-        show_map(self.map, self.position, orientation=self.orientation)
+        show_map(self.env_map, self.position, orientation=self.orientation)
 
     def close(self):  # TODO: Not tested
         if self.window is not None:

@@ -42,8 +42,7 @@ def play_with_keyboard():
         None
     """
 
-    env = SunburstMazeDiscrete("../env/map_v1/map.csv")
-    env.show_map()
+    env = SunburstMazeDiscrete(maze_file="../env/map_v1/map.csv", render_mode="human")
 
     pygame.init()
     legal_actions = env.reset()

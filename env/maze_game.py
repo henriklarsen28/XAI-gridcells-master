@@ -2,10 +2,10 @@ import os
 import random
 
 import pygame
-from read_map import build_map, show_map
-from sunburstmaze_discrete import SunburstMazeDiscrete
+#from register_env import build_map, show_map
 
-pygame.init()
+
+
 
 # mazeWidth = screenWidth // cellSize
 # mazeHeight = screenHeight // cellSize
@@ -16,39 +16,16 @@ red = (255, 0, 0)
 grey = (192, 192, 192)
 
 
-script_dir = os.path.dirname(__file__)
-map_file = os.path.join(script_dir, "map_v1", "map.csv")
-    
-env = build_map(map_file)   
-mazeHeight = env.shape[0]
-mazeWidth = env.shape[1]
 
-# window properties
+
 cellSize = 30
-screenWidth = mazeWidth * cellSize
-screenHeight = mazeHeight * cellSize
-
-print("screenWidth", screenWidth)
-print('screenHeight', screenHeight)
-print("mazeWidth", mazeWidth)
-print("mazeHeight", mazeHeight)
-
-win = pygame.display.set_mode((screenWidth, screenHeight))
-pygame.display.set_caption("First Game")
 
 
 X = 10  # start position
 Y = 2
 vel = 10  # how fast the object moves
 
-# load sprite
-script_dir = os.path.dirname(__file__)
-sprite_file = os.path.join(script_dir, "images", "orange_mouse_single.png")
-sprite = pygame.image.load(sprite_file).convert_alpha()
 
-# get sprite dinmensions
-spriteWidth, spriteHeight = sprite.get_size()
-sprite = pygame.transform.scale(sprite, (spriteWidth * 0.5, spriteHeight * 0.5))
 
 """
 def get_sprite(sheet, frame, width, height):
@@ -71,16 +48,13 @@ for i in range(3):  # Change 10 to the number of sprites you want to extract
     sprites.append(sprite)
 """
 
-sprite_right = sprite
-sprite_left = pygame.transform.flip(sprite, True, False)
-sprite_down = pygame.transform.rotate(sprite_left, 90)
-sprite_up = pygame.transform.rotate(sprite, 90)
+
 
 """# Animation variables
 current_frame = 0
 frame_count = len(sprite)"""
 
-
+"""
 class Player:
     def __init__(self):
         self.x = X
@@ -102,26 +76,91 @@ class Player:
         win.blit(
             sprite, (self.x * cellSize, self.y * cellSize, spriteWidth, spriteHeight)
         )
+"""
+
+class Maze:
+
+    def __init__(self, map_file, env_map, width, height, framerate, position, orientation):
+        pygame.init()
+        self.map_file = map_file
+        self.env_map = env_map
+        self.width = width
+        self.height = height
+
+        cellSize = 30
+        screenWidth = width * cellSize
+        screenHeight = height * cellSize
+
+        self.win = pygame.display.set_mode((screenWidth, screenHeight))
+        pygame.display.set_caption("First Game")
+
+        # load sprite
+        script_dir = os.path.dirname(__file__)
+        sprite_file = os.path.join(script_dir, "images", "orange_mouse_single.png")
+        sprite = pygame.image.load(sprite_file).convert_alpha()
+
+        self.spriteWidth, self.spriteHeight = sprite.get_size()
+        sprite = pygame.transform.scale(sprite, (self.spriteWidth * 0.5, self.spriteHeight * 0.5))
+
+        self.sprite_right = sprite
+        self.sprite_left = pygame.transform.flip(sprite, True, False)
+        self.sprite_down = pygame.transform.rotate(self.sprite_left, 90)
+        self.sprite_up = pygame.transform.rotate(sprite, 90)
+
+        self.clock = pygame.time.Clock()
+        self.framerate = framerate
+        self.draw_frame(self.env_map, position, orientation)
 
 
-# set up the maze
-def draw_maze(screen, maze):
-    for y in range(mazeHeight):
-        for x in range(mazeWidth):
-            if maze[y][x] == 1:
-                pygame.draw.rect(
-                    screen, black, (x * cellSize, y * cellSize, cellSize, cellSize)
-                )
-            elif maze[y][x] == 2:
-                pygame.draw.rect(
-                    screen, green, (x * cellSize, y * cellSize, cellSize, cellSize)
-                )
+    def select_sprite(self, orientation):
+        if orientation == 0:
+            return self.sprite_up
+        elif orientation == 1:
+            return self.sprite_right
+        elif orientation == 2:
+            return self.sprite_down
+        elif orientation == 3:
+            return self.sprite_left
+
+    # set up the maze
+    def draw_maze(self, env_map):
+        print(env_map.size)
+        for y in range(self.height):
+            for x in range(self.width):
+                if env_map[y][x] == 1:
+                    pygame.draw.rect(
+                        self.win, black, (x * cellSize, y * cellSize, cellSize, cellSize)
+                    )
+                elif env_map[y][x] == 2:
+                    pygame.draw.rect(
+                        self.win, green, (x * cellSize, y * cellSize, cellSize, cellSize)
+                    )
+
+    def draw_sprite(self, position, orientation):
+        sprite = self.select_sprite(orientation)
+
+        self.win.blit(
+            sprite,
+            (
+                position[0] * cellSize,
+                position[1] * cellSize,
+                self.spriteWidth,
+                self.spriteHeight,
+            ),
+        )
+
+    def draw_frame(self, env_map, position, orientation):
+        self.win.fill(white)  # fill screen before drawing
+        self.draw_maze(env_map)
+        self.draw_sprite(position, orientation)
+        pygame.display.flip()
+        self.clock.tick(self.framerate)
 
 
-player = Player()
+"""player = Player()
 run = True
 while run:
-    pygame.time.delay(100)  # delays the game so it doesn't run too fast
+    # pygame.time.delay(100)  # delays the game so it doesn't run too fast
     for event in pygame.event.get():  # event from user
         if event.type == pygame.QUIT:  # if user quits
             run = False
@@ -148,7 +187,7 @@ while run:
         print(player.x, player.y)
 
     win.fill(white)  # fill screen before drawing
-    draw_maze(win, env)
+    #draw_maze(win, env)
     player.draw()
 
     # Draw the current sprite
@@ -162,3 +201,4 @@ while run:
     pygame.display.flip()
 
 pygame.quit()
+"""
