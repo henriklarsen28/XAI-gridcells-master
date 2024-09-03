@@ -8,7 +8,7 @@ from env import SunburstMazeDiscrete
 from env.sunburstmaze_discrete import action_encoding
 
 
-def perform_action(action, env, legal_actions):
+def perform_action(action: int, env: SunburstMazeDiscrete, legal_actions: list):
     """
     Perform the given action in the environment.
 
@@ -20,11 +20,11 @@ def perform_action(action, env, legal_actions):
     Returns:
         list: The updated list of legal actions.
     """
-    #action = action_encoding(action)
+    # action = action_encoding(action)
     print("Action: ", action, env.orientation, env.position)
-    
+
     legal_actions, reward, _, _, _, _ = env.step(action)
-    #env.show_map()
+    # env.show_map()
     return legal_actions, env
 
 
@@ -41,7 +41,9 @@ def play_with_keyboard():
         None
     """
 
-    env = SunburstMazeDiscrete(maze_file="../env/map_v1/map_closed_doors.csv", render_mode="human")
+    env = SunburstMazeDiscrete(
+        maze_file="../env/map_v1/map_closed_doors.csv", render_mode="human"
+    )
 
     pygame.init()
     legal_actions, _ = env.reset()
