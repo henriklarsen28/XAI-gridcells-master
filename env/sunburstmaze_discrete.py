@@ -77,7 +77,7 @@ class SunburstMazeDiscrete(gym.Env):
 
     def _get_info(self):
 
-        return {"position": self.position, "orientation": self.orientation}
+        return {"legal_actions": self.legal_actions(), "orientation": self.orientation}
 
     def reset(self, seed=None, options=None) -> tuple:
 
@@ -111,6 +111,34 @@ class SunburstMazeDiscrete(gym.Env):
             return False
 
         return True
+
+    def next_to_wall(self) -> list:
+        """
+        Determines which directions the agent is next to a wall.
+
+        Returns:
+            list: A list of binary values indicating whether the agent is next to a wall in each direction.
+                  The order of the values corresponds to [front, right, back, left].
+                  A value of 1 indicates that the agent is next to a wall in that direction,
+                  while a value of 0 indicates that the agent is not next to a wall in that direction.
+        """
+
+        next_to_wall = [0, 0, 0, 0]
+        
+
+        # Check if the cell in front of the agent is a wall
+        if int(self.env_map[self.position[0] - 1][self.position[1]]) == 1:
+            next_to_wall[0] = 1
+        # Check if the cell to the right of the agent is a wall
+        if int(self.env_map[self.position[0]][self.position[1] + 1]) == 1:
+            next_to_wall[1] = 1
+        # Check if the cell behind the agent is a wall
+        if int(self.env_map[self.position[0] + 1][self.position[1]]) == 1:
+            next_to_wall[2] = 1
+        # Check if the cell to the left of the agent is a wall
+        if int(self.env_map[self.position[0]][self.position[1] - 1]) == 1:
+            next_to_wall[3] = 1
+        return next_to_wall
 
     def legal_actions(self) -> list:
         """
@@ -189,20 +217,27 @@ class SunburstMazeDiscrete(gym.Env):
             terminated (bool): Whether the episode is terminated or not.
             info (dict): Additional information about the environment.
         """
+        # Used if the action is invalid
         reward = self.reward()
-        observation = self.legal_actions()
+        observation = self.next_to_wall()
         terminated = self.is_goal()
         info = self._get_info()
 
         action = action_encoding(action)
         if action not in self.legal_actions():
-            return observation, reward, terminated, info, False, "Invalid action"
+            return observation, reward, terminated, False, info
         self._action_to_direction[action]()
 
+        # Updated values
+        reward = self.reward()
+        observation = (self.orientation, self.next_to_wall())
+        terminated = self.is_goal()
+        info = self._get_info()
+        print(observation)
         if self.render_mode == "human":
             self._render_frame()
 
-        return observation, reward, terminated, info, False, info
+        return observation, reward, terminated, False, info
 
     def is_goal(self):
         """
