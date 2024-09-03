@@ -5,6 +5,7 @@ import pygame
 sys.path.append("..")
 
 from env import SunburstMazeDiscrete
+from env.sunburstmaze_discrete import action_encoding
 
 
 def perform_action(action, env, legal_actions):
@@ -19,13 +20,11 @@ def perform_action(action, env, legal_actions):
     Returns:
         list: The updated list of legal actions.
     """
-    if action in legal_actions:
-        print("Action: ", action)
-        legal_actions = env.step(action)
-        env.show_map()
-    else:
-        print("Illegal action")
-        print("Legal actions: ", legal_actions)
+    #action = action_encoding(action)
+    print("Action: ", action, env.orientation, env.position)
+    
+    legal_actions, reward, _, _, _, _ = env.step(action)
+    #env.show_map()
     return legal_actions, env
 
 
@@ -42,10 +41,11 @@ def play_with_keyboard():
         None
     """
 
-    env = SunburstMazeDiscrete(maze_file="../env/map_v1/map.csv", render_mode="human")
+    env = SunburstMazeDiscrete(maze_file="../env/map_v1/map_closed_doors.csv", render_mode="human")
 
     pygame.init()
-    legal_actions = env.reset()
+    legal_actions, _ = env.reset()
+    print(legal_actions)
     running = True
     while running:
         for event in pygame.event.get():
@@ -58,14 +58,20 @@ def play_with_keyboard():
                     running = False
                     break
                 if event.key == pygame.K_w:
-                    action = "forward"
+                    action = 0
                 elif event.key == pygame.K_a:
-                    action = "left"
+                    action = 1
                 elif event.key == pygame.K_d:
-                    action = "right"
+                    action = 2
             else:
                 action = None
-            legal_actions, env = perform_action(action, env, legal_actions)
+
+            if action is not None:
+                legal_actions, env = perform_action(action, env, legal_actions)
+                if env.is_goal():
+                    print("Goal reached!")
+                    running = False
+                    break
     print("Exiting...")
 
 

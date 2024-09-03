@@ -2,9 +2,8 @@ import os
 import random
 
 import pygame
-#from register_env import build_map, show_map
 
-
+# from register_env import build_map, show_map
 
 
 # mazeWidth = screenWidth // cellSize
@@ -16,15 +15,12 @@ red = (255, 0, 0)
 grey = (192, 192, 192)
 
 
-
-
 cellSize = 30
 
 
 X = 10  # start position
 Y = 2
 vel = 10  # how fast the object moves
-
 
 
 """
@@ -47,7 +43,6 @@ for i in range(3):  # Change 10 to the number of sprites you want to extract
     sprite = pygame.transform.scale(sprite, (spriteWidth * 0.5, spriteHeight * 0.5))
     sprites.append(sprite)
 """
-
 
 
 """# Animation variables
@@ -78,9 +73,12 @@ class Player:
         )
 """
 
+
 class Maze:
 
-    def __init__(self, map_file, env_map, width, height, framerate, position, orientation):
+    def __init__(
+        self, map_file, env_map, width, height, framerate, position, orientation
+    ):
         pygame.init()
         self.map_file = map_file
         self.env_map = env_map
@@ -100,7 +98,9 @@ class Maze:
         sprite = pygame.image.load(sprite_file).convert_alpha()
 
         self.spriteWidth, self.spriteHeight = sprite.get_size()
-        sprite = pygame.transform.scale(sprite, (self.spriteWidth * 0.5, self.spriteHeight * 0.5))
+        sprite = pygame.transform.scale(
+            sprite, (self.spriteWidth * 0.35, self.spriteHeight * 0.35)
+        )
 
         self.sprite_right = sprite
         self.sprite_left = pygame.transform.flip(sprite, True, False)
@@ -110,7 +110,6 @@ class Maze:
         self.clock = pygame.time.Clock()
         self.framerate = framerate
         self.draw_frame(self.env_map, position, orientation)
-
 
     def select_sprite(self, orientation):
         if orientation == 0:
@@ -124,16 +123,19 @@ class Maze:
 
     # set up the maze
     def draw_maze(self, env_map):
-        print(env_map.size)
         for y in range(self.height):
             for x in range(self.width):
                 if env_map[y][x] == 1:
                     pygame.draw.rect(
-                        self.win, black, (x * cellSize, y * cellSize, cellSize, cellSize)
+                        self.win,
+                        black,
+                        (x * cellSize, y * cellSize, cellSize, cellSize),
                     )
                 elif env_map[y][x] == 2:
                     pygame.draw.rect(
-                        self.win, green, (x * cellSize, y * cellSize, cellSize, cellSize)
+                        self.win,
+                        green,
+                        (x * cellSize, y * cellSize, cellSize, cellSize),
                     )
 
     def draw_sprite(self, position, orientation):
@@ -142,8 +144,8 @@ class Maze:
         self.win.blit(
             sprite,
             (
-                position[0] * cellSize,
                 position[1] * cellSize,
+                position[0] * cellSize,
                 self.spriteWidth,
                 self.spriteHeight,
             ),
@@ -155,50 +157,3 @@ class Maze:
         self.draw_sprite(position, orientation)
         pygame.display.flip()
         self.clock.tick(self.framerate)
-
-
-"""player = Player()
-run = True
-while run:
-    # pygame.time.delay(100)  # delays the game so it doesn't run too fast
-    for event in pygame.event.get():  # event from user
-        if event.type == pygame.QUIT:  # if user quits
-            run = False
-    keys = pygame.key.get_pressed()
-    if keys[pygame.K_LEFT]:
-        # flip sprite
-        sprite = sprite_left
-        player.move(-1, 0, env)
-        print(player.x, player.y)
-
-    if keys[pygame.K_RIGHT]:
-        sprite = sprite_right
-        player.move(1, 0, env)
-        print(player.x, player.y)
-
-    if keys[pygame.K_UP]:
-        sprite = sprite_up
-        player.move(0, -1, env)
-        print(player.x, player.y)
-
-    if keys[pygame.K_DOWN]:
-        sprite = sprite_down
-        player.move(0, 1, env)
-        print(player.x, player.y)
-
-    win.fill(white)  # fill screen before drawing
-    #draw_maze(win, env)
-    player.draw()
-
-    # Draw the current sprite
-    # win.blit(sprite, (x, y, spriteWidth, spriteHeight))
-    # Update the frame
-    # current_frame = (current_frame + 1) % frame_count
-
-    # pygame.draw.rect(win, (255, 0, 0), (x, y, width, height)) # draw rectangle
-    # pygame.display.update()
-    # Update the display
-    pygame.display.flip()
-
-pygame.quit()
-"""

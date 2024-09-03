@@ -5,9 +5,7 @@ import numpy as np
 import pygame
 from gymnasium import spaces
 
-
 from .file_manager import build_map, show_map
-
 from .maze_game import Maze
 
 
@@ -20,7 +18,7 @@ def action_encoding(action: int) -> str:
 
 class SunburstMazeDiscrete(gym.Env):
 
-    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
+    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 60}
 
     def __init__(self, maze_file=None, render_mode=None):
         self.map_file = maze_file
@@ -57,7 +55,13 @@ class SunburstMazeDiscrete(gym.Env):
             framerate = self.metadata["render_fps"]
 
             self.render_maze = Maze(
-                self.map_file, self.env_map, self.width, self.height, framerate, self.position, self.orientation
+                self.map_file,
+                self.env_map,
+                self.width,
+                self.height,
+                framerate,
+                self.position,
+                self.orientation,
             )
 
         self.window = None
@@ -65,7 +69,7 @@ class SunburstMazeDiscrete(gym.Env):
 
     def select_start_position(self) -> tuple:
         # TODO: Maybe implement random selection
-        return (10, 2)
+        return (26, 10)
 
     def _get_info(self):
 
@@ -77,7 +81,7 @@ class SunburstMazeDiscrete(gym.Env):
         # self.last_position = None
         self.env_map = build_map(self.map_file)
         self.position = self.select_start_position()
-        return self.legal_actions, self._get_info()
+        return self.legal_actions(), self._get_info()
 
     def can_move_forward(self) -> bool:
         """
@@ -170,23 +174,26 @@ class SunburstMazeDiscrete(gym.Env):
         """
         self.orientation = (self.orientation + 1) % 4
 
-    def step(self, action):
+    def step(self, action: int):
         """
-        Takes an action and performs the corresponding movement in the environment.
-
+        Takes a step in the environment based on the given action.
         Parameters:
-            action (int): The action to be performed. 0 represents moving forward, 1 represents turning left, and 2 represents turning right.
-
+            action (int): The action to take in the environment.
         Returns:
-            None
+            observation (list): The current observation of the environment, legal actions.
+            reward (float): The reward obtained from the environment.
+            terminated (bool): Whether the episode is terminated or not.
+            info (dict): Additional information about the environment.
         """
-        action = action_encoding(action)
-        self._action_to_direction[action]()
-
-        terminated = self.is_goal()
         reward = self.reward()
         observation = self.legal_actions()
+        terminated = self.is_goal()
         info = self._get_info()
+
+        action = action_encoding(action)
+        if action not in self.legal_actions():
+            return observation, reward, terminated, info, False, "Invalid action"
+        self._action_to_direction[action]()
 
         if self.render_mode == "human":
             self._render_frame()
