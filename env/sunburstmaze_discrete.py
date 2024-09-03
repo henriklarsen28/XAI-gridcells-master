@@ -5,7 +5,7 @@ import numpy as np
 import pygame
 from gymnasium import spaces
 
-from .file_manager import build_map, show_map
+from .file_manager import build_map
 from .maze_game import Maze
 
 
@@ -25,8 +25,6 @@ class SunburstMazeDiscrete(gym.Env):
         self.env_map = build_map(maze_file)
         self.height = self.env_map.shape[0]
         self.width = self.env_map.shape[1]
-
-        self.window_size = (self.width * 20, self.height * 20)  # 20 X scale
 
         # Three possible actions: forward, left, right
         self.action_space = spaces.Discrete(3)
@@ -68,6 +66,12 @@ class SunburstMazeDiscrete(gym.Env):
         self.clock = None
 
     def select_start_position(self) -> tuple:
+        """
+        Selects the start position for the maze.
+
+        Returns:
+            tuple: The coordinates of the selected start position.
+        """
         # TODO: Maybe implement random selection
         return (26, 10)
 
@@ -228,10 +232,6 @@ class SunburstMazeDiscrete(gym.Env):
     def _render_frame(self):
         self.render_maze.draw_frame(self.env_map, self.position, self.orientation)
 
-    # TODO: Remove this later
-    def show_map(self):
-        show_map(self.env_map, self.position, orientation=self.orientation)
-
     def close(self):  # TODO: Not tested
         if self.window is not None:
             pygame.display.quit()
@@ -242,7 +242,6 @@ def main():
     import time
 
     env = SunburstMazeDiscrete("map_v1/map.csv")
-    env.show_map()
 
     available_actions = env.reset()
     print(available_actions)
@@ -251,7 +250,6 @@ def main():
         print(action)
         available_actions = env.step(action)
 
-        env.show_map()
         time.sleep(0.5)
 
 

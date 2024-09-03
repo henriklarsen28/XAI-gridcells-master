@@ -1,13 +1,8 @@
 import os
-import random
 
+import numpy as np
 import pygame
 
-# from register_env import build_map, show_map
-
-
-# mazeWidth = screenWidth // cellSize
-# mazeHeight = screenHeight // cellSize
 white = (255, 255, 255)
 black = (0, 0, 0)
 green = (0, 255, 0)
@@ -15,69 +10,17 @@ red = (255, 0, 0)
 grey = (192, 192, 192)
 
 
-cellSize = 30
-
-
-X = 10  # start position
-Y = 2
-vel = 10  # how fast the object moves
-
-
-"""
-def get_sprite(sheet, frame, width, height):
-    # Calculate the x and y coordinates on the sprite sheet
-    x = (frame % 10) * width + 2
-    y = (frame // 10) * height + 2
-    # Create a new surface for the sprite
-    sprite = pygame.Surface((width, height), pygame.SRCALPHA)
-    # Blit the sprite onto the surface
-    sprite.blit(sheet, (0, 0), (x, y, width, height))
-    return sprite
-
-
-
-sprites = []
-for i in range(3):  # Change 10 to the number of sprites you want to extract
-    sprite = get_sprite(sprite_sheet, i, spriteWidth, spriteHeight)
-    # make sprite smaller
-    sprite = pygame.transform.scale(sprite, (spriteWidth * 0.5, spriteHeight * 0.5))
-    sprites.append(sprite)
-"""
-
-
-"""# Animation variables
-current_frame = 0
-frame_count = len(sprite)"""
-
-"""
-class Player:
-    def __init__(self):
-        self.x = X
-        self.y = Y
-
-    def move(self, dx, dy, maze):
-        new_x = self.x + dx
-        new_y = self.y + dy
-        if (
-            0 <= new_x < mazeWidth
-            and 0 <= new_y < mazeHeight
-            and maze[new_y][new_x] != 1
-        ):
-            self.x = new_x
-            self.y = new_y
-
-    def draw(self):
-        # pygame.draw.rect(screen, GREEN, (self.x * cellSize, self.y * cellSize, cellSize, cellSize))
-        win.blit(
-            sprite, (self.x * cellSize, self.y * cellSize, spriteWidth, spriteHeight)
-        )
-"""
-
-
 class Maze:
 
     def __init__(
-        self, map_file, env_map, width, height, framerate, position, orientation
+        self,
+        map_file: str,
+        env_map: np.array,
+        width: int,
+        height: int,
+        framerate: int,
+        position: tuple,
+        orientation: int,
     ):
         pygame.init()
         self.map_file = map_file
@@ -85,11 +28,11 @@ class Maze:
         self.width = width
         self.height = height
 
-        cellSize = 30
-        screenWidth = width * cellSize
-        screenHeight = height * cellSize
+        self.cell_size = 30
+        screen_width = width * self.cell_size
+        screen_height = height * self.cell_size
 
-        self.win = pygame.display.set_mode((screenWidth, screenHeight))
+        self.win = pygame.display.set_mode((screen_width, screen_height))
         pygame.display.set_caption("First Game")
 
         # load sprite
@@ -111,7 +54,16 @@ class Maze:
         self.framerate = framerate
         self.draw_frame(self.env_map, position, orientation)
 
-    def select_sprite(self, orientation):
+    def select_sprite(self, orientation: int):
+        """
+        Selects the appropriate sprite based on the given orientation.
+
+        Parameters:
+        - orientation (int): The orientation of the sprite. Must be a value between 0 and 3.
+
+        Returns:
+        - sprite (Sprite): The selected sprite based on the given orientation.
+        """
         if orientation == 0:
             return self.sprite_up
         elif orientation == 1:
@@ -122,36 +74,76 @@ class Maze:
             return self.sprite_left
 
     # set up the maze
-    def draw_maze(self, env_map):
+    def draw_maze(self, env_map: np.array) -> None:
+        """
+        Draws the maze based on the given environment map.
+
+        Parameters:
+        - env_map (list of lists): The environment map representing the maze.
+
+        Returns:
+        - None
+        """
         for y in range(self.height):
             for x in range(self.width):
                 if env_map[y][x] == 1:
                     pygame.draw.rect(
                         self.win,
                         black,
-                        (x * cellSize, y * cellSize, cellSize, cellSize),
+                        (
+                            x * self.cell_size,
+                            y * self.cell_size,
+                            self.cell_size,
+                            self.cell_size,
+                        ),
                     )
                 elif env_map[y][x] == 2:
                     pygame.draw.rect(
                         self.win,
                         green,
-                        (x * cellSize, y * cellSize, cellSize, cellSize),
+                        (
+                            x * self.cell_size,
+                            y * self.cell_size,
+                            self.cell_size,
+                            self.cell_size,
+                        ),
                     )
 
-    def draw_sprite(self, position, orientation):
+    def draw_sprite(self, position: tuple, orientation: int) -> None:
+        """
+        Draws a sprite on the game window at the specified position and orientation.
+
+        Parameters:
+        - position (tuple): The position of the sprite in the game grid.
+        - orientation (str): The orientation of the sprite.
+
+        Returns:
+        - None
+        """
         sprite = self.select_sprite(orientation)
 
         self.win.blit(
             sprite,
             (
-                position[1] * cellSize,
-                position[0] * cellSize,
+                position[1] * self.cell_size,
+                position[0] * self.cell_size,
                 self.spriteWidth,
                 self.spriteHeight,
             ),
         )
 
-    def draw_frame(self, env_map, position, orientation):
+    def draw_frame(self, env_map: np.array, position: tuple, orientation: int):
+        """
+        Draws a frame of the maze game.
+
+        Args:
+            env_map (np.array): The environment map representing the maze.
+            position (tuple): The current position of the player.
+            orientation (int): The orientation of the player.
+
+        Returns:
+            None
+        """
         self.win.fill(white)  # fill screen before drawing
         self.draw_maze(env_map)
         self.draw_sprite(position, orientation)
