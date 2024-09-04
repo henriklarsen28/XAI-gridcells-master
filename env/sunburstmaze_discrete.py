@@ -18,7 +18,7 @@ def action_encoding(action: int) -> str:
 
 class SunburstMazeDiscrete(gym.Env):
 
-    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 60}
+    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 45}
 
     def __init__(self, maze_file=None, render_mode=None):
         self.map_file = maze_file
@@ -29,9 +29,7 @@ class SunburstMazeDiscrete(gym.Env):
         # Three possible actions: forward, left, right
         self.action_space = spaces.Discrete(3)
 
-        self.observation_space = spaces.Box(
-            low=0, high=2, shape=(self.height, self.width), dtype=np.uint8
-        )
+        self.observation_space = spaces.Discrete(5) # Orientation + next_to_wall
 
         self._action_to_direction = {
             "forward": self.move_forward,
@@ -79,13 +77,16 @@ class SunburstMazeDiscrete(gym.Env):
 
         return {"legal_actions": self.legal_actions(), "orientation": self.orientation}
 
+    def _get_observation(self):
+        return np.array([self.orientation, *self.next_to_wall()])
+    
     def reset(self, seed=None, options=None) -> tuple:
 
         super().reset(seed=seed)
         # self.last_position = None
         self.env_map = build_map(self.map_file)
         self.position = self.select_start_position()
-        return self.legal_actions(), self._get_info()
+        return self._get_observation()
 
     def can_move_forward(self) -> bool:
         """
@@ -219,7 +220,7 @@ class SunburstMazeDiscrete(gym.Env):
         """
         # Used if the action is invalid
         reward = self.reward()
-        observation = self.next_to_wall()
+        observation = self._get_observation()
         terminated = self.is_goal()
         info = self._get_info()
 
@@ -230,10 +231,9 @@ class SunburstMazeDiscrete(gym.Env):
 
         # Updated values
         reward = self.reward()
-        observation = (self.orientation, self.next_to_wall())
+        observation = self._get_observation()
         terminated = self.is_goal()
         info = self._get_info()
-        print(observation)
         if self.render_mode == "human":
             self._render_frame()
 

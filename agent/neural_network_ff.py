@@ -4,7 +4,7 @@ import tensorflow as tf
 from tensorflow.keras import layers, models, optimizers
 
 losses = []
-lossfunction = 
+
 
 class NeuralNetworkFF:
 
@@ -42,9 +42,9 @@ class NeuralNetworkFF:
 
         states = np.array([batch[0] for batch in mini_batch])
 
-        current_q_values = self.model.predict(states)
+        current_q_values = model.predict(states)
         new_states = np.array([batch[3] for batch in mini_batch])
-        future_q_values = self.target_model.predict(new_states)
+        future_q_values = target_model.predict(new_states)
 
         X_train = []
         y_train = []
@@ -62,7 +62,7 @@ class NeuralNetworkFF:
             X_train.append(observation)
             y_train.append(current_q)
 
-        history = self.model.fit(np.array(X_train), np.array(y_train), verbose=0, shuffle=True)
+        history = model.fit(np.array(X_train), np.array(y_train), verbose=0, shuffle=True)
         loss = history.history["loss"][0]
         print("Loss: ", loss)
 
