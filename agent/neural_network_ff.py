@@ -66,4 +66,9 @@ class NeuralNetworkFF:
         loss = history.history["loss"][0]
         print("Loss: ", loss)
 
+    def save_losses(self):
+
+        with open("losses.txt", "w") as f:
+            for loss in losses:
+                f.write(str(loss) + "\n")
             

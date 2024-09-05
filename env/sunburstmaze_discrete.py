@@ -8,6 +8,14 @@ from gymnasium import spaces
 from .file_manager import build_map
 from .maze_game import Maze
 
+checkpoints = [
+    {"coordinates": [(19, 9), (19, 10), (19, 11)], "visited": False},
+    {"coordinates": [(13, 9), (13, 10), (13, 11)], "visited": False},
+    {"coordinates": [(7, 9), (7, 10), (7, 11)], "visited": False},
+    {"coordinates": [(5, 13), (6, 13), (7, 13)], "visited": False},
+    {"coordinates": [(13,16), (13,17), (13, 18), (13,19)], "visited": False}
+]
+
 
 def action_encoding(action: int) -> str:
 
@@ -20,7 +28,7 @@ class SunburstMazeDiscrete(gym.Env):
 
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 45}
 
-    def __init__(self, maze_file=None, render_mode=None):
+    def __init__(self, maze_file=None, render_mode=None, max_steps_per_episode=1000):
         self.map_file = maze_file
         self.env_map = build_map(maze_file)
         self.height = self.env_map.shape[0]
@@ -29,7 +37,7 @@ class SunburstMazeDiscrete(gym.Env):
         # Three possible actions: forward, left, right
         self.action_space = spaces.Discrete(3)
 
-        self.observation_space = spaces.Discrete(5) # Orientation + next_to_wall
+        self.observation_space = spaces.Discrete(5)  # Orientation + next_to_wall
 
         self._action_to_direction = {
             "forward": self.move_forward,
@@ -40,6 +48,9 @@ class SunburstMazeDiscrete(gym.Env):
 
         self.position = self.select_start_position()
         # self.last_position = None
+
+        self.max_steps_per_episode = max_steps_per_episode
+        self.steps_current_episode = 0
 
         assert (
             render_mode is None or render_mode in self.metadata["render_modes"]
@@ -79,14 +90,21 @@ class SunburstMazeDiscrete(gym.Env):
 
     def _get_observation(self):
         return np.array([self.orientation, *self.next_to_wall()])
-    
+
     def reset(self, seed=None, options=None) -> tuple:
 
         super().reset(seed=seed)
         # self.last_position = None
         self.env_map = build_map(self.map_file)
         self.position = self.select_start_position()
+        self.reset_checkpoints()
+        self.steps_current_episode = 0
         return self._get_observation()
+
+
+    def reset_checkpoints(self):
+        for checkpoint in checkpoints:
+            checkpoint["visited"] = False
 
     def can_move_forward(self) -> bool:
         """
@@ -125,8 +143,8 @@ class SunburstMazeDiscrete(gym.Env):
         """
 
         next_to_wall = [0, 0, 0, 0]
-        
 
+        # TODO: Clean this up
         # Check if the cell in front of the agent is a wall
         if int(self.env_map[self.position[0] - 1][self.position[1]]) == 1:
             next_to_wall[0] = 1
@@ -218,6 +236,11 @@ class SunburstMazeDiscrete(gym.Env):
             terminated (bool): Whether the episode is terminated or not.
             info (dict): Additional information about the environment.
         """
+
+        if self.steps_current_episode >= self.max_steps_per_episode:
+            print("Max steps")
+            return self.reset(), 0, True, False, self._get_info()
+
         # Used if the action is invalid
         reward = self.reward()
         observation = self._get_observation()
@@ -228,6 +251,8 @@ class SunburstMazeDiscrete(gym.Env):
         if action not in self.legal_actions():
             return observation, reward, terminated, False, info
         self._action_to_direction[action]()
+
+        self.steps_current_episode += 1
 
         # Updated values
         reward = self.reward()
@@ -258,7 +283,13 @@ class SunburstMazeDiscrete(gym.Env):
         if self.is_goal():
             return 100
 
-        return -1
+        for checkpoint in checkpoints:
+            if self.position in checkpoint["coordinates"] and not checkpoint["visited"]:
+                checkpoint["visited"] = True
+                print("Checkpoint visited: ", self.position)
+                return 10
+
+        return 0
 
     def render(self):
         if self.render_mode == "rgb_array" or self.render_mode == "human":

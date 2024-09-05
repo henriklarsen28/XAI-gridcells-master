@@ -9,7 +9,7 @@ from neural_network_ff import NeuralNetworkFF
 
 from env import SunburstMazeDiscrete
 
-train_episodes = 5
+train_episodes = 20
 test_episodes = 100
 
 
@@ -20,10 +20,11 @@ def train_agent():
 
     epsilon = 1
     epsilon_decay = 0.0001
-    epsilon_min = 0.01
+    epsilon_min = 0.1
     render = True
 
-    env = SunburstMazeDiscrete("../env/map_v1/map.csv", render_mode="human")
+
+    env = SunburstMazeDiscrete("../env/map_v1/map_closed_doors.csv", render_mode="human")
     state_shape = (env.observation_space.n,)
     action_shape = (env.action_space.n,)
 
@@ -71,6 +72,8 @@ def train_agent():
 
             state = new_state
 
+            steps_until_train += 1
+
             if done:
                 ql.train(
                     replay_memory=replay_memory,
@@ -81,7 +84,7 @@ def train_agent():
 
             if steps_until_train >= 5000:
 
-                target_model.set_weights(ql.get_weights())
+                target_model.set_weights(model.get_weights())
                 steps_until_train = 0
 
                 # Decay epsilon
@@ -92,7 +95,7 @@ def train_agent():
     
     # Save the model
     model.save("model.keras")
-
+    ql.save_losses()
     env.close()
 
 
