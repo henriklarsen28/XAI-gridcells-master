@@ -13,8 +13,6 @@ train_episodes = 20
 test_episodes = 100
 
 
-def reward_policy(new_observation, done):
-    pass
 
 def train_agent():
 
@@ -63,7 +61,7 @@ def train_agent():
                 # print(action)
 
             new_state, reward, done, _, info = env.step(action)
-
+            print("Reward: ", reward)
             total_reward += reward
 
             replay_memory.append(
@@ -92,7 +90,7 @@ def train_agent():
                     epsilon + epsilon_decay if epsilon > epsilon_min else epsilon_min
                 )
 
-    
+
     # Save the model
     model.save("model.keras")
     ql.save_losses()

@@ -28,7 +28,7 @@ class SunburstMazeDiscrete(gym.Env):
 
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 45}
 
-    def __init__(self, maze_file=None, render_mode=None, max_steps_per_episode=1000):
+    def __init__(self, maze_file=None, render_mode=None, max_steps_per_episode=1500):
         self.map_file = maze_file
         self.env_map = build_map(maze_file)
         self.height = self.env_map.shape[0]
@@ -52,6 +52,7 @@ class SunburstMazeDiscrete(gym.Env):
         self.max_steps_per_episode = max_steps_per_episode
         self.steps_current_episode = 0
 
+        ## Rendering
         assert (
             render_mode is None or render_mode in self.metadata["render_modes"]
         ), f"Invalid render mode: {render_mode}"
@@ -74,6 +75,9 @@ class SunburstMazeDiscrete(gym.Env):
         self.window = None
         self.clock = None
 
+        ## Visited checkpoints
+        self.visited_squares = []
+
     def select_start_position(self) -> tuple:
         """
         Selects the start position for the maze.
@@ -94,7 +98,8 @@ class SunburstMazeDiscrete(gym.Env):
     def reset(self, seed=None, options=None) -> tuple:
 
         super().reset(seed=seed)
-        # self.last_position = None
+
+        #self.visited_squares = []
         self.env_map = build_map(self.map_file)
         self.position = self.select_start_position()
         self.reset_checkpoints()
@@ -237,15 +242,18 @@ class SunburstMazeDiscrete(gym.Env):
             info (dict): Additional information about the environment.
         """
 
-        if self.steps_current_episode >= self.max_steps_per_episode:
-            print("Max steps")
-            return self.reset(), 0, True, False, self._get_info()
+        
 
         # Used if the action is invalid
         reward = self.reward()
         observation = self._get_observation()
         terminated = self.is_goal()
         info = self._get_info()
+
+        if self.steps_current_episode >= self.max_steps_per_episode:
+            print("Max steps")
+            self.steps_current_episode = 0
+            return observation, 0, True, False, self._get_info()
 
         action = action_encoding(action)
         if action not in self.legal_actions():
@@ -261,6 +269,7 @@ class SunburstMazeDiscrete(gym.Env):
         info = self._get_info()
         if self.render_mode == "human":
             self._render_frame()
+
 
         return observation, reward, terminated, False, info
 
@@ -288,6 +297,10 @@ class SunburstMazeDiscrete(gym.Env):
                 checkpoint["visited"] = True
                 print("Checkpoint visited: ", self.position)
                 return 10
+            
+        if self.position not in self.visited_squares:
+            self.visited_squares.append(self.position)
+            return 1
 
         return 0
 
