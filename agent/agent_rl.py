@@ -16,6 +16,8 @@ test_episodes = 100
 def reward_policy(new_observation, done):
     pass
 
+def check_check():
+    pass
 
 def train_agent():
 
