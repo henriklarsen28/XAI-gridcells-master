@@ -26,9 +26,9 @@ def action_encoding(action: int) -> str:
 
 class SunburstMazeDiscrete(gym.Env):
 
-    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 45}
+    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 120}
 
-    def __init__(self, maze_file=None, render_mode=None, max_steps_per_episode=1500):
+    def __init__(self, maze_file=None, render_mode=None, max_steps_per_episode=3000):
         self.map_file = maze_file
         self.env_map = build_map(maze_file)
         self.height = self.env_map.shape[0]
@@ -37,7 +37,7 @@ class SunburstMazeDiscrete(gym.Env):
         # Three possible actions: forward, left, right
         self.action_space = spaces.Discrete(3)
 
-        self.observation_space = spaces.Discrete(5)  # Orientation + next_to_wall
+        self.observation_space = spaces.Discrete(7)  # Orientation + next_to_wall
 
         self._action_to_direction = {
             "forward": self.move_forward,
@@ -93,7 +93,8 @@ class SunburstMazeDiscrete(gym.Env):
         return {"legal_actions": self.legal_actions(), "orientation": self.orientation}
 
     def _get_observation(self):
-        return np.array([self.orientation, *self.next_to_wall()])
+
+        return np.array([*self.position, self.orientation, *self.next_to_wall()])
 
     def reset(self, seed=None, options=None) -> tuple:
 
@@ -238,6 +239,7 @@ class SunburstMazeDiscrete(gym.Env):
         Returns:
             observation (list): The current observation of the environment, legal actions.
             reward (float): The reward obtained from the environment.
+            turnicated (bool): 
             terminated (bool): Whether the episode is terminated or not.
             info (dict): Additional information about the environment.
         """
@@ -253,9 +255,10 @@ class SunburstMazeDiscrete(gym.Env):
         if self.steps_current_episode >= self.max_steps_per_episode:
             print("Max steps")
             self.steps_current_episode = 0
-            return observation, 0, True, False, self._get_info()
+            return observation, 0, True, True, self._get_info()
 
         action = action_encoding(action)
+        # Walking into a wall
         if action not in self.legal_actions():
             return observation, reward, terminated, False, info
         self._action_to_direction[action]()
@@ -314,23 +317,3 @@ class SunburstMazeDiscrete(gym.Env):
     def close(self):  # TODO: Not tested
         if self.window is not None:
             pygame.display.quit()
-
-
-def main():
-    # Test the environment with random actions for 20 steps
-    import time
-
-    env = SunburstMazeDiscrete("map_v1/map.csv")
-
-    available_actions = env.reset()
-    print(available_actions)
-    for _ in range(20):
-        action = rd.choice(available_actions)
-        print(action)
-        available_actions = env.step(action)
-
-        time.sleep(0.5)
-
-
-if __name__ == "__main__":
-    main()
