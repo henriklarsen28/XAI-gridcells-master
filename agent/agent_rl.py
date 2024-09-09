@@ -77,7 +77,7 @@ def train_agent():
     render = True
 
     
-    env = SunburstMazeDiscrete("../env/map_v1/map_closed_doors.csv", render_mode=None)
+    env = SunburstMazeDiscrete("../env/map_v1/map_closed_doors.csv", render_mode="human" if render else "none")
     state_shape = (env.observation_space.n,)
     action_shape = (env.action_space.n,)
     env_size = (env.width, env.height)
