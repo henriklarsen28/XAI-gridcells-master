@@ -87,9 +87,12 @@ class SunburstMazeDiscrete(gym.Env):
         Returns:
             tuple: The coordinates of the selected start position.
         """
-        # TODO: Maybe implement random selection
-        return (26, 10)
+        random_position = (rd.randint(0, self.height - 1), rd.randint(0, self.width - 1))
+        # Check if the position is not a wall
+        while int(self.env_map[random_position[0]][random_position[1]]) == 1:
+            random_position = (rd.randint(0, self.height - 1), rd.randint(0, self.width - 1))
 
+        return random_position
     def _get_info(self):
 
         return {"legal_actions": self.legal_actions(), "orientation": self.orientation}
