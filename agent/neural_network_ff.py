@@ -13,7 +13,7 @@ class NeuralNetworkFF:
     def agent(self, state_shape, action_shape, learning_rate=0.001):
 
         model = models.Sequential()
-        model.add(layers.Dense(128, activation="relu", input_shape=(6,)))
+        model.add(layers.Dense(128, activation="relu", input_shape=(7,)))
         model.add(layers.Dense(128, activation="relu"))
         model.add(layers.Dense(64, activation="relu"))
         model.add(layers.Dense(32, activation="relu"))
@@ -35,14 +35,15 @@ class NeuralNetworkFF:
 
 
         state_orientation = np.zeros(4)
-        state_orientation[state[2]] = 1
+
+        state_orientation[int(state[2])] = 1
         
 
         state_position_y = state[0]
         state_position_x = state[1]
         state_position = [state_position_y, state_position_x]
         #print(np.array([*state_position, *state_orientation]))
-        return np.array([*state_position, *state_orientation])
+        return np.array([*state_position, *state_orientation, state[3]])
 
     def train(
         self,

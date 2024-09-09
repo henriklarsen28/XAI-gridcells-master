@@ -2,3 +2,7 @@ env/__pycache__/
 env/__pycache__/*
 .DS_Store
 *.pyc
+agent/losses_rewards.csv
+agent/model_episode_0.keras
+agent/model_trained_simple_env_no_result/losses_rewards.csv
+agent/model_trained_simple_env_no_result/*.keras

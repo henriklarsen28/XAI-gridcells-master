@@ -72,7 +72,7 @@ def test_agent():
 def train_agent():
 
     epsilon = 1
-    epsilon_decay = -0.008
+    epsilon_decay = -0.01
     epsilon_min = 0.1
     render = True
 
