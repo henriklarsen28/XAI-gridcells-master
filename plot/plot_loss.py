@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import pandas as pd
 
 
 def plot_loss(losses, title):
@@ -12,9 +13,7 @@ def plot_loss(losses, title):
 if __name__ == "__main__":
     # Read the losses from the file
 
-    with open("../agent/losses.txt", "r") as f:
-        losses = f.readlines()
+    df = pd.read_csv("../agent/losses_rewards.csv")
 
-    losses = [float(loss.strip()) for loss in losses]
-    print(losses)
+    losses = df["loss"].values
     plot_loss(losses, "Losses")

@@ -72,12 +72,12 @@ def test_agent():
 def train_agent():
 
     epsilon = 1
-    epsilon_decay = -0.01
+    epsilon_decay = -0.008
     epsilon_min = 0.1
     render = True
 
     
-    env = SunburstMazeDiscrete("../env/map_v1/map_closed_doors.csv", render_mode="human" if render else "none")
+    env = SunburstMazeDiscrete("../env/map_v0/map_closed_doors.csv", render_mode="human" if render else "none")
     state_shape = (env.observation_space.n,)
     action_shape = (env.action_space.n,)
     env_size = (env.width, env.height)

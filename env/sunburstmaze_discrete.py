@@ -26,7 +26,7 @@ def action_encoding(action: int) -> str:
 
 class SunburstMazeDiscrete(gym.Env):
 
-    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 120}
+    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 240}
 
     def __init__(self, maze_file=None, render_mode=None, max_steps_per_episode=1000):
         self.map_file = maze_file
@@ -271,7 +271,7 @@ class SunburstMazeDiscrete(gym.Env):
         # Walking into a wall
         if action not in self.legal_actions():
             print("Hit a wall")
-            return observation, -2, False, False, info
+            return observation, -1, False, False, info
         self._action_to_direction[action]()
 
         # Updated values
@@ -301,25 +301,25 @@ class SunburstMazeDiscrete(gym.Env):
             int: The reward value.
         """
         if self.is_goal():
-            return 100
+            return 200
         
         # TODO: Penalize for just rotating in place without moving
         current_pos = self.position
         if self.has_not_moved(self.position):
-            return -2
+            return -0.5
         
         # Update the last position
         self.last_position = current_pos
 
-        for checkpoint in checkpoints:
-            if self.position in checkpoint["coordinates"] and not checkpoint["visited"]:
-                checkpoint["visited"] = True
-                print("Checkpoint visited: ", self.position)
-                return 20
+        # for checkpoint in checkpoints:
+        #     if self.position in checkpoint["coordinates"] and not checkpoint["visited"]:
+        #         checkpoint["visited"] = True
+        #         print("Checkpoint visited: ", self.position)
+        #         return 20
 
         if self.position not in self.visited_squares:
             self.visited_squares.append(self.position)
-            return 2
+            return 1
 
         return 0
 
@@ -338,10 +338,10 @@ class SunburstMazeDiscrete(gym.Env):
     def has_not_moved(self, position):
         # Only keep the last 10 moves
 
-        if len(self.last_moves) > 100:
+        if len(self.last_moves) < 50:
             return False
         
 
-        self.last_moves = self.last_moves[-100:]
+        self.last_moves = self.last_moves[-10:]
         if all(last_move == position for last_move in self.last_moves):
             return True
