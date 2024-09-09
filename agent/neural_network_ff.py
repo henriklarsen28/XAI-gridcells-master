@@ -53,7 +53,7 @@ class NeuralNetworkFF:
         done,
         episodes=1000,
         batch_size=256,
-        discount_factor=0.90,
+        discount_factor=0.8,
         learning_rate=0.7,
     ):
 
@@ -81,12 +81,13 @@ class NeuralNetworkFF:
             else:
                 target = reward
 
-            current_q = current_q_values[action]
-            current_q_values[action] = (
+            current_q = current_q_values[i][action]
+            current_q_values[i][action] = (
                 1 - learning_rate
             ) * current_q + learning_rate * target
-
             current_q = current_q_values[action]
+            print("Current Q: ", current_q, "Target: ", target)
+            
             X_train.append(observation)
             y_train.append(current_q)
             total_reward += reward
