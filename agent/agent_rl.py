@@ -15,7 +15,7 @@ test_episodes = 100
 
 def test_agent():
 
-    env = SunburstMazeDiscrete("../env/map_v1/map_closed_doors.csv", render_mode="human")
+    env = SunburstMazeDiscrete("../env/map_v0/map_closed_doors.csv", render_mode="human")
     state_shape = (env.observation_space.n,)
     action_shape = (env.action_space.n,)
 
@@ -23,7 +23,7 @@ def test_agent():
     model = ql.agent(state_shape, action_shape)
 
     # Load the old model
-    model = keras.models.load_model("model_episode_1500.keras")
+    model = keras.models.load_model("model.keras")
 
 
     replay_memory = deque(maxlen=5_000)
@@ -77,7 +77,7 @@ def train_agent():
     render = True
 
     
-    env = SunburstMazeDiscrete("../env/map_v1/map_closed_doors.csv", render_mode="human" if render else "none")
+    env = SunburstMazeDiscrete("../env/map_v0/map_closed_doors.csv", render_mode="human" if render else "none")
     state_shape = (env.observation_space.n,)
     action_shape = (env.action_space.n,)
     env_size = (env.width, env.height)
@@ -172,5 +172,5 @@ def train_agent():
 
 
 if __name__ == "__main__":
-    train_agent()
-    #test_agent()
+    #train_agent()
+    test_agent()
