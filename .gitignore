@@ -2,4 +2,4 @@ env/__pycache__/
 env/__pycache__/*
 .DS_Store
 *.pyc
-agent/model_*
+agent/model*
