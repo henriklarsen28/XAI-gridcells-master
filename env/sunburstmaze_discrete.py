@@ -26,7 +26,7 @@ def action_encoding(action: int) -> str:
 
 class SunburstMazeDiscrete(gym.Env):
 
-    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 120}
+    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 240}
 
     def __init__(self, maze_file=None, render_mode=None, max_steps_per_episode=1000):
         self.map_file = maze_file
@@ -87,10 +87,12 @@ class SunburstMazeDiscrete(gym.Env):
         Returns:
             tuple: The coordinates of the selected start position.
         """
+        print("Environment dimensionality: ", self.height, self.width)
         random_position = (rd.randint(0, self.height - 1), rd.randint(0, self.width - 1))
         # Check if the position is not a wall
         while int(self.env_map[random_position[0]][random_position[1]]) == 1:
             random_position = (rd.randint(0, self.height - 1), rd.randint(0, self.width - 1))
+            print("Random position: ", random_position)
 
         return random_position
     def _get_info(self):
@@ -265,13 +267,13 @@ class SunburstMazeDiscrete(gym.Env):
 
         # Stop if the agent is stuck and not moving
         if self.has_not_moved(self.position):
-            print("Not moving")
+            # print("Not moving")
             return observation, reward, terminated, False, info
 
         # Walking into a wall
         if action not in self.legal_actions():
-            print("Hit a wall")
-            return observation, -2, False, False, info
+            # print("Hit a wall")
+            return observation, -1, False, False, info
         self._action_to_direction[action]()
 
         # Updated values
@@ -306,20 +308,20 @@ class SunburstMazeDiscrete(gym.Env):
         # TODO: Penalize for just rotating in place without moving
         current_pos = self.position
         if self.has_not_moved(self.position):
-            return -2
+            return -0.5
         
         # Update the last position
         self.last_position = current_pos
 
-        for checkpoint in checkpoints:
-            if self.position in checkpoint["coordinates"] and not checkpoint["visited"]:
-                checkpoint["visited"] = True
-                print("Checkpoint visited: ", self.position)
-                return 20
+        # for checkpoint in checkpoints:
+        #     if self.position in checkpoint["coordinates"] and not checkpoint["visited"]:
+        #         checkpoint["visited"] = True
+        #         print("Checkpoint visited: ", self.position)
+        #         return 20
 
         if self.position not in self.visited_squares:
             self.visited_squares.append(self.position)
-            return 2
+            return 0.5
 
         return 0
 
@@ -336,9 +338,9 @@ class SunburstMazeDiscrete(gym.Env):
 
 
     def has_not_moved(self, position):
-        # Only keep the last 10 moves
+        # Only keep the last 100 moves
 
-        if len(self.last_moves) > 100:
+        if len(self.last_moves) < 100:
             return False
         
 
