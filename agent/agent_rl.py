@@ -10,7 +10,7 @@ from neural_network_ff import NeuralNetworkFF
 import tensorflow.keras as keras
 from env import SunburstMazeDiscrete
 
-train_episodes =3000
+train_episodes = 2500
 test_episodes = 100
 
 def test_agent():
@@ -56,28 +56,20 @@ def test_agent():
 
             new_state, reward, done, _, info = env.step(action)
             total_reward += reward
-
-            replay_memory.append(
-                [state.flatten(), action, reward, new_state.flatten(), done]
-            )
-
             state = new_state
 
-            steps_until_train += 1
 
-
-        print(f"Episode: {i}, Total Reward: {total_reward}")
     env.close()
 
 def train_agent():
 
     epsilon = 1
-    epsilon_decay = -0.01
+    epsilon_decay = -0.005
     epsilon_min = 0.1
-    render = True
+    render = False
 
     
-    env = SunburstMazeDiscrete("../env/map_v0/map_closed_doors.csv", render_mode="human" if render else "none")
+    env = SunburstMazeDiscrete("../env/map_v0/map_closed_doors.csv", render_mode="human" if render else None)
     state_shape = (env.observation_space.n,)
     action_shape = (env.action_space.n,)
     env_size = (env.width, env.height)
@@ -94,7 +86,7 @@ def train_agent():
 
     target_model.set_weights(model.get_weights())
 
-    replay_memory = deque(maxlen=1_000_000)
+    replay_memory = deque(maxlen=500_000)
 
     X = []
     y = []

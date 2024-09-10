@@ -20,7 +20,7 @@ class NeuralNetworkFF:
         model.add(layers.Dense(action_shape[0]))
 
         model.compile(
-            loss="huber",
+            loss="mse",
             optimizer=optimizers.Adam(learning_rate),
             metrics=["accuracy"],
         )
@@ -52,8 +52,8 @@ class NeuralNetworkFF:
         target_model,
         done,
         episodes=1000,
-        batch_size=256,
-        discount_factor=0.8,
+        batch_size=128,
+        discount_factor=0.9,
         learning_rate=0.7,
     ):
 

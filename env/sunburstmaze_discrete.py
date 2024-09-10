@@ -311,7 +311,7 @@ class SunburstMazeDiscrete(gym.Env):
         if self.steps_current_episode >= self.max_steps_per_episode:
             print("Max steps")
             self.steps_current_episode = 0
-            return observation, 0, True, True, self._get_info()
+            return observation, -0.001, True, True, self._get_info()
 
         action = action_encoding(action)
         self.steps_current_episode += 1
@@ -320,7 +320,7 @@ class SunburstMazeDiscrete(gym.Env):
         # Walking into a wall
         if action not in self.legal_actions():
             print("Hit a wall")
-            return observation, -0.5, False, False, info
+            return observation, -0.001, False, False, info
         self._action_to_direction[action]()
 
         # Updated values
@@ -346,12 +346,13 @@ class SunburstMazeDiscrete(gym.Env):
     def has_not_moved(self, position):
         # Only keep the last 50 moves
 
-        if len(self.last_moves) < 50:
+        if len(self.last_moves) < 10:
             return False
 
         self.last_moves = self.last_moves[-10:]
         if all(last_move == position for last_move in self.last_moves):
             return True
+        return False
         
     def decreased_steps_to_goal(self):
         """
@@ -382,7 +383,7 @@ class SunburstMazeDiscrete(gym.Env):
             int: The reward value.
         """
         if self.is_goal():
-            return 200
+            return 50
 
         # TODO: Penalize for just rotating in place without moving
         current_pos = self.position
@@ -404,11 +405,11 @@ class SunburstMazeDiscrete(gym.Env):
         if self.position not in self.visited_squares:
             self.visited_squares.append(self.position)
             if self.increased_steps_to_goal():
-                return -0.05
-            return 0.05
+                return 0.001
+            return 0.01
         
         if self.increased_steps_to_goal():
-            return -0.1
+            return -0.0005
 
         return 0
 
