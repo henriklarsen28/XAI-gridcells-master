@@ -423,7 +423,6 @@ class SunburstMazeDiscrete(gym.Env):
         current_pos = self.position
         if self.has_not_moved(self.position):
             return -0.5
-
         # Update the last position
         self.last_position = current_pos
 
