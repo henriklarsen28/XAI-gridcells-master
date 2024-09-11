@@ -1,26 +1,37 @@
 import sys
-
-sys.path.append("../")
-from collections import deque
 import os
+
+
+#sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from collections import deque
+
+# get the path to the project root directory and add it to sys.path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(project_root)
+# sys.path.append("../")
 
 import gymnasium as gym
 import numpy as np
 from neural_network_ff import NeuralNetworkFF
-import tensorflow.keras as keras
+import keras as keras
 from env import SunburstMazeDiscrete
 
 train_episodes = 1000
 test_episodes = 100
 
+# Define the CSV file path relative to the project root
+map_path_train = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
+map_path_test = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
+
 def test_agent():
 
-    env = SunburstMazeDiscrete("../env/map_v0/map_closed_doors.csv", render_mode="human")
+    env = SunburstMazeDiscrete(map_path_test, render_mode="human")
     state_shape = (env.observation_space.n,)
     action_shape = (env.action_space.n,)
 
     ql = NeuralNetworkFF()
-    model = ql.agent(state_shape, action_shape)
+    # model = ql.agent(state_shape, action_shape)
 
     # Load the old model
     model = keras.models.load_model("model.keras")
@@ -69,12 +80,12 @@ def train_agent():
     render = False
 
     
-    env = SunburstMazeDiscrete("../env/map_v0/map_closed_doors.csv", render_mode="human" if render else None)
+    env = SunburstMazeDiscrete(map_path_train, render_mode="human" if render else "none")
     state_shape = (env.observation_space.n,)
     action_shape = (env.action_space.n,)
     env_size = (env.width, env.height)
 
-    print(state_shape, action_shape)
+    # print(state_shape, action_shape)
 
     ql = NeuralNetworkFF()
     model = ql.agent(state_shape, action_shape)
@@ -94,13 +105,16 @@ def train_agent():
     steps_until_train = 0
     total_reward = 0
 
+    run, config = ql.start_run()
+
+
     for i in range(train_episodes):
+        
         state = env.reset()
-        print(state)
+        print("\n ="*200, "\nRunning episode: ", i, "\nMouse position: ({}, {})".format(state[0], state[1]), "\nMouse orientation:", state[2])
         done = False
         total_reward = 0
         total_rewards = []
-        print("Episode: ", i)
         while not done:
 
             if render:
@@ -116,7 +130,7 @@ def train_agent():
                 encoded = encoded.flatten().reshape(1, -1)
                 print(model.predict(encoded), encoded)
                 action = np.argmax(model.predict(encoded))
-                print(action)
+                # print(action)
 
             new_state, reward, done, _, info = env.step(action)
             #print("Reward: ", reward, "New State: ", new_state, "Done: ", done)
@@ -137,8 +151,10 @@ def train_agent():
                     model=model,
                     target_model=target_model,
                     done=done,
+                    config=config,
+                
                 )
-                print(len(total_rewards))
+                # print(len(total_rewards))
                 total_rewards.append(total_reward)
 
                 if steps_until_train >= 10_000:
@@ -150,10 +166,10 @@ def train_agent():
                 epsilon = (
                     epsilon + epsilon_decay if epsilon > epsilon_min else epsilon_min
                 )
-                print(f"Episode: {i}, Total Reward: {total_reward}, Epsilon: {epsilon}")
+                print(f"Total Reward: {total_reward}, \nEpsilon: {epsilon}")
                 ql.save_losses()
-        if i % 10 == 0:
-            print(f"Episode: {i}, Total Reward: {total_reward}, Epsilon: {epsilon}")
+        if i % 10 == 0 & i != 0:
+            print(f"Total Reward: {total_reward}, \nEpsilon: {epsilon:.2f}")
             # Save the model
             model.save(f"model_episode_{i}.keras")
             
@@ -162,8 +178,9 @@ def train_agent():
     model.save("model.keras")
     ql.save_losses()
     env.close()
+    ql.end_run(run)
 
 
 if __name__ == "__main__":
-    #train_agent()
-    test_agent()
+    train_agent()
+    #test_agent()

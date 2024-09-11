@@ -1,6 +1,6 @@
 import random as rd
 
-import gymnasium as gym
+import gym
 import numpy as np
 import pygame
 from gymnasium import spaces
@@ -323,7 +323,7 @@ class SunburstMazeDiscrete(gym.Env):
         info = self._get_info()
 
         if self.steps_current_episode >= self.max_steps_per_episode:
-            print("Max steps")
+            print("Reached max steps")
             self.steps_current_episode = 0
             return observation, -0.001, True, True, self._get_info()
 
