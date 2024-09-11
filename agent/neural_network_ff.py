@@ -2,15 +2,30 @@ import random as rd
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras import layers, models, optimizers
+from keras import layers, models, optimizers, utils
 import pandas as pd
+
+
+import wandb
+import random
+
+
 
 losses = []
 total_rewards = []
 
-class NeuralNetworkFF:
+# Hyperparameters
+loss_function = "huber"
+lr=0.001
+optimizer = optimizers.Adam(lr)
 
-    def agent(self, state_shape, action_shape, learning_rate=0.001):
+
+utils.disable_interactive_logging()
+wandb.login()
+
+
+class NeuralNetworkFF:
+    def agent(self, state_shape, action_shape, learning_rate=lr):
 
         model = models.Sequential()
         model.add(layers.Dense(128, activation="relu", input_shape=(6,)))
@@ -20,8 +35,8 @@ class NeuralNetworkFF:
         model.add(layers.Dense(action_shape[0]))
 
         model.compile(
-            loss="huber",
-            optimizer=optimizers.Adam(learning_rate),
+            loss=loss_function,
+            optimizer=optimizer,
             metrics=["accuracy"],
         )
 
@@ -50,12 +65,13 @@ class NeuralNetworkFF:
         model,
         target_model,
         done,
+        config,
         episodes=1000,
         batch_size=256,
         discount_factor=0.90,
         learning_rate=0.7,
     ):
-
+        
         if len(replay_memory) < 500:
             return
 
@@ -91,14 +107,45 @@ class NeuralNetworkFF:
             total_reward += reward
 
         history = model.fit(
-            np.array(X_train), np.array(y_train), verbose=0, shuffle=True
+            np.array(X_train), 
+            np.array(y_train), 
+            verbose=0, 
+            shuffle=True,
+            batch_size=config.batch_size,
+            # callbacks=[WandbCallback()]
+
         )
         loss = history.history["loss"][0]
         losses.append(loss)
         total_rewards.append(total_reward)
+        print("-"*200)
         print("Loss: ", loss)
+
+        wandb.log({"Loss": loss, "Reward": total_reward})
 
     def save_losses(self):
         # Save the losses and rewards to a CSV file as columns using pandas
         df = pd.DataFrame({"loss": losses, "reward": total_rewards})
         df.to_csv("losses_rewards.csv", index=False)
+
+
+    def start_run(self):
+        run = wandb.init(
+                    project="sunburst-maze",
+                    config={
+                        "learning_rate": lr,
+                        # "epochs": episodes,
+                        "batch_size":256,
+                        "loss_function": loss_function,
+                        "architecture": "Dense",
+                        "optimizer": optimizer,
+                    }
+                )
+
+        config = wandb.config
+        print("Wandb run initialized.")
+        return run, config
+    
+    def end_run(self, run):
+        run.finish()
+        print("Wandb run finished.")

@@ -1,6 +1,6 @@
 import random as rd
 
-import gymnasium as gym
+import gym
 import numpy as np
 import pygame
 from gymnasium import spaces
@@ -87,14 +87,14 @@ class SunburstMazeDiscrete(gym.Env):
         Returns:
             tuple: The coordinates of the selected start position.
         """
-        print("Environment dimensionality: ", self.height, self.width)
         random_position = (rd.randint(0, self.height - 1), rd.randint(0, self.width - 1))
         # Check if the position is not a wall
         while int(self.env_map[random_position[0]][random_position[1]]) == 1:
             random_position = (rd.randint(0, self.height - 1), rd.randint(0, self.width - 1))
-            print("Random position: ", random_position)
-
+            
+        # print("Starting at random position: ", random_position)
         return random_position
+    
     def _get_info(self):
 
         return {"legal_actions": self.legal_actions(), "orientation": self.orientation}
@@ -258,7 +258,7 @@ class SunburstMazeDiscrete(gym.Env):
         info = self._get_info()
 
         if self.steps_current_episode >= self.max_steps_per_episode:
-            print("Max steps")
+            print("Reached max steps")
             self.steps_current_episode = 0
             return observation, 0, True, True, self._get_info()
         
@@ -303,6 +303,7 @@ class SunburstMazeDiscrete(gym.Env):
             int: The reward value.
         """
         if self.is_goal():
+            print("Goal reached!")
             return 100
         
         # TODO: Penalize for just rotating in place without moving
