@@ -9,19 +9,16 @@ import pandas as pd
 import wandb
 import random
 
+utils.disable_interactive_logging()
 
 
 losses = []
 total_rewards = []
 
-# Hyperparameters
+# Hyperparameters to log
 loss_function = "huber"
 lr=0.001
 optimizer = optimizers.Adam(lr)
-
-
-utils.disable_interactive_logging()
-wandb.login()
 
 
 class NeuralNetworkFF:
@@ -87,13 +84,14 @@ class NeuralNetworkFF:
         X_train = []
         y_train = []
         total_reward = 0
+        episode_loss = 0 
 
         for i, [observation, action, reward, new_observation, done] in enumerate(
             mini_batch
         ):
             if not done:
                 max_future_q = np.max(future_q_values[i])
-                target = reward + discount_factor * max_future_q
+                target = reward + discount_factor * max_future_q # Bellman equation
             else:
                 target = reward
 
@@ -108,6 +106,12 @@ class NeuralNetworkFF:
             y_train.append(current_q)
             total_reward += reward
 
+            # print('current q:',current_q)
+            # print("current q for action {}: {}".format(action, current_q[action]))
+
+            wandb.log({f"Q-value for selected action": current_q[action]})
+            wandb.log({"Q-value variance for each action": np.var(current_q_values)})
+
         history = model.fit(
             np.array(X_train), 
             np.array(y_train), 
@@ -120,10 +124,12 @@ class NeuralNetworkFF:
         loss = history.history["loss"][0]
         losses.append(loss)
         total_rewards.append(total_reward)
-        print("-"*200)
+        print("-"*100)
         print("Loss: ", loss)
 
-        wandb.log({"Loss": loss, "Reward": total_reward})
+        episode_loss += history.history["loss"][0]
+
+        wandb.log({"Loss per episode": episode_loss})
 
     def save_losses(self):
         # Save the losses and rewards to a CSV file as columns using pandas

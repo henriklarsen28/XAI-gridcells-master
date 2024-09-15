@@ -17,7 +17,11 @@ from neural_network_ff import NeuralNetworkFF
 import keras as keras
 from env import SunburstMazeDiscrete
 
-train_episodes = 1000
+import wandb
+
+wandb.login()
+
+train_episodes = 3000
 test_episodes = 100
 
 # Define the CSV file path relative to the project root
@@ -111,7 +115,7 @@ def train_agent():
     for i in range(train_episodes):
         
         state = env.reset()
-        print("\n ="*200, "\nRunning episode: ", i, "\nMouse position: ({}, {})".format(state[0], state[1]), "\nMouse orientation:", state[2])
+        print("="*100, "\nRunning episode: ", i, "\nMouse position: ({}, {})".format(state[0], state[1]), "\nMouse orientation:", state[2])
         done = False
         total_reward = 0
         total_rewards = []
@@ -167,11 +171,16 @@ def train_agent():
                     epsilon + epsilon_decay if epsilon > epsilon_min else epsilon_min
                 )
                 print(f"Total Reward: {total_reward}, \nEpsilon: {epsilon}")
-                ql.save_losses()
+                # ql.save_losses()
+
+        wandb.log({"Reward per episode": total_reward, "Epsilon decay": epsilon})
+
         if i % 10 == 0 & i != 0:
             print(f"Total Reward: {total_reward}, \nEpsilon: {epsilon:.2f}")
+            #wandb.log({"Total reward": total_reward, "Epsilon": epsilon})
             # Save the model
             model.save(f"model_episode_{i}.keras")
+            
             
 
     # Save the model
