@@ -1,10 +1,9 @@
-import sys
 import os
-
+import sys
+from collections import deque
 
 #sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from collections import deque
 
 # get the path to the project root directory and add it to sys.path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -12,21 +11,22 @@ sys.path.append(project_root)
 # sys.path.append("../")
 
 import gymnasium as gym
+import keras as keras
 import numpy as np
 from neural_network_ff import NeuralNetworkFF
-import keras as keras
-from env import SunburstMazeDiscrete
 
 import wandb
+from env import SunburstMazeDiscrete
 
 wandb.login()
 
-train_episodes = 3000
 test_episodes = 100
 
 # Define the CSV file path relative to the project root
 map_path_train = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
 map_path_test = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
+
+
 
 def test_agent():
 
@@ -85,12 +85,24 @@ def test_agent():
     env.close()
 
 def train_agent():
+    # Hyperparameters to log
+    config = {
+        "loss_function" : "huber",
+        "learning_rate":0.001,
+        "batch_size":256,
+        "optimizer":"adam",
+        "total_episodes":3000,
+        "epsilon": 1,
+        "epsilon_decay": -0.01,
+        "epsilon_min": 0.1,
+        "batch_size":256,
+        "discount_factor":0.90,
+        "alpha":0.7,
+        "map_path": map_path_train,
+    }
 
-    epsilon = 1
-    epsilon_decay = -0.01
-    epsilon_min = 0.1
     render = True
-
+    epsilon = config.get("epsilon")
     
     env = SunburstMazeDiscrete(map_path_train, render_mode="human" if render else "none")
     state_shape = (env.observation_space.n,)
@@ -100,12 +112,8 @@ def train_agent():
     # print(state_shape, action_shape)
 
     ql = NeuralNetworkFF()
-    model = ql.agent(state_shape, action_shape)
-    target_model = ql.agent(state_shape, action_shape)
-
-    # Load the old model
-    """if os.path.exists("model.keras"):
-        model = keras.models.load_model("model.keras")"""
+    model = ql.agent(state_shape, action_shape, config.get("loss_function"), config.get("learning_rate"))
+    target_model = ql.agent(state_shape, action_shape, config.get("loss_function"), config.get("learning_rate"))
 
     target_model.set_weights(model.get_weights())
 
@@ -117,10 +125,9 @@ def train_agent():
     steps_until_train = 0
     total_reward = 0
 
-    run, config = ql.start_run()
+    run, config = ql.start_run(project="sunburst-maze", config=config)
 
-
-    for i in range(train_episodes):
+    for i in range(config.get("total_episodes")):
         
         state = env.reset()
         print("="*100, "\nRunning episode: ", i, "\nMouse position: ({}, {})".format(state[0], state[1]), "\nMouse orientation:", state[2])
@@ -162,8 +169,9 @@ def train_agent():
                     model=model,
                     target_model=target_model,
                     done=done,
-                    config=config,
-                
+                    batch_size=config.get("batch_size"),
+                    discount_factor=config.get("discount_factor"),
+                    alpha=config.get("alpha")
                 )
                 # print(len(total_rewards))
                 total_rewards.append(total_reward)
@@ -175,7 +183,7 @@ def train_agent():
 
                 # Decay epsilon
                 epsilon = (
-                    epsilon + epsilon_decay if epsilon > epsilon_min else epsilon_min
+                    epsilon + config.get("epsilon_decay") if epsilon > config.get("epsilon_min") else config.get("epsilon_min")
                 )
                 print(f"Total Reward: {total_reward}, \nEpsilon: {epsilon}")
                 # ql.save_losses()
