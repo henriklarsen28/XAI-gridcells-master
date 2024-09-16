@@ -17,7 +17,7 @@ class NeuralNetworkFF:
         model.add(layers.Dense(128, activation="relu"))
         model.add(layers.Dense(64, activation="relu"))
         model.add(layers.Dense(32, activation="relu"))
-        model.add(layers.Dense(action_shape[0]))
+        model.add(layers.Dense(action_shape[0], activation="linear"))
 
         model.compile(
             loss="mse",
@@ -39,11 +39,11 @@ class NeuralNetworkFF:
         state_orientation[int(state[2])] = 1
         
 
-        state_position_y = state[0]
-        state_position_x = state[1]
+        state_position_y = state[0] / env_height
+        state_position_x = state[1] / env_width
         state_position = [state_position_y, state_position_x]
         #print(np.array([*state_position, *state_orientation]))
-        return np.array([*state_position, *state_orientation, state[3]])
+        return np.array([*state_position, *state_orientation, state[3]/20])
 
     def train(
         self,
@@ -53,8 +53,8 @@ class NeuralNetworkFF:
         done,
         episodes=1000,
         batch_size=128,
-        discount_factor=0.9,
-        learning_rate=0.7,
+        discount_factor=0.97,
+        learning_rate=0.6,
     ):
 
         if len(replay_memory) < 500:

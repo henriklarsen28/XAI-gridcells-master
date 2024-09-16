@@ -10,12 +10,12 @@ from neural_network_ff import NeuralNetworkFF
 import tensorflow.keras as keras
 from env import SunburstMazeDiscrete
 
-train_episodes = 2500
+train_episodes = 1000
 test_episodes = 100
 
 def test_agent():
 
-    env = SunburstMazeDiscrete("../env/map_v1/map_closed_doors.csv", render_mode="human")
+    env = SunburstMazeDiscrete("../env/map_v0/map_closed_doors.csv", render_mode="human")
     state_shape = (env.observation_space.n,)
     action_shape = (env.action_space.n,)
 
@@ -23,10 +23,10 @@ def test_agent():
     model = ql.agent(state_shape, action_shape)
 
     # Load the old model
-    model = keras.models.load_model("model_episode_1500.keras")
+    model = keras.models.load_model("model.keras")
 
 
-    replay_memory = deque(maxlen=5_000)
+    replay_memory = deque(maxlen=1_000_000)
 
     X = []
     y = []
@@ -64,8 +64,8 @@ def test_agent():
 def train_agent():
 
     epsilon = 1
-    epsilon_decay = -0.005
-    epsilon_min = 0.1
+    epsilon_decay = -0.01
+    epsilon_min = 0.05
     render = False
 
     
@@ -114,6 +114,7 @@ def train_agent():
                 encoded = state
                 encoded = ql.state_to_input(encoded, env_size)
                 encoded = encoded.flatten().reshape(1, -1)
+                print(model.predict(encoded), encoded)
                 action = np.argmax(model.predict(encoded))
                 print(action)
 
@@ -140,7 +141,7 @@ def train_agent():
                 print(len(total_rewards))
                 total_rewards.append(total_reward)
 
-                if steps_until_train >= 5000:
+                if steps_until_train >= 10_000:
                     print("Updating target model")
                     target_model.set_weights(model.get_weights())
                     steps_until_train = 0

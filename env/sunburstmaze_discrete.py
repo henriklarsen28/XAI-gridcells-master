@@ -41,7 +41,12 @@ def build_step_length_map(env_map, goal):
             # Calculate the distance to the goal from the current position
             steps_to_goal[y][x] = calculate_a_star_distance(env_graph, (y, x), goal)
             # Check if the distance above is more than 1 lower than the current position
-            if y > 0 and steps_to_goal[y - 1][x] < steps_to_goal[y][x] - 1 and env_map[y - 1][x] != 1 and x < env_map.shape[1] - 5:
+            if (
+                y > 0
+                and steps_to_goal[y - 1][x] < steps_to_goal[y][x] - 1
+                and env_map[y - 1][x] != 1
+                and x < env_map.shape[1] - 5
+            ):
                 steps_to_goal[y][x] = steps_to_goal[y - 1][x] + 1
     return steps_to_goal
 
@@ -55,7 +60,7 @@ class SunburstMazeDiscrete(gym.Env):
 
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 240}
 
-    def __init__(self, maze_file=None, render_mode=None, max_steps_per_episode=1000):
+    def __init__(self, maze_file=None, render_mode=None, max_steps_per_episode=3000):
         self.map_file = maze_file
         self.env_map = build_map(maze_file)
         self.height = self.env_map.shape[0]
@@ -90,6 +95,7 @@ class SunburstMazeDiscrete(gym.Env):
         self.orientation = 0  # 0 = Up, 1 = Right, 2 = Down, 3 = Left
 
         self.position = None
+        self.goal = None
 
         # Episode step settings
         self.max_steps_per_episode = max_steps_per_episode
@@ -108,6 +114,13 @@ class SunburstMazeDiscrete(gym.Env):
         self.visited_squares = []
         self.last_position = None
         self.last_moves = []
+
+    def goal_position(self):
+        for y in range(self.height):
+            for x in range(self.width):
+                if self.env_map[y][x] == 2:
+                    return (y, x)
+        return None
 
     def select_start_position(self) -> tuple:
         """
@@ -143,7 +156,7 @@ class SunburstMazeDiscrete(gym.Env):
 
         super().reset(seed=seed)
 
-        self.visited_squares = []
+        #self.visited_squares = []
         self.env_map = build_map(self.map_file)
         self.position = self.select_start_position()
         self.last_steps_to_goal = self.steps_to_goal[self.position[0]][self.position[1]]
@@ -166,6 +179,7 @@ class SunburstMazeDiscrete(gym.Env):
                 self.position,
                 self.orientation,
             )
+        self.goal = self.goal_position()
         return self._get_observation()
 
     def reset_checkpoints(self):
@@ -316,11 +330,12 @@ class SunburstMazeDiscrete(gym.Env):
         action = action_encoding(action)
         self.steps_current_episode += 1
 
-
         # Walking into a wall
         if action not in self.legal_actions():
             print("Hit a wall")
-            return observation, -0.001, False, False, info
+            return observation, -0.1, True, True, info
+
+        # Perform the action
         self._action_to_direction[action]()
 
         # Updated values
@@ -342,7 +357,7 @@ class SunburstMazeDiscrete(gym.Env):
         if int(self.env_map[self.position[0]][self.position[1]]) == 2:
             return True
         return False
-    
+
     def has_not_moved(self, position):
         # Only keep the last 50 moves
 
@@ -351,9 +366,10 @@ class SunburstMazeDiscrete(gym.Env):
 
         self.last_moves = self.last_moves[-10:]
         if all(last_move == position for last_move in self.last_moves):
+            print("Stuck")
             return True
         return False
-        
+
     def decreased_steps_to_goal(self):
         """
         Checks if the steps to the goal have decreased from the last position.
@@ -362,13 +378,13 @@ class SunburstMazeDiscrete(gym.Env):
             bool: True if the steps to the goal have decreased, False otherwise.
         """
 
-
         current_steps_to_goal = self.steps_to_goal[self.position[0]][self.position[1]]
 
         delta_steps = self.last_steps_to_goal - current_steps_to_goal
         if delta_steps > 0:
             return True
         return False
+
     def increased_steps_to_goal(self):
         current_steps_to_goal = self.steps_to_goal[self.position[0]][self.position[1]]
 
@@ -376,6 +392,24 @@ class SunburstMazeDiscrete(gym.Env):
         if delta_steps < 0:
             return True
         return False
+
+    def distance_to_goal(self, position):
+        return np.sqrt(
+            (position[0] - self.goal[0]) ** 2 + (position[1] - self.goal[1]) ** 2
+        )
+
+    def distance_to_goal_reward(self):
+        max_distance = np.sqrt((self.height - 2) ** 2 + (self.width - 2) ** 2)
+
+        distance = self.distance_to_goal(self.position)
+        difference = max_distance - distance
+
+        reward = np.exp(-difference) * 5
+        discounted_reward = reward
+
+        return discounted_reward
+
+    # TODO: Gets stuck at wall, q-values for other actions are negative
     def reward(self):
         """
         Calculates the reward for the current state.
@@ -383,7 +417,7 @@ class SunburstMazeDiscrete(gym.Env):
             int: The reward value.
         """
         if self.is_goal():
-            return 50
+            return 20
 
         # TODO: Penalize for just rotating in place without moving
         current_pos = self.position
@@ -400,16 +434,16 @@ class SunburstMazeDiscrete(gym.Env):
         #         return 20
 
         if self.decreased_steps_to_goal():
-            return 0.1
+            return 0.01 + self.distance_to_goal_reward()
 
         if self.position not in self.visited_squares:
             self.visited_squares.append(self.position)
             if self.increased_steps_to_goal():
-                return 0.001
-            return 0.01
-        
-        if self.increased_steps_to_goal():
-            return -0.0005
+                return 0.001 + self.distance_to_goal_reward()
+            return 0.01 + self.distance_to_goal_reward()
+
+        # if self.increased_steps_to_goal():
+        #    return -0.0005"
 
         return 0
 
@@ -423,5 +457,3 @@ class SunburstMazeDiscrete(gym.Env):
     def close(self):  # TODO: Not tested
         if self.window is not None:
             pygame.display.quit()
-
-    
