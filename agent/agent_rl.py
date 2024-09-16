@@ -91,6 +91,8 @@ def train_agent():
             "has_not_moved":-0.5,
             "new_square":0.5
         },
+
+        # TODO
         "observation_space": {
             "position":True,
             "orientation":True,
@@ -101,7 +103,7 @@ def train_agent():
 
     render = True
     epsilon = config.get("epsilon")
-    env = SunburstMazeDiscrete(map_path_train, render_mode="human" if render else "none", max_steps_per_episode=config.get("max_steps_per_episode"), random_start_position=config.get("random_start_position"), rewards=config.get("rewards"))
+    env = SunburstMazeDiscrete(map_path_train, render_mode="human" if render else "none", max_steps_per_episode=config.get("max_steps_per_episode"), random_start_position=config.get("random_start_position"), rewards=config.get("rewards"), observation_space=config.get("observation_space"))
     state_shape = (env.observation_space.n,)
     action_shape = (env.action_space.n,)
     env_size = (env.width, env.height)

@@ -60,13 +60,14 @@ class SunburstMazeDiscrete(gym.Env):
 
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 240}
 
-    def __init__(self, maze_file=None, render_mode=None, max_steps_per_episode=None, random_start_position=None, rewards=None):
+    def __init__(self, maze_file=None, render_mode=None, max_steps_per_episode=None, random_start_position=None, rewards=None, observation_space=None):
         self.map_file = maze_file
         self.env_map = build_map(maze_file)
         self.height = self.env_map.shape[0]
         self.width = self.env_map.shape[1]
         self.random_start_position = random_start_position
         self.rewards = rewards
+        self.observation_space = observation_space
 
         for y in range(self.height):
             for x in range(self.width):
