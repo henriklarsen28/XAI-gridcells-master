@@ -6,7 +6,7 @@ import pandas as pd
 import tensorflow as tf
 
 import wandb
-from keras import layers, models, optimizers, utils
+from keras import layers, models, optimizers, utils, regularizers
 
 
 utils.disable_interactive_logging()
@@ -20,8 +20,8 @@ class NeuralNetworkFF:
 
         model = models.Sequential()
         model.add(layers.Dense(128, activation="relu", input_shape=(7,)))
-        model.add(layers.Dense(128, activation="relu"))
-        model.add(layers.Dense(64, activation="relu"))
+        model.add(layers.Dense(128, activation="relu", kernel_regularizer=regularizers.l1(0.01)))
+        model.add(layers.Dense(64, activation="relu", kernel_regularizer=regularizers.l1(0.01)))
         model.add(layers.Dense(32, activation="relu"))
         model.add(layers.Dense(action_shape[0], activation="linear"))
 

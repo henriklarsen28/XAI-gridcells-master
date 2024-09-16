@@ -77,10 +77,10 @@ def train_agent():
         "optimizer": "adam",
         "total_episodes": 3000,
         "epsilon": 1,
-        "epsilon_decay": -0.01,
+        "epsilon_decay": -0.005,
         "epsilon_min": 0.1,
-        "discount_factor": 0.90,
-        "alpha": 0.7,
+        "discount_factor": 0.1,
+        "alpha": 0.1,
         "map_path": map_path_train,
         "target_model_update": 5000, # hard update of the target model
         "max_steps_per_episode":1000,
@@ -192,7 +192,7 @@ def train_agent():
                 # print(len(total_rewards))
                 total_rewards.append(total_reward)
 
-                if steps_until_train >= config.get("target_model_update"):
+                if steps_until_train >= 2000:
                     print("Updating target model")
                     target_model.set_weights(model.get_weights())
                     steps_until_train = 0

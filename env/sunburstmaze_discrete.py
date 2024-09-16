@@ -60,7 +60,7 @@ class SunburstMazeDiscrete(gym.Env):
 
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 240}
 
-    def __init__(self, maze_file=None, render_mode=None, max_steps_per_episode=None, random_start_position=None, rewards=None, observation_space=None):
+    def __init__(self, maze_file=None, render_mode=None, max_steps_per_episode=500, random_start_position=None, rewards=None, observation_space=None):
         self.map_file = maze_file
         self.env_map = build_map(maze_file)
         self.height = self.env_map.shape[0]
@@ -439,8 +439,6 @@ class SunburstMazeDiscrete(gym.Env):
 
         if self.position not in self.visited_squares:
             self.visited_squares.append(self.position)
-            if self.increased_steps_to_goal():
-                return 0.001 + self.distance_to_goal_reward()
             return 0.01 + self.distance_to_goal_reward()
 
         # if self.increased_steps_to_goal():
