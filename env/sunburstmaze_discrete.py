@@ -1,6 +1,6 @@
 import random as rd
 
-import gym
+import gymnasium as gym
 import numpy as np
 import pygame
 from gymnasium import spaces
