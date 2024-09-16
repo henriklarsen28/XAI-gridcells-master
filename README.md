@@ -2,4 +2,4 @@
 By Gro Oleivsgard and Henrik Larsen
 
 
-## Explaining a deep deinforcement learning agent for comperison with grid cells in biological brain
+## Explaining a deep reinforcement learning agent for comperison with grid cells in biological brain
