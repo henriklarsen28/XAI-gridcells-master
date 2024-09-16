@@ -23,7 +23,7 @@ def perform_action(action: int, env: SunburstMazeDiscrete, legal_actions: list):
     # action = action_encoding(action)
     print("Action: ", action, env.orientation, env.position)
 
-    legal_actions, reward, goal, _, info = env.step(action)
+    observation, reward, goal, _, info = env.step(action)
     # env.show_map()
     return info["legal_actions"], env
 
@@ -42,11 +42,13 @@ def play_with_keyboard():
     """
 
     env = SunburstMazeDiscrete(
-        maze_file="../env/map_v1/map_closed_doors.csv", render_mode="human"
+        maze_file="../env/map_v0/map_closed_doors.csv", render_mode="human"
     )
 
     pygame.init()
-    legal_actions, _ = env.reset()
+    observation = env.reset()
+    print(observation)
+    legal_actions = env.legal_actions()
     print(legal_actions)
     running = True
     while running:
