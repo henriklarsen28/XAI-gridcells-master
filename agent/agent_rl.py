@@ -99,6 +99,7 @@ def train_agent():
         "discount_factor":0.90,
         "alpha":0.7,
         "map_path": map_path_train,
+        "target_model_update": 5000 # hard update of the target model
     }
 
     render = True
@@ -176,7 +177,7 @@ def train_agent():
                 # print(len(total_rewards))
                 total_rewards.append(total_reward)
 
-                if steps_until_train >= 5000:
+                if steps_until_train >= config.get("target_model_update"):
                     print("Updating target model")
                     target_model.set_weights(model.get_weights())
                     steps_until_train = 0
