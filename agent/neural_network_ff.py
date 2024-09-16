@@ -4,15 +4,16 @@ import random as rd
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+
 import wandb
 from keras import layers, models, optimizers, utils
+
 
 utils.disable_interactive_logging()
 
 
 losses = []
 total_rewards = []
-
 
 class NeuralNetworkFF:
     def agent(self, state_shape, action_shape, loss_function, learning_rate):
@@ -58,7 +59,7 @@ class NeuralNetworkFF:
         discount_factor,
         alpha,
     ):
-
+        
         if len(replay_memory) < 500:
             return
 
@@ -79,6 +80,7 @@ class NeuralNetworkFF:
         ):
             if not done:
                 max_future_q = np.max(future_q_values[i])
+
                 target = reward + discount_factor * max_future_q  # Bellman equation
             else:
                 target = reward
@@ -86,6 +88,7 @@ class NeuralNetworkFF:
             current_q = current_q_values[i][action]
             current_q_values[i][action] = (1 - alpha) * current_q + alpha * target
             current_q = current_q_values[action]
+
 
             X_train.append(observation)
             y_train.append(current_q)
@@ -103,11 +106,14 @@ class NeuralNetworkFF:
             shuffle=True,
             batch_size=batch_size,
             # callbacks=[WandbCallback()]
+
         )
         loss = history.history["loss"][0]
         losses.append(loss)
         total_rewards.append(total_reward)
+
         print("-" * 100)
+
         print("Loss: ", loss)
 
         wandb.log({"Loss per episode": loss})
@@ -116,9 +122,12 @@ class NeuralNetworkFF:
         # Save the losses and rewards to a CSV file as columns using pandas
         df = pd.DataFrame({"loss": losses, "reward": total_rewards})
         df.to_csv("losses_rewards.csv", index=False)
-
+        
     def start_run(self, project, config):
-        run = wandb.init(project=project, config=config)
+        run = wandb.init(
+                    project=project,
+                    config=config
+                )
 
         config = wandb.config
         print("Wandb run initialized.")
@@ -127,3 +136,4 @@ class NeuralNetworkFF:
     def end_run(self, run):
         run.finish()
         print("Wandb run finished.")
+

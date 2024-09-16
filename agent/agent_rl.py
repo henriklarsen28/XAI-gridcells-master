@@ -2,11 +2,13 @@ import os
 import sys
 from collections import deque
 
-# sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+#sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 
 # get the path to the project root directory and add it to sys.path
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+
 sys.path.append(project_root)
 # sys.path.append("../")
 
@@ -15,7 +17,6 @@ import keras as keras
 import numpy as np
 import wandb
 from neural_network_ff import NeuralNetworkFF
-
 from env import SunburstMazeDiscrete
 
 wandb.login()
@@ -25,7 +26,6 @@ test_episodes = 100
 # Define the CSV file path relative to the project root
 map_path_train = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
 map_path_test = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
-
 
 def test_agent():
 
@@ -90,6 +90,7 @@ def train_agent():
     env = SunburstMazeDiscrete(
         map_path_train, render_mode="human" if render else None
     )
+
     state_shape = (env.observation_space.n,)
     action_shape = (env.action_space.n,)
     env_size = (env.width, env.height)
@@ -97,6 +98,7 @@ def train_agent():
     # print(state_shape, action_shape)
 
     ql = NeuralNetworkFF()
+
     model = ql.agent(
         state_shape,
         action_shape,
@@ -110,6 +112,7 @@ def train_agent():
         config.get("learning_rate"),
     )
 
+
     target_model.set_weights(model.get_weights())
 
     replay_memory = deque(maxlen=500_000)
@@ -120,7 +123,6 @@ def train_agent():
     run, config = ql.start_run(project="sunburst-maze", config=config)
 
     for i in range(config.get("total_episodes")):
-
         state = env.reset()
         print(
             "=" * 100,
@@ -130,6 +132,7 @@ def train_agent():
             "\nMouse orientation:",
             state[2],
         )
+
         done = False
         total_reward = 0
         total_rewards = []
@@ -171,6 +174,7 @@ def train_agent():
                     batch_size=config.get("batch_size"),
                     discount_factor=config.get("discount_factor"),
                     alpha=config.get("alpha"),
+
                 )
                 # print(len(total_rewards))
                 total_rewards.append(total_reward)
@@ -196,6 +200,7 @@ def train_agent():
             # wandb.log({"Total reward": total_reward, "Epsilon": epsilon})
             # Save the model
             model.save(f"model_episode_{i}.keras")
+
 
     # Save the model
     model.save("model.keras")

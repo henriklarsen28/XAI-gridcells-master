@@ -135,12 +135,14 @@ class SunburstMazeDiscrete(gym.Env):
         )
         # Check if the position is not a wall
         while int(self.env_map[random_position[0]][random_position[1]]) == 1:
+
             random_position = (
                 rd.randint(0, self.height - 1),
                 rd.randint(0, self.width - 1),
             )
 
         return random_position
+
 
     def _get_info(self):
 
@@ -422,6 +424,7 @@ class SunburstMazeDiscrete(gym.Env):
         current_pos = self.position
         if self.has_not_moved(self.position):
             return -0.5
+
         # Update the last position
         self.last_position = current_pos
 
@@ -430,7 +433,6 @@ class SunburstMazeDiscrete(gym.Env):
         #         checkpoint["visited"] = True
         #         print("Checkpoint visited: ", self.position)
         #         return 20
-
         if self.decreased_steps_to_goal():
             return 0.01 + self.distance_to_goal_reward()
 
@@ -442,6 +444,7 @@ class SunburstMazeDiscrete(gym.Env):
 
         # if self.increased_steps_to_goal():
         #    return -0.0005"
+
 
         return 0
 
