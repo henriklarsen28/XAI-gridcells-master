@@ -82,15 +82,26 @@ def train_agent():
         "discount_factor": 0.90,
         "alpha": 0.7,
         "map_path": map_path_train,
+        "target_model_update": 5000, # hard update of the target model
+        "max_steps_per_episode":1000,
+        "random_start_position":True,
+        "rewards" : {
+            "is_goal":100,
+            "hit_wall":-0.5,
+            "has_not_moved":-0.5,
+            "new_square":0.5
+        },
+        "observation_space": {
+            "position":True,
+            "orientation":True,
+            "steps_to_goal":True,
+            "last_known_steps":5
+        }
     }
 
     render = True
     epsilon = config.get("epsilon")
-
-    env = SunburstMazeDiscrete(
-        map_path_train, render_mode="human" if render else None
-    )
-
+    env = SunburstMazeDiscrete(map_path_train, render_mode="human" if render else "none", max_steps_per_episode=config.get("max_steps_per_episode"), random_start_position=config.get("random_start_position"), rewards=config.get("rewards"))
     state_shape = (env.observation_space.n,)
     action_shape = (env.action_space.n,)
     env_size = (env.width, env.height)
@@ -179,7 +190,7 @@ def train_agent():
                 # print(len(total_rewards))
                 total_rewards.append(total_reward)
 
-                if steps_until_train >= 10_000:
+                if steps_until_train >= config.get("target_model_update"):
                     print("Updating target model")
                     target_model.set_weights(model.get_weights())
                     steps_until_train = 0
