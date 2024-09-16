@@ -20,7 +20,6 @@ loss_function = "huber"
 lr=0.001
 optimizer = optimizers.Adam(lr)
 
-
 class NeuralNetworkFF:
     def agent(self, state_shape, action_shape, learning_rate=lr):
 
@@ -124,8 +123,9 @@ class NeuralNetworkFF:
         print("-"*100)
         print("Loss: ", loss)
 
-        episode_loss += history.history["loss"][0]
 
+        # TODO: Log the loss for the episode, not sample
+        episode_loss += history.history["loss"][0]
         wandb.log({"Loss per episode": episode_loss})
 
     def save_losses(self):
