@@ -28,11 +28,13 @@ class SunburstMazeDiscrete(gym.Env):
 
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 240}
 
-    def __init__(self, maze_file=None, render_mode=None, max_steps_per_episode=1000):
+    def __init__(self, maze_file=None, render_mode=None, max_steps_per_episode=None, random_start_position=None, rewards=None):
         self.map_file = maze_file
         self.env_map = build_map(maze_file)
         self.height = self.env_map.shape[0]
         self.width = self.env_map.shape[1]
+        self.random_start_position = random_start_position
+        self.rewards = rewards
 
         # Three possible actions: forward, left, right
         self.action_space = spaces.Discrete(3)
@@ -87,13 +89,16 @@ class SunburstMazeDiscrete(gym.Env):
         Returns:
             tuple: The coordinates of the selected start position.
         """
-        random_position = (rd.randint(0, self.height - 1), rd.randint(0, self.width - 1))
-        # Check if the position is not a wall
-        while int(self.env_map[random_position[0]][random_position[1]]) == 1:
-            random_position = (rd.randint(0, self.height - 1), rd.randint(0, self.width - 1))
-            
+
+        if self.random_start_position is True:
+            position = (rd.randint(0, self.height - 1), rd.randint(0, self.width - 1))
+            # Check if the position is not a wall
+            while int(self.env_map[position[0]][position[1]]) == 1:
+                position = (rd.randint(0, self.height - 1), rd.randint(0, self.width - 1))
+        else:
+            position = (10, 13)
         # print("Starting at random position: ", random_position)
-        return random_position
+        return position
     
     def _get_info(self):
 
@@ -273,7 +278,7 @@ class SunburstMazeDiscrete(gym.Env):
         # Walking into a wall
         if action not in self.legal_actions():
             # print("Hit a wall")
-            return observation, -1, False, False, info
+            return observation, self.rewards["hit_wall"], False, False, info
         self._action_to_direction[action]()
 
         # Updated values
@@ -302,14 +307,15 @@ class SunburstMazeDiscrete(gym.Env):
         Returns:
             int: The reward value.
         """
+
         if self.is_goal():
             print("Goal reached!")
-            return 100
+            return self.rewards["is_goal"]
         
         # TODO: Penalize for just rotating in place without moving
         current_pos = self.position
         if self.has_not_moved(self.position):
-            return -0.5
+            return self.rewards["has_not_moved"]
         
         # Update the last position
         self.last_position = current_pos
@@ -322,7 +328,7 @@ class SunburstMazeDiscrete(gym.Env):
 
         if self.position not in self.visited_squares:
             self.visited_squares.append(self.position)
-            return 0.5
+            return self.rewards["new_square"]
 
         return 0
 
