@@ -4,15 +4,15 @@ import random as rd
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-from keras import layers, models, optimizers, utils
-
 import wandb
+from keras import layers, models, optimizers, utils
 
 utils.disable_interactive_logging()
 
 
 losses = []
 total_rewards = []
+
 
 class NeuralNetworkFF:
     def agent(self, state_shape, action_shape, loss_function, learning_rate):
@@ -32,23 +32,21 @@ class NeuralNetworkFF:
 
         return model
 
-    def state_to_input(self,state: list, env_size: tuple):
+    def state_to_input(self, state: list, env_size: tuple):
 
         env_height = env_size[0]
         env_width = env_size[1]
         # Create a one-hot encoding of the orientation
 
-
         state_orientation = np.zeros(4)
 
         state_orientation[int(state[2])] = 1
-        
 
         state_position_y = state[0] / env_height
         state_position_x = state[1] / env_width
         state_position = [state_position_y, state_position_x]
-        #print(np.array([*state_position, *state_orientation]))
-        return np.array([*state_position, *state_orientation, state[3]/20])
+        # print(np.array([*state_position, *state_orientation]))
+        return np.array([*state_position, *state_orientation, state[3] / 20])
 
     def train(
         self,
@@ -60,7 +58,7 @@ class NeuralNetworkFF:
         discount_factor,
         alpha,
     ):
-        
+
         if len(replay_memory) < 500:
             return
 
@@ -81,17 +79,14 @@ class NeuralNetworkFF:
         ):
             if not done:
                 max_future_q = np.max(future_q_values[i])
-                target = reward + discount_factor * max_future_q # Bellman equation
+                target = reward + discount_factor * max_future_q  # Bellman equation
             else:
                 target = reward
 
             current_q = current_q_values[i][action]
-            current_q_values[i][action] = (
-                1 - alpha
-            ) * current_q + alpha * target
+            current_q_values[i][action] = (1 - alpha) * current_q + alpha * target
             current_q = current_q_values[action]
-            print("Current Q: ", current_q, "Target: ", target)
-            
+
             X_train.append(observation)
             y_train.append(current_q)
             total_reward += reward
@@ -99,22 +94,20 @@ class NeuralNetworkFF:
             # print('current q:',current_q)
             # print("current q for action {}: {}".format(action, current_q[action]))
 
-            wandb.log({f"Q-value for selected action": current_q[action]})
-            wandb.log({"Q-value variance for each action": np.var(current_q_values)})
+            wandb.log({"Q-value variance for each action": np.var(current_q_values), f"Q-value for selected action": current_q[action]})
 
         history = model.fit(
-            np.array(X_train), 
-            np.array(y_train), 
-            verbose=0, 
+            np.array(X_train),
+            np.array(y_train),
+            verbose=0,
             shuffle=True,
             batch_size=batch_size,
             # callbacks=[WandbCallback()]
-
         )
         loss = history.history["loss"][0]
         losses.append(loss)
         total_rewards.append(total_reward)
-        print("-"*100)
+        print("-" * 100)
         print("Loss: ", loss)
 
         wandb.log({"Loss per episode": loss})
@@ -124,17 +117,13 @@ class NeuralNetworkFF:
         df = pd.DataFrame({"loss": losses, "reward": total_rewards})
         df.to_csv("losses_rewards.csv", index=False)
 
-
     def start_run(self, project, config):
-        run = wandb.init(
-                    project=project,
-                    config=config
-                )
+        run = wandb.init(project=project, config=config)
 
         config = wandb.config
         print("Wandb run initialized.")
         return run, config
-    
+
     def end_run(self, run):
         run.finish()
         print("Wandb run finished.")
