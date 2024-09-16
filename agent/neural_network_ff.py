@@ -1,13 +1,12 @@
+import random
 import random as rd
 
 import numpy as np
+import pandas as pd
 import tensorflow as tf
 from keras import layers, models, optimizers, utils
-import pandas as pd
-
 
 import wandb
-import random
 
 utils.disable_interactive_logging()
 
@@ -15,13 +14,8 @@ utils.disable_interactive_logging()
 losses = []
 total_rewards = []
 
-# Hyperparameters to log
-loss_function = "huber"
-lr=0.001
-optimizer = optimizers.Adam(lr)
-
 class NeuralNetworkFF:
-    def agent(self, state_shape, action_shape, learning_rate=lr):
+    def agent(self, state_shape, action_shape, loss_function, learning_rate):
 
         model = models.Sequential()
         model.add(layers.Dense(128, activation="relu", input_shape=(7,)))
@@ -32,7 +26,7 @@ class NeuralNetworkFF:
 
         model.compile(
             loss=loss_function,
-            optimizer=optimizer,
+            optimizer=optimizers.Adam(learning_rate),
             metrics=["accuracy"],
         )
 
@@ -62,11 +56,9 @@ class NeuralNetworkFF:
         model,
         target_model,
         done,
-        config,
-        episodes=1000,
-        batch_size=128,
-        discount_factor=0.97,
-        learning_rate=0.6,
+        batch_size,
+        discount_factor,
+        alpha,
     ):
         
         if len(replay_memory) < 500:
@@ -83,7 +75,6 @@ class NeuralNetworkFF:
         X_train = []
         y_train = []
         total_reward = 0
-        episode_loss = 0 
 
         for i, [observation, action, reward, new_observation, done] in enumerate(
             mini_batch
@@ -96,8 +87,8 @@ class NeuralNetworkFF:
 
             current_q = current_q_values[i][action]
             current_q_values[i][action] = (
-                1 - learning_rate
-            ) * current_q + learning_rate * target
+                1 - alpha
+            ) * current_q + alpha * target
             current_q = current_q_values[action]
             print("Current Q: ", current_q, "Target: ", target)
             
@@ -116,7 +107,7 @@ class NeuralNetworkFF:
             np.array(y_train), 
             verbose=0, 
             shuffle=True,
-            batch_size=config.batch_size,
+            batch_size=batch_size,
             # callbacks=[WandbCallback()]
 
         )
@@ -126,10 +117,7 @@ class NeuralNetworkFF:
         print("-"*100)
         print("Loss: ", loss)
 
-
-        # TODO: Log the loss for the episode, not sample
-        episode_loss += history.history["loss"][0]
-        wandb.log({"Loss per episode": episode_loss})
+        wandb.log({"Loss per episode": loss})
 
     def save_losses(self):
         # Save the losses and rewards to a CSV file as columns using pandas
@@ -137,17 +125,10 @@ class NeuralNetworkFF:
         df.to_csv("losses_rewards.csv", index=False)
 
 
-    def start_run(self):
+    def start_run(self, project, config):
         run = wandb.init(
-                    project="sunburst-maze",
-                    config={
-                        "learning_rate": lr,
-                        # "epochs": episodes,
-                        "batch_size":256,
-                        "loss_function": loss_function,
-                        "architecture": "Dense",
-                        "optimizer": optimizer,
-                    }
+                    project=project,
+                    config=config
                 )
 
         config = wandb.config
