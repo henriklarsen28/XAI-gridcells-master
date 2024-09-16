@@ -23,9 +23,9 @@ def perform_action(action: int, env: SunburstMazeDiscrete, legal_actions: list):
     # action = action_encoding(action)
     print("Action: ", action, env.orientation, env.position)
 
-    legal_actions, reward, _, _, _, _ = env.step(action)
+    legal_actions, reward, goal, _, info = env.step(action)
     # env.show_map()
-    return legal_actions, env
+    return info["legal_actions"], env
 
 
 def play_with_keyboard():
