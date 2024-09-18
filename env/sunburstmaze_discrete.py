@@ -10,7 +10,6 @@ from .AStar import astar
 from .file_manager import build_map
 from .Graph import Graph
 from .maze_game import Maze
-import copy
 
 checkpoints = [
     {"coordinates": [(19, 9), (19, 10), (19, 11)], "visited": False},
@@ -59,9 +58,9 @@ def calculate_a_star_distance(graph, start, end):
 
 class SunburstMazeDiscrete(gym.Env):
 
-    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 480}
+    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 240}
 
-    def __init__(self, maze_file=None, render_mode=None, max_steps_per_episode=200, random_start_position=None, rewards=None, observation_space=None):
+    def __init__(self, maze_file=None, render_mode=None, max_steps_per_episode=500, random_start_position=None, rewards=None, observation_space=None):
         self.map_file = maze_file
         self.env_map = build_map(maze_file)
         self.height = self.env_map.shape[0]
@@ -75,13 +74,13 @@ class SunburstMazeDiscrete(gym.Env):
                 if self.env_map[y][x] == 2:
                     self.goal = (y, x)
                     break
-
+        print("height:", self.height, "width:", self.width, "goal:", self.goal)
         # Create a graph
-        #print("Building a A* map for calculating steps to goal")
-        """self.steps_to_goal = build_step_length_map(
+        print("Building a A* map for calculating steps to goal")
+        self.steps_to_goal = build_step_length_map(
             self.env_map, self.goal
-        )  # Comment this out for running with keyboard for faster loading"""
-        #self.last_steps_to_goal = None
+        )  # Comment this out for running with keyboard for faster loading
+        self.last_steps_to_goal = None
         # self.steps_to_goal = np.zeros((self.env_map.shape[0], self.env_map.shape[1])) # Comment out for running with keyboard for faster loading
         #print(self.steps_to_goal)
 
@@ -133,7 +132,6 @@ class SunburstMazeDiscrete(gym.Env):
         Returns:
             tuple: The coordinates of the selected start position.
         """
-
         if self.random_start_position is True:
             position = (rd.randint(0, self.height - 1), rd.randint(0, self.width - 1))
             # Check if the position is not a wall
@@ -347,14 +345,14 @@ class SunburstMazeDiscrete(gym.Env):
         if self.steps_current_episode >= self.max_steps_per_episode:
             print("Reached max steps")
             self.steps_current_episode = 0
-            return observation, -1, True, True, self._get_info()
+            return observation, self.rewards["max_steps_reached"], True, True, self._get_info()
 
         action = action_encoding(action)
         self.steps_current_episode += 1
 
         # Walking into a wall
         if action not in self.legal_actions():
-            #print("Hit a wall")
+            # print("Hit a wall")
             return observation, self.rewards["hit_wall"], False, False, info
 
         # Perform the action
