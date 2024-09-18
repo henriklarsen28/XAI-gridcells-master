@@ -93,14 +93,14 @@ def train_agent():
             "new_square":0.01,
             "max_steps_reached":-0.001,
             "distance_to_goal":True
-        },
+       },
 
         # TODO
         "observation_space": {
             "position":True,
             "orientation":True,
             "steps_to_goal":True,
-            "last_known_steps":0
+
         },
         # TODO
         "layers": {
@@ -120,7 +120,9 @@ def train_agent():
                 "activation": "linear",
                 # "nodes": action_shape[0]
             }
-        }
+        },
+            "last_known_steps":5
+        
     }
 
     render = True
@@ -249,13 +251,9 @@ def train_agent():
             # Save the model
             model.save(f"model_episode_{i}.keras")
 
-        
 
     # Save the model
-    model.save("model.keras")
     ql.save_losses()
-    env.close()
-    ql.end_run(run)
 
 
 if __name__ == "__main__":

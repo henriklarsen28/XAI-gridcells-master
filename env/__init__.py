@@ -1,0 +1,1 @@
+from .sunburstmaze_discrete import SunburstMazeDiscrete

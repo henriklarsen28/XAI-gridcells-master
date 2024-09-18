@@ -1,0 +1,8 @@
+env/__pycache__/
+env/__pycache__/*
+.DS_Store
+*.pyc
+agent/model*
+agent/wandb*
+agent/losses_rewards.csv
+

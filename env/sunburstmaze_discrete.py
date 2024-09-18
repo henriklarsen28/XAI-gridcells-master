@@ -74,7 +74,6 @@ class SunburstMazeDiscrete(gym.Env):
                 if self.env_map[y][x] == 2:
                     self.goal = (y, x)
                     break
-        print("height:", self.height, "width:", self.width, "goal:", self.goal)
         # Create a graph
         print("Building a A* map for calculating steps to goal")
         self.steps_to_goal = build_step_length_map(
@@ -452,4 +451,8 @@ class SunburstMazeDiscrete(gym.Env):
             return self._render_frame()
 
     def _render_frame(self):
-        self.render_maze.draw_frame(self.env_map, s
+        self.render_maze.draw_frame(self.env_map, self.position, self.orientation)
+
+    def close(self):  # TODO: Not tested
+        if self.window is not None:
+            pygame.display.quit()
