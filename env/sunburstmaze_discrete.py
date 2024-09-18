@@ -1,4 +1,3 @@
-import copy
 import random as rd
 
 import gymnasium as gym
@@ -354,7 +353,7 @@ class SunburstMazeDiscrete(gym.Env):
         if self.steps_current_episode >= self.max_steps_per_episode:
             print("Reached max steps")
             self.steps_current_episode = 0
-            return observation, -1, True, True, self._get_info()
+            return observation, self.rewards["max_steps_reached"], True, True, self._get_info()
 
         action = action_encoding(action)
         self.steps_current_episode += 1
@@ -448,12 +447,10 @@ class SunburstMazeDiscrete(gym.Env):
         if self.is_goal():
             print("Goal reached!")
             return self.rewards["is_goal"]
-
         # TODO: Penalize for just rotating in place without moving
         current_pos = self.position
         if self.has_not_moved(self.position):
             return self.rewards["has_not_moved"]
-
         # Update the last position
         self.last_position = current_pos
 
