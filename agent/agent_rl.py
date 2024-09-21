@@ -60,7 +60,7 @@ class Model_TrainTest:
         self.max_steps = config["max_steps_per_episode"]
         self.render = config["render"]
 
-        self.epsilon_max = config["epsilon"]
+        self.epsilon = config["epsilon"]
         self.epsilon_min = config["epsilon_min"]
         self.epsilon_decay = config["epsilon_decay"]
 
@@ -89,7 +89,7 @@ class Model_TrainTest:
         # Define the agent class
         self.agent = DQN_Agent(
             env=self.env,
-            epsilon_max=self.epsilon_max,
+            epsilon=self.epsilon,
             epsilon_min=self.epsilon_min,
             epsilon_decay=self.epsilon_decay,
             clip_grad_normalization=self.clip_grad_normalization,
@@ -102,17 +102,19 @@ class Model_TrainTest:
 
     def state_preprocess(self, state: int, num_states: int):
         """
-        Convert an state to a tensor and basically it encodes the state into
-        an onehot vector. For example, the return can be something like tensor([0,0,1,0,0])
-        which could mean agent is at state 2 from total of 5 states.
-
+        Converts the state to a one-hot encoded tensor,
+        that included the position as a one-hot encoding and the orientation as a one-hot encoding.
         """
         position = state[0]
         orientation = state[1]
-        onehot_vector_position = torch.zeros(num_states, dtype=torch.float32, device=device)
+        onehot_vector_position = torch.zeros(
+            num_states, dtype=torch.float32, device=device
+        )
         onehot_vector_position[position] = 1
         onehot_vector_orientation = torch.zeros(4, dtype=torch.float32, device=device)
         onehot_vector_orientation[orientation] = 1
+
+        
         return torch.concat((onehot_vector_position, onehot_vector_orientation))
 
     def train(self):
@@ -173,7 +175,7 @@ class Model_TrainTest:
                 {
                     "Episode": episode,
                     "Reward per episode": total_reward,
-                    "Epsilon": self.agent.epsilon_max,
+                    "Epsilon": self.agent.epsilon,
                     "Steps done": steps_done,
                 }
             )
@@ -217,14 +219,15 @@ class Model_TrainTest:
 
 def get_num_states(map_path):
 
-    num_rows=0
-    num_cols=0
+    num_rows = 0
+    num_cols = 0
     with open(map_path, "r") as f:
         for line_num, line in enumerate(f):
             num_rows += 1
             num_cols = len(line.strip().split(","))
-    num_states = num_rows*num_cols
+    num_states = num_rows * num_cols
     return num_states
+
 
 if __name__ == "__main__":
     # Parameters:

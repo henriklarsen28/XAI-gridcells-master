@@ -1,9 +1,10 @@
-import torch
-from torch import nn
-from torch import optim
-from replay_memory import ReplayMemory
-from agent.neural_network_ff_torch import DQN_Network
 import numpy as np
+import torch
+from replay_memory import ReplayMemory
+from torch import nn, optim
+
+from agent.neural_network_ff_torch import DQN_Network
+
 
 class DQN_Agent:
     """
@@ -15,7 +16,7 @@ class DQN_Agent:
     def __init__(
         self,
         env,
-        epsilon_max,
+        epsilon,
         epsilon_min,
         epsilon_decay,
         clip_grad_normalization,
@@ -32,28 +33,26 @@ class DQN_Agent:
         self.learned_counts = 0
 
         # RL hyperparameters
-        self.epsilon_max = epsilon_max
+        self.epsilon = epsilon
         self.epsilon_min = epsilon_min
         self.epsilon_decay = epsilon_decay
         self.discount = discount
         self.device = device
 
         self.action_space = env.action_space
-        self.action_space.seed(
-            seed
-        )
+        self.action_space.seed(seed)
 
         self.observation_space = env.observation_space
         self.replay_memory = ReplayMemory(memory_capacity, self.device)
 
         # Initiate the network models
         self.model = DQN_Network(
-            num_actions=self.action_space.n, input_dim=self.observation_space.n+4
+            num_actions=self.action_space.n, input_dim=self.observation_space.n + 4
         ).to(self.device)
-        
+
         self.target_model = (
             DQN_Network(
-                num_actions=self.action_space.n, input_dim=self.observation_space.n+4
+                num_actions=self.action_space.n, input_dim=self.observation_space.n + 4
             )
             .to(self.device)
             .eval()
@@ -78,7 +77,7 @@ class DQN_Agent:
         """
 
         # Exploration: epsilon-greedy
-        if np.random.random() < self.epsilon_max:
+        if np.random.random() < self.epsilon:
             return self.action_space.sample()
 
         # Exploitation: the action is selected based on the Q-values.
@@ -90,7 +89,6 @@ class DQN_Agent:
 
     def learn(self, batch_size, done):
 
-
         states, actions, next_states, rewards, dones = self.replay_memory.sample(
             batch_size
         )
@@ -99,28 +97,19 @@ class DQN_Agent:
         rewards = rewards.unsqueeze(1)
         dones = dones.unsqueeze(1)
 
+        current_q_values = self.model(states)
 
-        current_q_values = self.model(
-            states
-        )
-
-        current_q_values = current_q_values.gather(
-            dim=1, index=actions
-        )
+        current_q_values = current_q_values.gather(dim=1, index=actions)
 
         # Compute the maximum Q-value for the next states using the target network
         with torch.no_grad():
-            future_q_values = self.target_model(next_states).max(
-                dim=1, keepdim=True
-            )[
+            future_q_values = self.target_model(next_states).max(dim=1, keepdim=True)[
                 0
             ]  # not argmax (cause we want the maxmimum q-value, not the action that maximize it)
 
         future_q_values[dones] = 0
 
-        target = rewards + (
-            self.discount * future_q_values
-        )
+        target = rewards + (self.discount * future_q_values)
 
         loss = self.critertion(current_q_values, target)
 
@@ -132,15 +121,13 @@ class DQN_Agent:
             episode_loss = (
                 self.running_loss / self.learned_counts
             )  # The average loss for the episode
-            self.loss_history.append(
-                episode_loss
-            )
+            self.loss_history.append(episode_loss)
 
             self.running_loss = 0
             self.learned_counts = 0
 
         self.optimizer.zero_grad()  # Zero the gradients
-        loss.backward()  
+        loss.backward()
 
         # Clip the gradients to prevent exploding gradients
         torch.nn.utils.clip_grad_norm_(
@@ -155,7 +142,6 @@ class DQN_Agent:
         This method copies the parameters from the main model to the target model.
         It ensures that the target model has the same weights as the main model.
         """
-        
 
         self.target_model.load_state_dict(self.model.state_dict())
 
@@ -167,7 +153,7 @@ class DQN_Agent:
         that the agent becomes less exploratory and more exploitative as training progresses.
         """
 
-        self.epsilon_max = max(self.epsilon_min, self.epsilon_max * self.epsilon_decay)
+        self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
 
     def save(self, path):
         """
