@@ -228,6 +228,14 @@ def get_num_states(map_path):
     num_states = num_rows * num_cols
     return num_states
 
+    num_rows=0
+    num_cols=0
+    with open(map_path, "r") as f:
+        for line_num, line in enumerate(f):
+            num_rows += 1
+            num_cols = len(line.strip().split(","))
+    num_states = num_rows*num_cols
+    return num_states
 
 if __name__ == "__main__":
     # Parameters:
