@@ -142,7 +142,9 @@ class Model_TrainTest:
                     next_state, num_states=self.num_states
                 )
 
+
                 self.agent.replay_memory.store(state, action, next_state, reward, done)
+
 
                 if (
                     len(self.agent.replay_memory) > self.batch_size
@@ -165,11 +167,13 @@ class Model_TrainTest:
             # Decay epsilon at the end of each episode
             self.agent.update_epsilon()
 
+
             # -- based on interval
             if episode % self.save_interval == 0:
                 self.agent.save(self.save_path + "_" + f"{episode}" + ".pth")
 
                 print("\n~~~~~~Interval Save: Model saved.\n")
+
 
             wandb.log(
                 {

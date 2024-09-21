@@ -83,6 +83,7 @@ class SunburstMazeDiscrete(gym.Env):
                     self.goal = (y, x)
                     break
         print("height:", self.height, "width:", self.width, "goal:", self.goal)
+
         # Create a graph
         # print("Building a A* map for calculating steps to goal")
         """self.steps_to_goal = build_step_length_map(
@@ -90,7 +91,6 @@ class SunburstMazeDiscrete(gym.Env):
         )  # Comment this out for running with keyboard for faster loading"""
         # self.last_steps_to_goal = None
         # self.steps_to_goal = np.zeros((self.env_map.shape[0], self.env_map.shape[1])) # Comment out for running with keyboard for faster loading
-        # print(self.steps_to_goal)
 
         # Three possible actions: forward, left, right
         self.action_space = spaces.Discrete(3)
@@ -140,6 +140,7 @@ class SunburstMazeDiscrete(gym.Env):
         Returns:
             tuple: The coordinates of the selected start position.
         """
+
         if self.random_start_position is True:
             position = (rd.randint(0, self.height - 1), rd.randint(0, self.width - 1))
             # Check if the position is not a wall
@@ -183,7 +184,7 @@ class SunburstMazeDiscrete(gym.Env):
     def reset(self, seed=None, options=None) -> tuple:
 
         super().reset(seed=seed)
-
+        
         # self.visited_squares = []
         self.env_map = build_map(self.map_file)
         self.position = self.select_start_position()
@@ -465,6 +466,7 @@ class SunburstMazeDiscrete(gym.Env):
         if self.position not in self.visited_squares:
             self.visited_squares.append(self.position)
             return self.rewards["new_square"]  # + self.distance_to_goal_reward()
+
 
         # if self.increased_steps_to_goal():
         #    return -0.0005"

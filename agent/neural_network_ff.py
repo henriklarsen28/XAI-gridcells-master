@@ -4,10 +4,9 @@ import random as rd
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+from keras import layers, models, optimizers, regularizers, utils
 
 import wandb
-from keras import layers, models, optimizers, utils, regularizers
-
 
 utils.disable_interactive_logging()
 
@@ -62,6 +61,7 @@ class NeuralNetworkFF:
         
         if len(replay_memory) < batch_size:
             return
+
 
         mini_batch = rd.sample(replay_memory, batch_size)
 
