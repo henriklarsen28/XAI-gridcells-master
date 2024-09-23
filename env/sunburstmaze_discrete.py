@@ -7,10 +7,11 @@ import numpy as np
 import pygame
 from gymnasium import spaces
 from tqdm import tqdm
+import copy
 
 from utils.calculate_fov import calculate_fov_matrix_size, step_angle
 
-from .AStar import astar
+#from .AStar import astar
 from .file_manager import build_map
 from .Graph import Graph
 from .maze_game import Maze
@@ -36,7 +37,7 @@ def build_step_length_map(env_map, goal):
     env_graph = graph.make_graph()
     print("Graph made")
     # Iterate through every position in the map
-    steps_to_goal = np.zeros((env_map.shape[0], env_map.shape[1]))
+    '''steps_to_goal = np.zeros((env_map.shape[0], env_map.shape[1]))
     for y in tqdm(range(env_map.shape[0])):
         for x in range(env_map.shape[1]):
             if env_map[y][x] == 1:
@@ -53,7 +54,7 @@ def build_step_length_map(env_map, goal):
             ):
                 steps_to_goal[y][x] = steps_to_goal[y - 1][x] + 1
     return steps_to_goal
-
+'''
 
 def calculate_a_star_distance(graph, start, end):
     a_star = astar(graph, start, end)
@@ -62,7 +63,7 @@ def calculate_a_star_distance(graph, start, end):
 
 class SunburstMazeDiscrete(gym.Env):
 
-    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 480}
+    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 240}
 
     def __init__(
         self,
@@ -166,7 +167,7 @@ class SunburstMazeDiscrete(gym.Env):
             self.orientation = rd.randint(0, 3)
         else:
             # position = (10, 13)
-            position = (self.height - 2, 1)  # Bottom left for the small maze
+            position = (self.height - 2, 10)  # Bottom left for the small maze
         # print("Starting at random position: ", random_position)
         return position
 
