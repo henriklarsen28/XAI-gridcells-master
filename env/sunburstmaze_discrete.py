@@ -1,3 +1,4 @@
+import copy
 import random as rd
 
 import gymnasium as gym
@@ -181,10 +182,22 @@ class SunburstMazeDiscrete(gym.Env):
         # orientation[int(self.orientation)] = 1
         return np.array([position_as_int, self.orientation])
 
+    """  def raycast(self, viewing_angle=45, viewing_distance=10):
+
+        # Screen size
+        screen_width = self.width * 30  # Hardcoded in maze_game.py
+        screen_height = self.height * 30
+
+        rng_width = np.arange(self.width)
+        rng_view = np.arange(viewing_distance + 1)
+
+        rad_tan = np.tan(viewing_angle * np.pi / 360)
+        pass"""
+
     def reset(self, seed=None, options=None) -> tuple:
 
         super().reset(seed=seed)
-        
+
         # self.visited_squares = []
         self.env_map = build_map(self.map_file)
         self.position = self.select_start_position()
@@ -354,7 +367,13 @@ class SunburstMazeDiscrete(gym.Env):
         if self.steps_current_episode >= self.max_steps_per_episode:
             print("Reached max steps")
             self.steps_current_episode = 0
-            return observation, self.rewards["max_steps_reached"], True, True, self._get_info()
+            return (
+                observation,
+                self.rewards["max_steps_reached"],
+                True,
+                True,
+                self._get_info(),
+            )
 
         action = action_encoding(action)
         self.steps_current_episode += 1
@@ -466,7 +485,6 @@ class SunburstMazeDiscrete(gym.Env):
         if self.position not in self.visited_squares:
             self.visited_squares.append(self.position)
             return self.rewards["new_square"]  # + self.distance_to_goal_reward()
-
 
         # if self.increased_steps_to_goal():
         #    return -0.0005"
