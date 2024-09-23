@@ -12,10 +12,10 @@ import keras as keras
 import numpy as np
 import pygame
 import torch
-import wandb
 from dqn_agent import DQN_Agent
 import math
 
+import wandb
 from env import SunburstMazeDiscrete
 from utils.calculate_fov import calculate_fov_matrix_size
 
