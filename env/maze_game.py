@@ -3,12 +3,21 @@ import os
 
 import numpy as np
 import pygame
+import math
 
 white = (255, 255, 255)
 black = (0, 0, 0)
 green = (0, 255, 0)
 red = (255, 0, 0)
 grey = (192, 192, 192)
+
+
+
+NUMBER_OF_RAYS = 200
+RAY_LENGTH = 30 # VIEW_DISTANCE BLOCKS
+FIELD_OF_VIEW = math.pi / 4 # 90 degrees
+HALF_FOV = FIELD_OF_VIEW / 2
+STEP_ANGLE = FIELD_OF_VIEW / NUMBER_OF_RAYS
 
 
 class Maze:
@@ -165,6 +174,23 @@ class Maze:
                 self.spriteHeight,
             ),
         )
+    def draw_raycast(self, position: tuple, orientation):
+        agent_angle = orientation * math.pi / 2 # 0, 90, 180, 270
+
+        start_angle = agent_angle - HALF_FOV
+        for ray in range(NUMBER_OF_RAYS):
+            for depth in range(RAY_LENGTH):
+                x = int(position[0] - depth * math.cos(start_angle))
+                y = int(position[1] + depth * math.sin(start_angle))
+                if self.env_map[x][y] == 1:
+                    pygame.draw.line(self.win, (255,0,0), (position[1] * self.cell_size+20, position[0] * self.cell_size+20), (y * self.cell_size+15, x * self.cell_size+15))
+                    break
+            start_angle += STEP_ANGLE
+
+            
+
+
+
 
     def calculate_square_ahead(self, position: tuple, orientation: int):
 

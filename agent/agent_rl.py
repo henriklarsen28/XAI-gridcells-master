@@ -263,7 +263,7 @@ def get_num_states(map_path):
 
 if __name__ == "__main__":
     # Parameters:
-    train_mode = True
+    train_mode = False
     render = not train_mode
     render_mode = "rgb_array" if render else None  # or "human"
 

@@ -229,6 +229,18 @@ class SunburstMazeDiscrete(gym.Env):
 
         return matrix
 
+    """  def raycast(self, viewing_angle=45, viewing_distance=10):
+
+        # Screen size
+        screen_width = self.width * 30  # Hardcoded in maze_game.py
+        screen_height = self.height * 30
+
+        rng_width = np.arange(self.width)
+        rng_view = np.arange(viewing_distance + 1)
+
+        rad_tan = np.tan(viewing_angle * np.pi / 360)
+        pass"""
+
     def reset(self, seed=None, options=None) -> tuple:
 
         super().reset(seed=seed)
