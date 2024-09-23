@@ -58,9 +58,17 @@ def calculate_a_star_distance(graph, start, end):
 
 class SunburstMazeDiscrete(gym.Env):
 
-    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 240}
+    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 480}
 
-    def __init__(self, maze_file=None, render_mode=None, max_steps_per_episode=500, random_start_position=None, rewards=None, observation_space=None):
+    def __init__(
+        self,
+        maze_file=None,
+        render_mode=None,
+        max_steps_per_episode=200,
+        random_start_position=None,
+        rewards=None,
+        observation_space=None,
+    ):
         self.map_file = maze_file
         self.env_map = build_map(maze_file)
         self.height = self.env_map.shape[0]
@@ -74,19 +82,20 @@ class SunburstMazeDiscrete(gym.Env):
                 if self.env_map[y][x] == 2:
                     self.goal = (y, x)
                     break
+        print("height:", self.height, "width:", self.width, "goal:", self.goal)
+
         # Create a graph
-        print("Building a A* map for calculating steps to goal")
-        self.steps_to_goal = build_step_length_map(
+        # print("Building a A* map for calculating steps to goal")
+        """self.steps_to_goal = build_step_length_map(
             self.env_map, self.goal
-        )  # Comment this out for running with keyboard for faster loading
-        self.last_steps_to_goal = None
+        )  # Comment this out for running with keyboard for faster loading"""
+        # self.last_steps_to_goal = None
         # self.steps_to_goal = np.zeros((self.env_map.shape[0], self.env_map.shape[1])) # Comment out for running with keyboard for faster loading
-        #print(self.steps_to_goal)
 
         # Three possible actions: forward, left, right
         self.action_space = spaces.Discrete(3)
 
-        self.observation_space = spaces.Discrete(3)  # Orientation + next_to_wall
+        self.observation_space = spaces.Discrete(self.height * self.width)
 
         self._action_to_direction = {
             "forward": self.move_forward,
@@ -131,34 +140,55 @@ class SunburstMazeDiscrete(gym.Env):
         Returns:
             tuple: The coordinates of the selected start position.
         """
-        position = (10, 13)
 
         if self.random_start_position is True:
             position = (rd.randint(0, self.height - 1), rd.randint(0, self.width - 1))
             # Check if the position is not a wall
             while int(self.env_map[position[0]][position[1]]) == 1:
-                position = (rd.randint(0, self.height - 1), rd.randint(0, self.width - 1))
-    
+                position = (
+                    rd.randint(0, self.height - 1),
+                    rd.randint(0, self.width - 1),
+                )
+            self.orientation = rd.randint(0, 3)
+        else:
+            # position = (10, 13)
+            position = (self.height - 2, 1)  # Bottom left for the small maze
+        # print("Starting at random position: ", random_position)
         return position
-   
+
     def _get_info(self):
 
         return {"legal_actions": self.legal_actions(), "orientation": self.orientation}
 
     def _get_observation(self):
-        steps_to_goal_at_position = self.steps_to_goal[self.position[0]][
-            self.position[1]
-        ]
-        return np.array([*self.position, self.orientation, steps_to_goal_at_position])
+        position_as_int = self.position[0] * self.width + self.position[1]
+        maze = copy.deepcopy(self.env_map)
+        # Insert position to the agent
+        orientation_marker = {0: -1, 1: -2, 2: -3, 3: -4}
+
+        maze[self.position[0]][self.position[1]] = 3
+        # maze = maze.flatten()
+
+        # Rotate the map to match the orientation
+        """if self.orientation == 1:
+            maze = np.rot90(maze, 1).flatten()
+        elif self.orientation == 2:
+            maze = np.rot90(maze, 2).flatten()
+        elif self.orientation == 3:
+            maze = np.rot90(maze, 3).flatten()"""
+        # One hot encoding for orientation
+        # orientation = np.zeros(4)
+        # orientation[int(self.orientation)] = 1
+        return np.array([position_as_int, self.orientation])
 
     def reset(self, seed=None, options=None) -> tuple:
 
         super().reset(seed=seed)
-
-        #self.visited_squares = []
-        # self.env_map = build_map(self.map_file)
+        
+        # self.visited_squares = []
+        self.env_map = build_map(self.map_file)
         self.position = self.select_start_position()
-        self.last_steps_to_goal = self.steps_to_goal[self.position[0]][self.position[1]]
+        # self.last_steps_to_goal = self.steps_to_goal[self.position[0]][self.position[1]]
 
         self.steps_current_episode = 0
 
@@ -179,7 +209,7 @@ class SunburstMazeDiscrete(gym.Env):
                 self.orientation,
             )
         self.goal = self.goal_position()
-        return self._get_observation()
+        return self._get_observation(), self._get_info()
 
     def reset_checkpoints(self):
         for checkpoint in checkpoints:
@@ -363,49 +393,49 @@ class SunburstMazeDiscrete(gym.Env):
         if len(self.last_moves) < 10:
             return False
 
-        self.last_moves = self.last_moves[-10:]
+        self.last_moves = self.last_moves[-4:]
         if all(last_move == position for last_move in self.last_moves):
             return True
         return False
 
-    def decreased_steps_to_goal(self):
-        """
-        Checks if the steps to the goal have decreased from the last position.
+    # def decreased_steps_to_goal(self):
+    #     """
+    #     Checks if the steps to the goal have decreased from the last position.
 
-        Returns:
-            bool: True if the steps to the goal have decreased, False otherwise.
-        """
+    #     Returns:
+    #         bool: True if the steps to the goal have decreased, False otherwise.
+    #     """
 
-        current_steps_to_goal = self.steps_to_goal[self.position[0]][self.position[1]]
+    #     current_steps_to_goal = self.steps_to_goal[self.position[0]][self.position[1]]
 
-        delta_steps = self.last_steps_to_goal - current_steps_to_goal
-        if delta_steps > 0:
-            return True
-        return False
+    #     delta_steps = self.last_steps_to_goal - current_steps_to_goal
+    #     if delta_steps > 0:
+    #         return True
+    #     return False
 
-    def increased_steps_to_goal(self):
-        current_steps_to_goal = self.steps_to_goal[self.position[0]][self.position[1]]
+    # def increased_steps_to_goal(self):
+    #     current_steps_to_goal = self.steps_to_goal[self.position[0]][self.position[1]]
 
-        delta_steps = self.last_steps_to_goal - current_steps_to_goal
-        if delta_steps < 0:
-            return True
-        return False
+    #     delta_steps = self.last_steps_to_goal - current_steps_to_goal
+    #     if delta_steps < 0:
+    #         return True
+    #     return False
 
-    def distance_to_goal(self, position):
-        return np.sqrt(
-            (position[0] - self.goal[0]) ** 2 + (position[1] - self.goal[1]) ** 2
-        )
+    # def distance_to_goal(self, position):
+    #     return np.sqrt(
+    #         (position[0] - self.goal[0]) ** 2 + (position[1] - self.goal[1]) ** 2
+    #     )
 
-    def distance_to_goal_reward(self):
-        max_distance = np.sqrt((self.height - 2) ** 2 + (self.width - 2) ** 2)
+    # def distance_to_goal_reward(self):
+    #     max_distance = np.sqrt((self.height - 2) ** 2 + (self.width - 2) ** 2)
 
-        distance = self.distance_to_goal(self.position)
-        difference = max_distance - distance
+    #     distance = self.distance_to_goal(self.position)
+    #     difference = max_distance - distance
 
-        reward = np.exp(-difference) * 5
-        discounted_reward = reward
+    #     reward = np.exp(-difference)
+    #     discounted_reward = reward * 0.02
 
-        return discounted_reward
+    #     return discounted_reward
 
     # TODO: Gets stuck at wall, q-values for other actions are negative
     def reward(self):
@@ -418,12 +448,10 @@ class SunburstMazeDiscrete(gym.Env):
         if self.is_goal():
             print("Goal reached!")
             return self.rewards["is_goal"]
-        
         # TODO: Penalize for just rotating in place without moving
         current_pos = self.position
         if self.has_not_moved(self.position):
             return self.rewards["has_not_moved"]
-       
         # Update the last position
         self.last_position = current_pos
 
@@ -432,19 +460,18 @@ class SunburstMazeDiscrete(gym.Env):
         #         checkpoint["visited"] = True
         #         print("Checkpoint visited: ", self.position)
         #         return 20
-        if self.decreased_steps_to_goal():
-            if self.rewards.get("distance_to_goal"):
-                return 0.01 + self.distance_to_goal_reward()
+        # if self.decreased_steps_to_goal():
+        #    return 0.00 #+ self.distance_to_goal_reward()
 
         if self.position not in self.visited_squares:
             self.visited_squares.append(self.position)
-            if self.rewards.get("distance_to_goal"):
-                return 0.01 + self.distance_to_goal_reward()
+            return self.rewards["new_square"]  # + self.distance_to_goal_reward()
+
 
         # if self.increased_steps_to_goal():
         #    return -0.0005"
 
-        return 0
+        return -0.1
 
     def render(self):
         if self.render_mode == "rgb_array" or self.render_mode == "human":

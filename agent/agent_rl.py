@@ -1,261 +1,302 @@
 import os
 import sys
-from collections import deque
-
-#sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
 
 # get the path to the project root directory and add it to sys.path
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 sys.path.append(project_root)
-# sys.path.append("../")
+
 
 import gymnasium as gym
 import keras as keras
 import numpy as np
-from neural_network_ff import NeuralNetworkFF
-
+import pygame
+import torch
 import wandb
+from dqn_agent import DQN_Agent
+
 from env import SunburstMazeDiscrete
 
 wandb.login()
-
-test_episodes = 100
 
 # Define the CSV file path relative to the project root
 map_path_train = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
 map_path_test = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
 
-def test_agent():
 
-    env = SunburstMazeDiscrete(map_path_test, render_mode="human")
-    state_shape = (env.observation_space.n,)
-    action_shape = (env.action_space.n,)
-
-    ql = NeuralNetworkFF()
-    # model = ql.agent(state_shape, action_shape)
-
-    # Load the old model
-    model = keras.models.load_model("model.keras")
-
-    total_reward = 0
-    render = True
-
-    for i in range(test_episodes):
-        state = env.reset()
-        done = False
-        total_reward = 0
-        print("Episode: ", i)
-        while not done:
-
-            if render:
-                env.render()
-
-            encoded = state.flatten()
-            # Normalized the state
-            env_size = env.width, env.height
-            encoded = ql.state_to_input(encoded, env_size)
-            encoded = encoded.flatten().reshape(1, -1)
-            print(model.predict(encoded), encoded)
-            action = np.argmax(model.predict(encoded))
-            print(action)
-
-            new_state, reward, done, _, info = env.step(action)
-            total_reward += reward
-            state = new_state
-
-    env.close()
+device = torch.device("cpu")
+# device = torch.device("mps" if torch.backends.mps.is_available() else "cpu") # Was faster with cpu??? Loading between cpu and mps is slow maybe
 
 
-def train_agent():
-    # Hyperparameters to log
-    config = {
-        "loss_function": "mse",
-        "learning_rate": 0.001,
-        "batch_size": 64,
-        "optimizer": "adam",
-        "total_episodes": 3000,
-        "epsilon": 0.8,
-        "epsilon_decay": -0.005,
-        "epsilon_min": 0.1,
-        "discount_factor": 0.9,
-        "alpha": 0.01,
-        "map_path": map_path_train,
-        "target_model_update": 1600, # hard update of the target model
-        "max_steps_per_episode":800,
-        "random_start_position":True,
-        "replay_memory_size":deque(maxlen=2000),
-        "rewards" : {
-            "is_goal":1,
-            "hit_wall":-0.001,
-            "has_not_moved":0, # change to 0?
-            "new_square":0.01,
-            "max_steps_reached":-0.001,
-            "distance_to_goal":True
-       },
+# Seed everything for reproducible results
+seed = 2024
+np.random.seed(seed)
+np.random.default_rng(seed)
+os.environ["PYTHONHASHSEED"] = str(seed)
+torch.manual_seed(seed)
 
-        # TODO
-        "observation_space": {
-            "position":True,
-            "orientation":True,
-            "steps_to_goal":True,
-
-        },
-        # TODO
-        "layers": {
-            0: {"activation": "relu",
-                "nodes": 32
-                },
-            1: {"activation": "relu",   
-                "nodes": 32
-                },
-            2: {"activation": "relu", 
-                "nodes": 32
-                },
-            3: {"activation": "relu",
-                "nodes": 32
-                },
-            4: {
-                "activation": "linear",
-                # "nodes": action_shape[0]
-            }
-        },
-            "last_known_steps":5
-        
-    }
-
-    render = True
-    epsilon = config.get("epsilon")
-    env = SunburstMazeDiscrete(
-        map_path_train, 
-        render_mode="human" if render else "none", 
-        max_steps_per_episode=config.get("max_steps_per_episode"), 
-        random_start_position=config.get("random_start_position"), 
-        rewards=config.get("rewards"), 
-        observation_space=config.get("observation_space"))
-    state_shape = (env.observation_space.n,)
-    action_shape = (env.action_space.n,)
-    env_size = (env.width, env.height)
-
-    # print(state_shape, action_shape)
-
-    ql = NeuralNetworkFF()
-
-    model = ql.agent(
-        state_shape,
-        action_shape,
-        config.get("loss_function"),
-        config.get("learning_rate"),
-    )
-    target_model = ql.agent(
-        state_shape,
-        action_shape,
-        config.get("loss_function"),
-        config.get("learning_rate"),
-    )
+# For cuda seed
+"""if torch.cuda.is_available():
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False"""
 
 
-    target_model.set_weights(model.get_weights())
+class Model_TrainTest:
+    def __init__(self, config):
 
-    replay_memory = config.get("replay_memory_size")
+        # Define RL parameters
+        self.train_mode = config["train_mode"]
+        self.RL_load_path = config["RL_load_path"]
+        self.save_path = config["save_path"]
+        self.save_interval = config["save_interval"]
 
-    network_sync_rate_count = 0
-    total_reward = 0
-    step_count = 0
+        self.clip_grad_normalization = config["clip_grad_normalization"]
+        self.learning_rate = config["learning_rate"]
+        self.discount_factor = config["discount_factor"]
+        self.batch_size = config["batch_size"]
+        self.update_frequency = config["target_model_update"]
+        self.max_episodes = config["total_episodes"]
+        self.max_steps = config["max_steps_per_episode"]
+        self.render = config["render"]
 
-    run, config = ql.start_run(project="sunburst-maze", config=config)
+        self.epsilon = config["epsilon"]
+        self.epsilon_min = config["epsilon_min"]
+        self.epsilon_decay = config["epsilon_decay"]
 
-    for i in range(config.get("total_episodes")):
-        state = env.reset()
-        print(
-            "=" * 100,
-            "\nRunning episode: ",
-            i,
-            "\nMouse position: ({}, {})".format(state[0], state[1]),
-            "\nMouse orientation:",
-            state[2],
+        self.memory_capacity = config["memory_capacity"]
+
+        self.num_states = config["num_states"]
+        self.render_fps = config["render_fps"]
+
+        self.rewards = config["rewards"]
+        self.random_start_position = config["random_start_position"]
+        self.observation_space = config["observation_space"]
+
+        # Define Env
+        self.env = SunburstMazeDiscrete(
+            map_path_train,
+            render_mode="human" if render else None,
+            max_steps_per_episode=self.max_steps,
+            random_start_position=self.random_start_position,
+            rewards=self.rewards,
+            observation_space=self.observation_space,
+        )
+        self.env.metadata["render_fps"] = (
+            self.render_fps
+        )  # For max frame rate make it 0
+
+        # Define the agent class
+        self.agent = DQN_Agent(
+            env=self.env,
+            epsilon=self.epsilon,
+            epsilon_min=self.epsilon_min,
+            epsilon_decay=self.epsilon_decay,
+            clip_grad_normalization=self.clip_grad_normalization,
+            learning_rate=self.learning_rate,
+            discount=self.discount_factor,
+            memory_capacity=self.memory_capacity,
+            device=device,
+            seed=seed,
         )
 
-        done = False
-        total_reward = 0
-        total_rewards = []
+    def state_preprocess(self, state: int, num_states: int):
+        """
+        Converts the state to a one-hot encoded tensor,
+        that included the position as a one-hot encoding and the orientation as a one-hot encoding.
+        """
+        position = state[0]
+        orientation = state[1]
+        onehot_vector_position = torch.zeros(
+            num_states, dtype=torch.float32, device=device
+        )
+        onehot_vector_position[position] = 1
+        onehot_vector_orientation = torch.zeros(4, dtype=torch.float32, device=device)
+        onehot_vector_orientation[orientation] = 1
 
-        step_count = 0
+        
+        return torch.concat((onehot_vector_position, onehot_vector_orientation))
 
-        while not done:
+    def train(self):
+        """
+        Reinforcement learning training loop.
+        """
 
-            if render:
-                env.render()
+        total_steps = 0
+        self.reward_history = []
+        wandb.init(project="sunburst-maze", config=self)
 
-            if np.random.rand() <= epsilon:
-                action = env.action_space.sample()
-                # print(action)
-            else:
+        # Training loop over episodes
+        for episode in range(1, self.max_episodes + 1):
+            state, _ = self.env.reset()
+            state = self.state_preprocess(state, num_states=self.num_states)
+            done = False
+            truncation = False
+            steps_done = 0
+            total_reward = 0
 
-                encoded = state
-                encoded = ql.state_to_input(encoded, env_size)
-                encoded = encoded.flatten().reshape(1, -1)
-                action = np.argmax(model.predict(encoded))
-                # print(action)
+            while not done and not truncation:
+                action = self.agent.select_action(state)
+                next_state, reward, done, truncation, _ = self.env.step(action)
+                next_state = self.state_preprocess(
+                    next_state, num_states=self.num_states
+                )
 
-            new_state, reward, done, _, info = env.step(action)
-            # print("Reward: ", reward, "New State: ", new_state, "Done: ", done)
-            total_reward += reward
-            encoded = ql.state_to_input(state, env_size)
-            new_encoded = ql.state_to_input(new_state, env_size)
-            replay_memory.append(
-                [encoded.flatten(), action, reward, new_encoded.flatten(), done]
+
+                self.agent.replay_memory.store(state, action, next_state, reward, done)
+
+
+                if (
+                    len(self.agent.replay_memory) > self.batch_size
+                    and sum(self.reward_history) > 0
+                ):  # Start learning after some episodes and the agent has achieved some reward
+                    self.agent.learn(self.batch_size, (done or truncation))
+
+                    # Update target-network weights
+                    if total_steps % self.update_frequency == 0:
+                        self.agent.hard_update()
+
+                state = next_state
+                total_reward += reward
+                steps_done += 1
+
+            # Appends for tracking history
+            self.reward_history.append(total_reward)  # episode reward
+            total_steps += steps_done
+
+            # Decay epsilon at the end of each episode
+            self.agent.update_epsilon()
+
+
+            # -- based on interval
+            if episode % self.save_interval == 0:
+                self.agent.save(self.save_path + "_" + f"{episode}" + ".pth")
+
+                print("\n~~~~~~Interval Save: Model saved.\n")
+
+
+            wandb.log(
+                {
+                    "Episode": episode,
+                    "Reward per episode": total_reward,
+                    "Epsilon": self.agent.epsilon,
+                    "Steps done": steps_done,
+                }
             )
 
-            state = new_state
+    def test(self, max_episodes):
+        """
+        Reinforcement learning policy evaluation.
+        """
 
-            network_sync_rate_count += 1
+        # Load the weights of the test_network
+        self.agent.model.load_state_dict(torch.load(self.RL_load_path))
+        self.agent.model.eval()
 
-            step_count += 1
+        # Testing loop over episodes
+        for episode in range(1, max_episodes + 1):
+            state, _ = self.env.reset(seed=seed)
+            done = False
+            truncation = False
+            steps_done = 0
+            total_reward = 0
 
-            if done:
-                ql.train(
-                    replay_memory=replay_memory,
-                    model=model,
-                    target_model=target_model,
-                    done=done,
-                    batch_size=config.get("batch_size"),
-                    discount_factor=config.get("discount_factor"),
-                    alpha=config.get("alpha"),
+            while not done and not truncation:
+                state = self.state_preprocess(state, num_states=self.num_states)
+                action = self.agent.select_action(state)
+                next_state, reward, done, truncation, _ = self.env.step(action)
 
-                )
-                # print(len(total_rewards))
-                total_rewards.append(total_reward)
+                state = next_state
+                total_reward += reward
+                steps_done += 1
 
-            
-                if network_sync_rate_count > config.get("target_model_update"):
-                    print("Updating target model")
-                    target_model.set_weights(model.get_weights())
-                    network_sync_rate_count = 0
+            # Print log
+            result = (
+                f"Episode: {episode}, "
+                f"Steps: {steps_done:}, "
+                f"Reward: {total_reward:.2f}, "
+            )
+            print(result)
 
-                # Decay epsilon
-                epsilon = (
-                    epsilon + config.get("epsilon_decay")
-                    if epsilon > config.get("epsilon_min")
-                    else config.get("epsilon_min")
-                )
-                print(f"Total Reward: {total_reward}, \nEpsilon: {epsilon}")
-                # ql.save_losses()
-
-        wandb.log({"Reward per episode": total_reward, "Epsilon decay": epsilon, "Number of steps per episode": step_count})
-
-        if i % 10 == 0 and i != 0:
-            print(f"Total Reward: {total_reward}, \nEpsilon: {epsilon:.2f}")
-            # wandb.log({"Total reward": total_reward, "Epsilon": epsilon})
-            # Save the model
-            model.save(f"model_episode_{i}.keras")
+        pygame.quit()  # close the rendering window
 
 
-    # Save the model
-    ql.save_losses()
+def get_num_states(map_path):
 
+    num_rows = 0
+    num_cols = 0
+    with open(map_path, "r") as f:
+        for line_num, line in enumerate(f):
+            num_rows += 1
+            num_cols = len(line.strip().split(","))
+    num_states = num_rows * num_cols
+    return num_states
+
+    num_rows=0
+    num_cols=0
+    with open(map_path, "r") as f:
+        for line_num, line in enumerate(f):
+            num_rows += 1
+            num_cols = len(line.strip().split(","))
+    num_states = num_rows*num_cols
+    return num_states
 
 if __name__ == "__main__":
-    train_agent()
-    # test_agent()
+    # Parameters:
+    train_mode = True
+    render = not train_mode
+
+    map_version = map_path_train.split("/")[-2]
+
+    # Read the map file to find the number of states
+    num_states = get_num_states(map_path_train)
+    print(num_states)
+
+    # Parameters
+    config = {
+        "train_mode": train_mode,
+        "render": render,
+        "RL_load_path": f"./model/sunburst_maze_{map_version}_1000.pth",
+        "save_path": f"./model/sunburst_maze_{map_version}",
+        "loss_function": "mse",
+        "learning_rate": 6e-4,
+        "batch_size": 100,
+        "optimizer": "adam",
+        "total_episodes": 1000,
+        "epsilon": 1 if train_mode else -1,
+        "epsilon_decay": 0.995,
+        "epsilon_min": 0.1,
+        "discount_factor": 0.93,
+        "alpha": 0.1,
+        "map_path": map_path_train,
+        "target_model_update": 10,  # hard update of the target model
+        "max_steps_per_episode": 500,
+        "random_start_position": True,
+        "rewards": {
+            "is_goal": 200,
+            "hit_wall": -0.1,
+            "has_not_moved": -0.1,
+            "new_square": 0.2,
+        },
+        # TODO
+        "observation_space": {
+            "position": True,
+            "orientation": True,
+            "steps_to_goal": True,
+            "last_known_steps": 5,
+        },
+        "save_interval": 500,
+        "memory_capacity": 500_000,
+        "render_fps": 8,
+        "num_states": num_states,
+        "clip_grad_normalization": 3,
+    }
+
+    # Run
+    DRL = Model_TrainTest(config)
+    # Train
+    if train_mode:
+        DRL.train()
+    else:
+        # Test
+        DRL.test(max_episodes=config["total_episodes"])

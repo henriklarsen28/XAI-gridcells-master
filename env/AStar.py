@@ -15,7 +15,7 @@ def manhattanDistance(graph, src, goal):
     Returns:
     - int: The Manhattan distance between the source and goal nodes.
     """
-    checkpoint = (3,17)
+    checkpoint = (1,4)
     checkpoint_dist = abs(graph[src].pos[0] - graph[checkpoint].pos[0]) + abs(graph[src].pos[1] - graph[checkpoint].pos[1])
     return abs(graph[src].pos[0] - graph[goal].pos[0]) + abs(graph[src].pos[1] - graph[goal].pos[1]) + checkpoint_dist
 
