@@ -42,8 +42,27 @@ def play_with_keyboard():
         None
     """
 
+    config = {
+
+        "rewards": {
+            "is_goal": 200,
+            "hit_wall": -0.1,
+            "has_not_moved": -0.1,
+            "new_square": 0.2,
+        },
+        # TODO
+        "observation_space": {
+            "position": True,
+            "orientation": True,
+            "steps_to_goal": True,
+            "last_known_steps": 5,
+        },
+
+    }
+
+
     env = SunburstMazeDiscrete(
-        maze_file="../env/map_v0.1/map_closed_doors.csv", render_mode="human"
+        maze_file="../env/map_v0/map_closed_doors.csv", render_mode="human", rewards=config["rewards"], observation_space=config["observation_space"]
     )
 
     pygame.init()
