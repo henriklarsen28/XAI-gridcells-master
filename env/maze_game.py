@@ -12,7 +12,7 @@ grey = (192, 192, 192)
 
 
 
-NUMBER_OF_RAYS = 25
+NUMBER_OF_RAYS = 50
 RAY_LENGTH = 30 # VIEW_DISTANCE BLOCKS
 FIELD_OF_VIEW = math.pi / 1.1 # 180 degrees
 HALF_FOV = FIELD_OF_VIEW / 2
@@ -188,7 +188,18 @@ class Maze:
             start_angle += STEP_ANGLE
 
 
-
+    def draw_marked_blocks(self):
+        for square in self.marked_squares:
+            pygame.draw.rect(
+                self.win,
+                (0,0,255),
+                (
+                    square[1] * self.cell_size,
+                    square[0] * self.cell_size,
+                    self.cell_size,
+                    self.cell_size,
+                ),
+            )
 
 
 
@@ -204,9 +215,11 @@ class Maze:
         Returns:
             None
         """
+        self.marked_squares = set()
         self.win.fill(white)  # fill screen before drawing
         self.draw_maze(env_map)
         self.draw_sprite(position, orientation)
         self.draw_raycast(position, orientation)
+        self.draw_marked_blocks()
         pygame.display.flip()
         self.clock.tick(self.framerate)
