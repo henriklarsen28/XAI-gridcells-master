@@ -14,10 +14,15 @@ grey = (192, 192, 192)
 
 NUMBER_OF_RAYS = 50
 RAY_LENGTH = 30 # VIEW_DISTANCE BLOCKS
-FIELD_OF_VIEW = math.pi / 1.1 # 180 degrees
+FIELD_OF_VIEW = math.pi / 2 # 180 degrees
 HALF_FOV = FIELD_OF_VIEW / 2
 STEP_ANGLE = FIELD_OF_VIEW / NUMBER_OF_RAYS
 
+
+MATRIX_WIDTH = math.ceil(math.sin(HALF_FOV) * RAY_LENGTH)
+
+MATRIX_WIDTH = MATRIX_WIDTH if MATRIX_WIDTH % 2 == 1 else MATRIX_WIDTH + 1
+MATRIX_MIDDLE = math.ceil(MATRIX_WIDTH / 2)
 
 class Maze:
 
@@ -44,7 +49,7 @@ class Maze:
         self.marked_squares = set()
 
         self.win = pygame.display.set_mode((screen_width, screen_height))
-        pygame.display.set_caption("First Game")
+        pygame.display.set_caption("Toril's maze")
 
         # load sprite
         script_dir = os.path.dirname(__file__)
@@ -65,6 +70,7 @@ class Maze:
         self.framerate = framerate
         self.draw_frame(self.env_map, position, orientation)
 
+
     def select_sprite(self, orientation: int):
         """
         Selects the appropriate sprite based on the given orientation.
@@ -83,6 +89,27 @@ class Maze:
             return self.sprite_down
         elif orientation == 3:
             return self.sprite_left
+        
+    def calculate_fov_matrix(self):
+        matrix = np.zeros((MATRIX_WIDTH, RAY_LENGTH))
+
+        print("Shape: ", matrix.shape)
+        print("Middle: ", MATRIX_MIDDLE)
+        print("Matrix: ", matrix)
+
+        import matplotlib.pyplot as plt
+        x, y = zip(*self.marked_2)
+        # Plotting the points
+        plt.scatter(x,y, marker='o', color='b')
+
+        # Adding labels and title
+        plt.xlabel('X axis')
+        plt.ylabel('Y axis')
+        plt.title('Plot of Coordinates')
+
+        # Display the plot
+        plt.show()
+
 
     # set up the maze
     def draw_maze(self, env_map: np.array) -> None:
@@ -173,18 +200,25 @@ class Maze:
         elif orientation == 3:
             ray_shift_y = 40
             ray_shift_x = 20
+        self.marked_2 = set()
 
         start_angle = agent_angle - HALF_FOV
         for ray in range(NUMBER_OF_RAYS):
             for depth in range(RAY_LENGTH):
                 x = int(position[0] - depth * math.cos(start_angle))
                 y = int(position[1] + depth * math.sin(start_angle))
+                
                 if self.env_map[x][y] == 1:
                     pygame.draw.line(self.win, (255,0,0), ((position_ahead[1] * self.cell_size) + ray_shift_y, (position_ahead[0] * self.cell_size) + ray_shift_x), (y * self.cell_size+15, x * self.cell_size+15))
                     break
 
+                x_2 = int(MATRIX_MIDDLE + depth * math.cos(start_angle))
+                y_2 = int(RAY_LENGTH - depth * math.sin(start_angle))
+
                 marked_square = (x, y)
+                print("Position in matrix: ", x_2, y_2)
                 self.marked_squares.add(marked_square)
+                self.marked_2.add((x_2, y_2))
             start_angle += STEP_ANGLE
 
 
@@ -200,7 +234,6 @@ class Maze:
                     self.cell_size,
                 ),
             )
-
 
 
     def draw_frame(self, env_map: np.array, position: tuple, orientation: int):
@@ -221,5 +254,10 @@ class Maze:
         self.draw_sprite(position, orientation)
         self.draw_raycast(position, orientation)
         self.draw_marked_blocks()
+        
+        print("Marked squares: ", self.marked_squares)
+        print("Marked 2: ", self.marked_2)
+        print("Position: ", position)
         pygame.display.flip()
+        self.calculate_fov_matrix()
         self.clock.tick(self.framerate)
