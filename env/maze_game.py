@@ -15,7 +15,7 @@ grey = (192, 192, 192)
 
 NUMBER_OF_RAYS = 50
 RAY_LENGTH = 30 # VIEW_DISTANCE BLOCKS
-FIELD_OF_VIEW = math.pi / 2 # 180 degrees
+FIELD_OF_VIEW = math.pi / 2 # 90 degrees
 HALF_FOV = FIELD_OF_VIEW / 2
 STEP_ANGLE = FIELD_OF_VIEW / NUMBER_OF_RAYS
 
@@ -183,7 +183,7 @@ class Maze:
             ),
         )
 
-    def calculate_square_aheat(self, position: tuple, orientation: int):
+    def calculate_square_ahead(self, position: tuple, orientation: int):
 
         if orientation == 0:
             return (position[0] - 1, position[1])
@@ -198,7 +198,7 @@ class Maze:
 
     def draw_raycast(self, position: tuple, orientation):
         agent_angle = orientation * math.pi / 2 # 0, 90, 180, 270
-        position_ahead = self.calculate_square_aheat(position, orientation)
+        position_ahead = self.calculate_square_ahead(position, orientation)
         ray_shift_x = 0
         ray_shift_y = 0
         if orientation == 0:
@@ -225,11 +225,18 @@ class Maze:
                     pygame.draw.line(self.win, (255,0,0), ((position_ahead[1] * self.cell_size) + ray_shift_y, (position_ahead[0] * self.cell_size) + ray_shift_x), (y * self.cell_size+15, x * self.cell_size+15))
                     break
 
-                x_2 = int(MATRIX_MIDDLE + depth * math.cos(start_angle))
-                y_2 = int(RAY_LENGTH - depth * math.sin(start_angle))
+                y_2 = math.ceil(depth * math.cos(start_angle))
+                x_2 = int(MATRIX_MIDDLE - 1 + depth * math.sin(start_angle))
+                #if y_2 == 9 or x_2 == 9:
+                print("Position: ",y_2, x_2, "\n", depth * math.cos(start_angle))
+                if orientation == 1:
+                    y_2 = int(0 + depth * math.sin(start_angle))
+                    x_2 = int(MATRIX_MIDDLE - 1 + depth * math.cos(start_angle)) 
+                
+                # Change position based on orientaion
 
                 marked_square = (x, y)
-                print("Position in matrix: ", x_2, y_2)
+                #print("Position in matrix: ", x_2, y_2)
                 self.marked_squares.add(marked_square)
                 self.marked_2.add((x_2, y_2))
             start_angle += STEP_ANGLE
