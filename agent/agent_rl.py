@@ -12,9 +12,9 @@ import keras as keras
 import numpy as np
 import pygame
 import torch
-import wandb
 from dqn_agent import DQN_Agent
 
+import wandb
 from env import SunburstMazeDiscrete
 
 wandb.login()
@@ -277,6 +277,7 @@ if __name__ == "__main__":
             "hit_wall": -0.1,
             "has_not_moved": -0.1,
             "new_square": 0.2,
+            "max_steps_reached": 0
         },
         # TODO
         "observation_space": {
