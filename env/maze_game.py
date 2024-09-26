@@ -15,6 +15,7 @@ class Maze:
 
     def __init__(
         self,
+        render_mode: str,
         map_file: str,
         env_map: np.array,
         width: int,
@@ -25,20 +26,26 @@ class Maze:
         observed_squares_map: set,
         wall_rays: set,
     ):
-        pygame.init()
+        self.render_mode = render_mode
         self.map_file = map_file
         self.env_map = env_map
         self.width = width
         self.height = height
-
+        self.position = position
+        self.orientation = orientation
         self.cell_size = 30
         screen_width = width * self.cell_size
         screen_height = height * self.cell_size
 
-        self.marked_squares = set()
-
-        self.win = pygame.display.set_mode((screen_width, screen_height))
-        pygame.display.set_caption("Toril's maze")
+        if render_mode == "rgb_array":
+            os.environ['SDL_VIDEODRIVER'] = 'dummy' # run in headless mode (no display)
+            pygame.init()
+            pygame.display.set_mode((1, 1))
+            self.win = pygame.Surface((screen_width, screen_height))
+        else:
+            pygame.init()
+            pygame.display.set_caption("First Game")
+            self.win = pygame.display.set_mode((screen_width, screen_height))
 
         # load sprite
         script_dir = os.path.dirname(__file__)
@@ -57,7 +64,7 @@ class Maze:
 
         self.clock = pygame.time.Clock()
         self.framerate = framerate
-        self.draw_frame(self.env_map, position, orientation, observed_squares_map, wall_rays)
+        self.draw_frame(self.env_map, observed_squares_map, wall_rays)
 
     def select_sprite(self, orientation: int):
         """
@@ -266,8 +273,6 @@ class Maze:
     def draw_frame(
         self,
         env_map: np.array,
-        position: tuple,
-        orientation: int,
         observed_squares_map: set,
         wall_rays: set,
     ):
@@ -286,18 +291,15 @@ class Maze:
         self.marked_2 = set()
         self.win.fill(white)  # fill screen before drawing
         self.draw_maze(env_map)
-        self.draw_sprite(position, orientation)
-        #self.draw_raycast(position, orientation)
-        # self.draw_marked_blocks()
-        self.draw_rays(position, orientation, wall_rays)
+        self.draw_sprite(self.position, self.orientation)
+        self.draw_rays(self.position, self.orientation, wall_rays)
         self.draw_marked_blocks(observed_squares_map)
 
-        """print("Marked squares: ", self.marked_squares)
-        print("Marked 2: ", self.marked_2)
-        print("Position: ", position)"""
-        # matrix = self.calculate_fov_matrix(orientation)
-        pygame.display.flip()
-
+        if self.render_mode == "human":
+            pygame.display.flip()
         self.clock.tick(self.framerate)
 
-        # return matrix
+        if self.render_mode == "rgb_array":
+            rgb_array = pygame.surfarray.array3d(self.win)
+            rgb_array = np.transpose(rgb_array, (1, 0, 2))
+            return rgb_array

@@ -6,12 +6,12 @@ import gymnasium as gym
 import numpy as np
 import pygame
 from gymnasium import spaces
+from PIL import Image
 from tqdm import tqdm
-import copy
 
 from utils.calculate_fov import calculate_fov_matrix_size, step_angle
 
-#from .AStar import astar
+from .AStar import astar
 from .file_manager import build_map
 from .Graph import Graph
 from .maze_game import Maze
@@ -37,7 +37,7 @@ def build_step_length_map(env_map, goal):
     env_graph = graph.make_graph()
     print("Graph made")
     # Iterate through every position in the map
-    '''steps_to_goal = np.zeros((env_map.shape[0], env_map.shape[1]))
+    """steps_to_goal = np.zeros((env_map.shape[0], env_map.shape[1]))
     for y in tqdm(range(env_map.shape[0])):
         for x in range(env_map.shape[1]):
             if env_map[y][x] == 1:
@@ -54,7 +54,8 @@ def build_step_length_map(env_map, goal):
             ):
                 steps_to_goal[y][x] = steps_to_goal[y - 1][x] + 1
     return steps_to_goal
-'''
+"""
+
 
 def calculate_a_star_distance(graph, start, end):
     a_star = astar(graph, start, end)
@@ -93,7 +94,6 @@ class SunburstMazeDiscrete(gym.Env):
         print("height:", self.height, "width:", self.width, "goal:", self.goal)
 
         # Three possible actions: forward, left, right
-        
 
         self._action_to_direction = {
             "forward": self.move_forward,
@@ -139,7 +139,9 @@ class SunburstMazeDiscrete(gym.Env):
 
         self.action_space = spaces.Discrete(3)
 
-        self.observation_space = spaces.Discrete(self.matrix_size[0] * self.matrix_size[1])
+        self.observation_space = spaces.Discrete(
+            self.matrix_size[0] * self.matrix_size[1]
+        )
 
     def goal_position(self):
         for y in range(self.height):
@@ -227,7 +229,6 @@ class SunburstMazeDiscrete(gym.Env):
 
         return matrix
 
-    
     def reset(self, seed=None, options=None) -> tuple:
 
         super().reset(seed=seed)
@@ -244,7 +245,7 @@ class SunburstMazeDiscrete(gym.Env):
         observation = self._get_observation()
 
         # Render the maze
-        if self.render_mode == "human":
+        if self.render_mode == "human" or self.render_mode == "rgb_array":
             framerate = self.metadata["render_fps"]
 
             self.render_maze = Maze(
@@ -272,7 +273,6 @@ class SunburstMazeDiscrete(gym.Env):
         self.goal_observed_square = set()
 
         agent_angle = self.orientation * math.pi / 2  # 0, 90, 180, 270
-
 
         start_angle = agent_angle - self.half_fov
         for ray in range(self.number_of_rays):
@@ -302,7 +302,6 @@ class SunburstMazeDiscrete(gym.Env):
 
         matrix = self.calculate_fov_matrix()
         return matrix
-
 
     def can_move_forward(self) -> bool:
         """
@@ -467,8 +466,6 @@ class SunburstMazeDiscrete(gym.Env):
         observation = self._get_observation()
         terminated = self.is_goal()
         info = self._get_info()
-        if self.render_mode == "human":
-            self._render_frame()
 
         return observation, reward, terminated, False, info
 
@@ -568,18 +565,38 @@ class SunburstMazeDiscrete(gym.Env):
         return -0.1
 
     def render(self):
-        if self.render_mode == "rgb_array" or self.render_mode == "human":
-            return self._render_frame()
+        self._render_frame()
 
     def _render_frame(self):
-        self.render_maze.draw_frame(
-            self.env_map,
-            self.position,
-            self.orientation,
-            self.observed_squares_map,
-            self.wall_rays,
-        )
+        if self.render_mode == "rgb_array":
+            return np.asarray(
+                self.render_maze.draw_frame(
+                    self.env_map, self.observed_squares_map, self.wall_rays
+                )
+            )
+        elif self.render_mode == "human":
+            self.render_maze.draw_frame(
+                self.env_map, self.observed_squares_map, self.wall_rays
+            )
 
     def close(self):  # TODO: Not tested
         if self.window is not None:
             pygame.display.quit()
+
+    def create_gif(self, gif_path: str, frames: list):
+        """
+        Creates a GIF from a list of frames.
+
+        Args:
+            frames (list): A list of frames to be included in the GIF.
+            gif_path (str): The path to save the GIF file.
+            duration (int): The duration of each frame in milliseconds.
+
+        Returns:
+            None
+        """
+        images = [Image.fromarray(frame) for frame in frames]
+        images[0].save(
+            gif_path, save_all=True, append_images=images[1:], duration=100, loop=0
+        )
+        return gif_path
