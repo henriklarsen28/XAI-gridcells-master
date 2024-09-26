@@ -3,7 +3,6 @@ import os
 
 import numpy as np
 import pygame
-import math
 
 white = (255, 255, 255)
 black = (0, 0, 0)
@@ -12,18 +11,19 @@ red = (255, 0, 0)
 grey = (192, 192, 192)
 
 
-
-NUMBER_OF_RAYS = 50
-RAY_LENGTH = 30 # VIEW_DISTANCE BLOCKS
-FIELD_OF_VIEW = math.pi / 2 # 90 degrees
+NUMBER_OF_RAYS = 100
+RAY_LENGTH = 10  # VIEW_DISTANCE BLOCKS
+FIELD_OF_VIEW = math.pi / 1.5  # 120 degrees
 HALF_FOV = FIELD_OF_VIEW / 2
 STEP_ANGLE = FIELD_OF_VIEW / NUMBER_OF_RAYS
 
 
-MATRIX_WIDTH = math.ceil(math.sin(HALF_FOV) * RAY_LENGTH)
+MATRIX_WIDTH = int(2 * math.sin(HALF_FOV) * RAY_LENGTH)
 
 MATRIX_WIDTH = MATRIX_WIDTH if MATRIX_WIDTH % 2 == 1 else MATRIX_WIDTH + 1
-MATRIX_MIDDLE = math.ceil(MATRIX_WIDTH / 2)
+MATRIX_MIDDLE_INDEX = int(MATRIX_WIDTH / 2)
+print(MATRIX_MIDDLE_INDEX)
+
 
 class Maze:
 
@@ -81,7 +81,6 @@ class Maze:
         self.draw_frame(self.env_map, observed_squares_map, wall_rays)
 
         self.marked_squares = set()
-
 
     def select_sprite(self, orientation: int):
         """
@@ -195,15 +194,14 @@ class Maze:
             return (position[0], position[1] - 1)
         return position
 
-
     def draw_raycast(self, position: tuple, orientation):
-        agent_angle = orientation * math.pi / 2 # 0, 90, 180, 270
+        agent_angle = orientation * math.pi / 2  # 0, 90, 180, 270
         position_ahead = self.calculate_square_ahead(position, orientation)
         ray_shift_x = 0
         ray_shift_y = 0
         if orientation == 0:
             ray_shift_y = 20
-            ray_shift_x= 40
+            ray_shift_x = 40
         elif orientation == 1:
             ray_shift_y = 0
             ray_shift_x = 20
@@ -213,61 +211,51 @@ class Maze:
         elif orientation == 3:
             ray_shift_y = 40
             ray_shift_x = 20
-        self.marked_2 = set()
 
         start_angle = agent_angle - HALF_FOV
         for ray in range(NUMBER_OF_RAYS):
             for depth in range(RAY_LENGTH):
                 x = int(position[0] - depth * math.cos(start_angle))
                 y = int(position[1] + depth * math.sin(start_angle))
-                
+
                 if self.env_map[x][y] == 1:
-                    pygame.draw.line(self.win, (255,0,0), ((position_ahead[1] * self.cell_size) + ray_shift_y, (position_ahead[0] * self.cell_size) + ray_shift_x), (y * self.cell_size+15, x * self.cell_size+15))
+                    pygame.draw.line(
+                        self.win,
+                        (255, 0, 0),
+                        (
+                            (position_ahead[1] * self.cell_size) + ray_shift_y,
+                            (position_ahead[0] * self.cell_size) + ray_shift_x,
+                        ),
+                        (y * self.cell_size + 15, x * self.cell_size + 15),
+                    )
                     break
 
-                y_2 = math.ceil(depth * math.cos(start_angle))
-                x_2 = int(MATRIX_MIDDLE - 1 + depth * math.sin(start_angle))
-                #if y_2 == 9 or x_2 == 9:
-                print("Position: ",y_2, x_2, "\n", depth * math.cos(start_angle))
-                if orientation == 1:
-                    y_2 = int(0 + depth * math.sin(start_angle))
-                    x_2 = int(MATRIX_MIDDLE - 1 + depth * math.cos(start_angle)) 
-                
-                # Change position based on orientaion
+                if orientation == 0 or orientation == 2:
+                    x_2 = int(MATRIX_MIDDLE_INDEX + depth * math.sin(start_angle))
+                    y_2 = 0 + math.ceil(depth * math.cos(start_angle))
+                if orientation == 1 or orientation == 3:
+                    y_2 = int(depth * math.sin(start_angle))
+                    x_2 = MATRIX_MIDDLE_INDEX - math.ceil(depth * math.cos(start_angle))
 
+                # Change position based on orientaion
                 marked_square = (x, y)
-                #print("Position in matrix: ", x_2, y_2)
+                # print("Position in matrix: ", x_2, y_2)
                 self.marked_squares.add(marked_square)
                 self.marked_2.add((x_2, y_2))
             start_angle += STEP_ANGLE
 
-
     def draw_marked_blocks(self):
+        surface = pygame.Surface((self.cell_size, self.cell_size), pygame.SRCALPHA)
+        surface.set_alpha(128)
+        surface.fill((0, 0, 255))
         for square in self.marked_squares:
-            pygame.draw.rect(
-                self.win,
-                (0,0,255),
-                (
-                    square[1] * self.cell_size,
-                    square[0] * self.cell_size,
-                    self.cell_size,
-                    self.cell_size,
-                ),
+            surface.fill(
+                (0, 0, 255),
+            )
+            self.win.blit(
+                surface, (square[1] * self.cell_size, square[0] * self.cell_size)
             )
 
-
-
-    def calculate_square_ahead(self, position: tuple, orientation: int):
-
-        if orientation == 0:
-            return (position[0] - 1, position[1])
-        elif orientation == 1:
-            return (position[0], position[1] + 1)
-        elif orientation == 2:
-            return (position[0] + 1, position[1])
-        elif orientation == 3:
-            return (position[0], position[1] - 1)
-        return position
 
     """def draw_raycast(self, position: tuple, orientation):
         agent_angle = orientation * math.pi / 2  # 0, 90, 180, 270
@@ -347,18 +335,6 @@ class Maze:
                     (position_ahead[0] * self.cell_size) + ray_shift_x,
                 ),
                 (y * self.cell_size + 15, x * self.cell_size + 15),
-            )
-
-    def draw_marked_blocks(self, observed_squares_map: set):
-        surface = pygame.Surface((self.cell_size, self.cell_size), pygame.SRCALPHA)
-        surface.set_alpha(128)
-        surface.fill((0, 0, 255))
-        for square in observed_squares_map:
-            surface.fill(
-                (0, 0, 255),
-            )
-            self.win.blit(
-                surface, (square[1] * self.cell_size, square[0] * self.cell_size)
             )
 
     def draw_frame(
