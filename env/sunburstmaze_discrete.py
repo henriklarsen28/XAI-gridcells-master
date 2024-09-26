@@ -180,6 +180,9 @@ class SunburstMazeDiscrete(gym.Env):
         # One hot encoding for orientation
         # orientation = np.zeros(4)
         # orientation[int(self.orientation)] = 1
+
+        # Get the matrix of marked squares without rendering
+
         return np.array([position_as_int, self.orientation])
 
     """  def raycast(self, viewing_angle=45, viewing_distance=10):
