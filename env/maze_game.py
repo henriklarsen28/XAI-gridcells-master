@@ -11,20 +11,6 @@ red = (255, 0, 0)
 grey = (192, 192, 192)
 
 
-NUMBER_OF_RAYS = 100
-RAY_LENGTH = 10  # VIEW_DISTANCE BLOCKS
-FIELD_OF_VIEW = math.pi / 1.5  # 120 degrees
-HALF_FOV = FIELD_OF_VIEW / 2
-STEP_ANGLE = FIELD_OF_VIEW / NUMBER_OF_RAYS
-
-
-MATRIX_WIDTH = int(2 * math.sin(HALF_FOV) * RAY_LENGTH)
-
-MATRIX_WIDTH = MATRIX_WIDTH if MATRIX_WIDTH % 2 == 1 else MATRIX_WIDTH + 1
-MATRIX_MIDDLE_INDEX = int(MATRIX_WIDTH / 2)
-print(MATRIX_MIDDLE_INDEX)
-
-
 class Maze:
 
     def __init__(
@@ -36,6 +22,8 @@ class Maze:
         framerate: int,
         position: tuple,
         orientation: int,
+        observed_squares_map: set,
+        wall_rays: set,
     ):
         pygame.init()
         self.map_file = map_file
@@ -69,7 +57,7 @@ class Maze:
 
         self.clock = pygame.time.Clock()
         self.framerate = framerate
-        self.draw_frame(self.env_map, position, orientation)
+        self.draw_frame(self.env_map, position, orientation, observed_squares_map, wall_rays)
 
     def select_sprite(self, orientation: int):
         """
@@ -89,7 +77,7 @@ class Maze:
             return self.sprite_down
         elif orientation == 3:
             return self.sprite_left
-
+    """
     def calculate_fov_matrix(self, orientation: int):
         matrix = np.zeros((RAY_LENGTH, MATRIX_WIDTH))
 
@@ -111,7 +99,7 @@ class Maze:
         df.to_csv("matrix.csv")
 
         return matrix
-
+    """
     # set up the maze
     def draw_maze(self, env_map: np.array) -> None:
         """
@@ -183,7 +171,7 @@ class Maze:
             return (position[0], position[1] - 1)
         return position
 
-    def draw_raycast(self, position: tuple, orientation):
+    """def draw_raycast(self, position: tuple, orientation):
         agent_angle = orientation * math.pi / 2  # 0, 90, 180, 270
         position_ahead = self.calculate_square_ahead(position, orientation)
         ray_shift_x = 0
@@ -231,13 +219,43 @@ class Maze:
                 # print("Position in matrix: ", x_2, y_2)
                 self.marked_squares.add(marked_square)
                 self.marked_2.add((x_2, y_2))
-            start_angle += STEP_ANGLE
+            start_angle += STEP_ANGLE"""
 
-    def draw_marked_blocks(self):
+    def draw_rays(self, position: tuple, orientation: int, wall_rays: set):
+        agent_angle = orientation * math.pi / 2
+        position_ahead = self.calculate_square_ahead(position, orientation)
+
+        ray_shift_x = 0
+        ray_shift_y = 0
+        if orientation == 0:
+            ray_shift_y = 20
+            ray_shift_x = 40
+        elif orientation == 1:
+            ray_shift_y = 0
+            ray_shift_x = 20
+        elif orientation == 2:
+            ray_shift_y = 20
+            ray_shift_x = 0
+        elif orientation == 3:
+            ray_shift_y = 40
+            ray_shift_x = 20
+
+        for x,y in wall_rays:
+            pygame.draw.line(
+                self.win,
+                (255, 0, 0),
+                (
+                    (position_ahead[1] * self.cell_size) + ray_shift_y,
+                    (position_ahead[0] * self.cell_size) + ray_shift_x,
+                ),
+                (y * self.cell_size + 15, x * self.cell_size + 15),
+            )
+
+    def draw_marked_blocks(self, observed_squares_map: set):
         surface = pygame.Surface((self.cell_size, self.cell_size), pygame.SRCALPHA)
         surface.set_alpha(128)
         surface.fill((0, 0, 255))
-        for square in self.marked_squares:
+        for square in observed_squares_map:
             surface.fill(
                 (0, 0, 255),
             )
@@ -245,7 +263,14 @@ class Maze:
                 surface, (square[1] * self.cell_size, square[0] * self.cell_size)
             )
 
-    def draw_frame(self, env_map: np.array, position: tuple, orientation: int):
+    def draw_frame(
+        self,
+        env_map: np.array,
+        position: tuple,
+        orientation: int,
+        observed_squares_map: set,
+        wall_rays: set,
+    ):
         """
         Draws a frame of the maze game.
 
@@ -262,15 +287,17 @@ class Maze:
         self.win.fill(white)  # fill screen before drawing
         self.draw_maze(env_map)
         self.draw_sprite(position, orientation)
-        self.draw_raycast(position, orientation)
-        self.draw_marked_blocks()
+        #self.draw_raycast(position, orientation)
+        # self.draw_marked_blocks()
+        self.draw_rays(position, orientation, wall_rays)
+        self.draw_marked_blocks(observed_squares_map)
 
         """print("Marked squares: ", self.marked_squares)
         print("Marked 2: ", self.marked_2)
         print("Position: ", position)"""
-        matrix = self.calculate_fov_matrix(orientation)
+        # matrix = self.calculate_fov_matrix(orientation)
         pygame.display.flip()
 
         self.clock.tick(self.framerate)
 
-        return matrix
+        # return matrix

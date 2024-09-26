@@ -21,11 +21,11 @@ class DQN_Network(nn.Module):
         super(DQN_Network, self).__init__()
 
         self.FC = nn.Sequential(
-            nn.Linear(input_dim, 12),
+            nn.Linear(input_dim, 128),
             nn.ReLU(inplace=True),
-            nn.Linear(12, 8),
+            nn.Linear(128, 32),
             nn.ReLU(inplace=True),
-            nn.Linear(8, num_actions),
+            nn.Linear(32, num_actions),
         )
 
         # Initialize FC layer weights using He initialization

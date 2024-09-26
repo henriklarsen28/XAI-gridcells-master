@@ -1,4 +1,5 @@
 import copy
+import math
 import random as rd
 
 import gymnasium as gym
@@ -6,6 +7,8 @@ import numpy as np
 import pygame
 from gymnasium import spaces
 from tqdm import tqdm
+
+from utils.calculate_fov import calculate_fov_matrix_size, step_angle
 
 from .AStar import astar
 from .file_manager import build_map
@@ -69,6 +72,9 @@ class SunburstMazeDiscrete(gym.Env):
         random_start_position=None,
         rewards=None,
         observation_space=None,
+        fov=math.pi / 2,
+        ray_length=10,
+        number_of_rays=100,
     ):
         self.map_file = maze_file
         self.env_map = build_map(maze_file)
@@ -94,9 +100,7 @@ class SunburstMazeDiscrete(gym.Env):
         # self.steps_to_goal = np.zeros((self.env_map.shape[0], self.env_map.shape[1])) # Comment out for running with keyboard for faster loading
 
         # Three possible actions: forward, left, right
-        self.action_space = spaces.Discrete(3)
-
-        self.observation_space = spaces.Discrete(self.height * self.width)
+        
 
         self._action_to_direction = {
             "forward": self.move_forward,
@@ -126,6 +130,22 @@ class SunburstMazeDiscrete(gym.Env):
         self.visited_squares = []
         self.last_position = None
         self.last_moves = []
+
+        self.fov = fov
+        self.half_fov = self.fov / 2
+        self.ray_length = ray_length
+        self.number_of_rays = number_of_rays
+        self.matrix_size = calculate_fov_matrix_size(self.ray_length, self.half_fov)
+        self.step_angle = step_angle(self.fov, self.number_of_rays)
+        self.matrix_middle_index = int(self.matrix_size[1] / 2)
+
+        self.wall_rays = set()
+        self.observed_squares = set()
+        self.observed_squares_map = set()
+
+        self.action_space = spaces.Discrete(3)
+
+        self.observation_space = spaces.Discrete(self.matrix_size[0] * self.matrix_size[1])
 
     def goal_position(self):
         for y in range(self.height):
@@ -180,23 +200,35 @@ class SunburstMazeDiscrete(gym.Env):
         # One hot encoding for orientation
         # orientation = np.zeros(4)
         # orientation[int(self.orientation)] = 1
+        matrix = self.ray_casting()
+        matrix = matrix.flatten()
 
         # Get the matrix of marked squares without rendering
+        return np.array([*matrix, self.orientation])
 
-        return np.array([position_as_int, self.orientation])
+    def calculate_fov_matrix(self):
+        matrix = np.zeros(calculate_fov_matrix_size(self.ray_length, self.half_fov))
 
-    """  def raycast(self, viewing_angle=45, viewing_distance=10):
+        # Create a matrix with the marked squares from the marked_2 set
+        for square in self.observed_squares:
+            x, y = square
+            matrix[y, x] = 1
 
-        # Screen size
-        screen_width = self.width * 30  # Hardcoded in maze_game.py
-        screen_height = self.height * 30
+        if self.orientation == 2 or self.orientation == 3:
+            matrix = np.rot90(matrix, 2)
+            matrix = np.roll(matrix, 1, axis=0)
 
-        rng_width = np.arange(self.width)
-        rng_view = np.arange(viewing_distance + 1)
+        if self.orientation == 3:
+            matrix = np.roll(matrix, 1, axis=0)
 
-        rad_tan = np.tan(viewing_angle * np.pi / 360)
-        pass"""
+        import pandas as pd
 
+        df = pd.DataFrame(matrix)
+        df.to_csv("matrix.csv")
+
+        return matrix
+
+    
     def reset(self, seed=None, options=None) -> tuple:
 
         super().reset(seed=seed)
@@ -210,6 +242,7 @@ class SunburstMazeDiscrete(gym.Env):
 
         self.reset_checkpoints()
         self.last_moves = []
+        observation = self._get_observation()
 
         # Render the maze
         if self.render_mode == "human":
@@ -223,13 +256,58 @@ class SunburstMazeDiscrete(gym.Env):
                 framerate,
                 self.position,
                 self.orientation,
+                self.observed_squares_map,
+                self.wall_rays,
             )
         self.goal = self.goal_position()
-        return self._get_observation(), self._get_info()
+        return observation, self._get_info()
 
     def reset_checkpoints(self):
         for checkpoint in checkpoints:
             checkpoint["visited"] = False
+
+    def ray_casting(self):
+        self.observed_squares = set()
+        self.wall_rays = set()
+        self.observed_squares_map = set()
+
+        agent_angle = self.orientation * math.pi / 2  # 0, 90, 180, 270
+
+
+        start_angle = agent_angle - self.half_fov
+        for ray in range(self.number_of_rays):
+            for depth in range(self.ray_length):
+                x = int(self.position[0] - depth * math.cos(start_angle))
+                y = int(self.position[1] + depth * math.sin(start_angle))
+
+                if self.env_map[x][y] == 1:
+                    self.wall_rays.add((x, y))
+                    """pygame.draw.line(
+                        self.win,
+                        (255, 0, 0),
+                        (
+                            (position_ahead[1] * self.cell_size) + ray_shift_y,
+                            (position_ahead[0] * self.cell_size) + ray_shift_x,
+                        ),
+                        (y * self.cell_size + 15, x * self.cell_size + 15),
+                    )"""
+                    break
+
+                if self.orientation == 0 or self.orientation == 2:
+                    x_2 = int(self.matrix_middle_index + depth * math.sin(start_angle))
+                    y_2 = 0 + math.ceil(depth * math.cos(start_angle))
+                if self.orientation == 1 or self.orientation == 3:
+                    y_2 = int(depth * math.sin(start_angle))
+                    x_2 = self.matrix_middle_index - math.ceil(
+                        depth * math.cos(start_angle)
+                    )
+                self.observed_squares_map.add((x, y))
+                self.observed_squares.add((x_2, y_2))
+            start_angle += self.step_angle
+
+        matrix = self.calculate_fov_matrix()
+        return matrix
+
 
     def can_move_forward(self) -> bool:
         """
@@ -499,7 +577,13 @@ class SunburstMazeDiscrete(gym.Env):
             return self._render_frame()
 
     def _render_frame(self):
-        self.render_maze.draw_frame(self.env_map, self.position, self.orientation)
+        self.render_maze.draw_frame(
+            self.env_map,
+            self.position,
+            self.orientation,
+            self.observed_squares_map,
+            self.wall_rays,
+        )
 
     def close(self):  # TODO: Not tested
         if self.window is not None:
