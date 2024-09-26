@@ -12,9 +12,9 @@ import keras as keras
 import numpy as np
 import pygame
 import torch
+import wandb
 from dqn_agent import DQN_Agent
 
-import wandb
 from env import SunburstMazeDiscrete
 
 wandb.login()
@@ -76,7 +76,7 @@ class Model_TrainTest:
         # Define Env
         self.env = SunburstMazeDiscrete(
             map_path_train,
-            render_mode="human" if render else None,
+            render_mode=render_mode,
             max_steps_per_episode=self.max_steps,
             random_start_position=self.random_start_position,
             rewards=self.rewards,
@@ -124,6 +124,7 @@ class Model_TrainTest:
 
         total_steps = 0
         self.reward_history = []
+        frames = []
         wandb.init(project="sunburst-maze", config=self)
 
         # Training loop over episodes
@@ -138,6 +139,14 @@ class Model_TrainTest:
             while not done and not truncation:
                 action = self.agent.select_action(state)
                 next_state, reward, done, truncation, _ = self.env.step(action)
+                if render_mode == "rgb_array":
+                    if episode % 100 == 0:
+                        frame = self.env._render_frame()
+                        if type(frame) == np.ndarray:
+                            frames.append(frame)
+                if render_mode == "human":
+                    self.env.render()
+
                 next_state = self.state_preprocess(
                     next_state, num_states=self.num_states
                 )
@@ -167,6 +176,11 @@ class Model_TrainTest:
             # Decay epsilon at the end of each episode
             self.agent.update_epsilon()
 
+            # Create gif
+            gif = None
+            if frames:
+                gif = self.env.create_gif(gif_path=f"./gifs/{episode}.gif", frames=frames)
+                frames.clear()
 
             # -- based on interval
             if episode % self.save_interval == 0:
@@ -181,6 +195,7 @@ class Model_TrainTest:
                     "Reward per episode": total_reward,
                     "Epsilon": self.agent.epsilon,
                     "Steps done": steps_done,
+                    "Episode {episode}:": wandb.Video(gif, fps=4, format="gif") if gif else None,
                 }
             )
 
@@ -245,6 +260,7 @@ if __name__ == "__main__":
     # Parameters:
     train_mode = True
     render = not train_mode
+    render_mode = "rgb_array" if render else None  # or "human"
 
     map_version = map_path_train.split("/")[-2]
 
@@ -256,6 +272,7 @@ if __name__ == "__main__":
     config = {
         "train_mode": train_mode,
         "render": render,
+        "render_mode": render_mode,
         "RL_load_path": f"./model/sunburst_maze_{map_version}_1000.pth",
         "save_path": f"./model/sunburst_maze_{map_version}",
         "loss_function": "mse",

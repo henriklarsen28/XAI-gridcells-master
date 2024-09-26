@@ -1,3 +1,4 @@
+import copy
 import random as rd
 
 import gymnasium as gym
@@ -5,7 +6,6 @@ import numpy as np
 import pygame
 from gymnasium import spaces
 from tqdm import tqdm
-import copy
 
 # from .AStar import astar
 from .file_manager import build_map
@@ -197,7 +197,7 @@ class SunburstMazeDiscrete(gym.Env):
         self.last_moves = []
 
         # Render the maze
-        if self.render_mode == "human":
+        if self.render_mode == "human" or self.render_mode == "rgb_array":
             framerate = self.metadata["render_fps"]
 
             self.render_maze = Maze(
@@ -373,8 +373,6 @@ class SunburstMazeDiscrete(gym.Env):
         observation = self._get_observation()
         terminated = self.is_goal()
         info = self._get_info()
-        if self.render_mode == "human":
-            self._render_frame()
 
         return observation, reward, terminated, False, info
 
@@ -475,12 +473,30 @@ class SunburstMazeDiscrete(gym.Env):
         return -0.1
 
     def render(self):
-        if self.render_mode == "rgb_array" or self.render_mode == "human":
-            return self._render_frame()
+        self._render_frame()
 
     def _render_frame(self):
-        self.render_maze.draw_frame(self.env_map, self.position, self.orientation)
+        if self.render_mode == "rgb_array":
+            return np.asarray(self.render_maze.draw_frame(self.env_map, self.position, self.orientation))
+        elif self.render_mode == "human":
+            self.render_maze.draw_frame(self.env_map, self.position, self.orientation)
 
     def close(self):  # TODO: Not tested
         if self.window is not None:
             pygame.display.quit()
+
+    def create_gif(self, gif_path: str, frames: list):
+            """
+            Creates a GIF from a list of frames.
+
+            Args:
+                frames (list): A list of frames to be included in the GIF.
+                gif_path (str): The path to save the GIF file.
+                duration (int): The duration of each frame in milliseconds.
+
+            Returns:
+                None
+            """
+            images = [Image.fromarray(frame) for frame in frames]
+            images[0].save(gif_path, save_all=True, append_images=images[1:], duration=100, loop=0)
+            return gif_path
