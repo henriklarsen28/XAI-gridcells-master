@@ -85,7 +85,7 @@ class SunburstMazeDiscrete(gym.Env):
         self.random_start_position = random_start_position
         self.rewards = rewards
         self.observation_space = observation_space
-
+        self.render_mode = render_mode
         for y in range(self.height):
             for x in range(self.width):
                 if self.env_map[y][x] == 2:
@@ -269,6 +269,7 @@ class SunburstMazeDiscrete(gym.Env):
             framerate = self.metadata["render_fps"]
 
             self.render_maze = Maze(
+                self.render_mode,
                 self.map_file,
                 self.env_map,
                 self.width,
