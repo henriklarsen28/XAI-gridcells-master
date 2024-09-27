@@ -64,9 +64,9 @@ class Maze:
 
         self.clock = pygame.time.Clock()
         self.framerate = framerate
-        self.draw_frame(self.env_map, observed_squares_map, wall_rays)
+        self.draw_frame(self.env_map, position, orientation, observed_squares_map, wall_rays)
 
-        self.draw_frame(self.env_map, observed_squares_map, wall_rays)
+        self.draw_frame(self.env_map, position, orientation, observed_squares_map, wall_rays)
 
     def select_sprite(self, orientation: int):
         """
@@ -356,6 +356,8 @@ class Maze:
     def draw_frame(
         self,
         env_map: np.array,
+        position: tuple,
+        orientation: int,
         observed_squares_map: set,
         wall_rays: set,
     ):

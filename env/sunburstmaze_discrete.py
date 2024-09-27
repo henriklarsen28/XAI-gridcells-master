@@ -488,6 +488,9 @@ class SunburstMazeDiscrete(gym.Env):
         terminated = self.is_goal()
         info = self._get_info()
 
+        if self.render_mode == "human":
+            self.render()
+
         return observation, reward, terminated, False, info
 
     def is_goal(self):
@@ -592,12 +595,12 @@ class SunburstMazeDiscrete(gym.Env):
         if self.render_mode == "rgb_array":
             return np.asarray(
                 self.render_maze.draw_frame(
-                    self.env_map, self.observed_squares_map, self.wall_rays
+                    self.env_map, self.position, self.orientation, self.observed_squares_map, self.wall_rays
                 )
             )
         elif self.render_mode == "human":
             self.render_maze.draw_frame(
-                self.env_map, self.observed_squares_map, self.wall_rays
+                self.env_map, self.position, self.orientation, self.observed_squares_map, self.wall_rays
             )
 
     def close(self):  # TODO: Not tested
