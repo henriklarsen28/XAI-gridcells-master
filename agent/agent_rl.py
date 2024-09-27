@@ -128,8 +128,7 @@ class Model_TrainTest:
 
         onehot_vector_orientation = torch.zeros(4, dtype=torch.float32, device=device)
         onehot_vector_orientation[orientation] = 1
-
-        
+        #return field_of_view
         return torch.concat((field_of_view, onehot_vector_orientation))
 
     def train(self):
@@ -277,7 +276,7 @@ if __name__ == "__main__":
         "learning_rate": 6e-4,
         "batch_size": 100,
         "optimizer": "adam",
-        "total_episodes": 750,
+        "total_episodes": 1500,
         "epsilon": 1 if train_mode else -1,
         "epsilon_decay": 0.995,
         "epsilon_min": 0.1,
@@ -292,7 +291,7 @@ if __name__ == "__main__":
             "hit_wall": -0.1,
             "has_not_moved": -0.1,
             "new_square": 0.2,
-            "max_steps_reached": -1,
+            "max_steps_reached": -0.5,
         },
         # TODO
         "observation_space": {

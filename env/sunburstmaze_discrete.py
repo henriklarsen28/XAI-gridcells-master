@@ -91,14 +91,6 @@ class SunburstMazeDiscrete(gym.Env):
                     break
         print("height:", self.height, "width:", self.width, "goal:", self.goal)
 
-        # Create a graph
-        # print("Building a A* map for calculating steps to goal")
-        """self.steps_to_goal = build_step_length_map(
-            self.env_map, self.goal
-        )  # Comment this out for running with keyboard for faster loading"""
-        # self.last_steps_to_goal = None
-        # self.steps_to_goal = np.zeros((self.env_map.shape[0], self.env_map.shape[1])) # Comment out for running with keyboard for faster loading
-
         # Three possible actions: forward, left, right
         
 
@@ -142,6 +134,7 @@ class SunburstMazeDiscrete(gym.Env):
         self.wall_rays = set()
         self.observed_squares = set()
         self.observed_squares_map = set()
+        self.goal_observed_square = set()
 
         self.action_space = spaces.Discrete(3)
 
@@ -214,6 +207,11 @@ class SunburstMazeDiscrete(gym.Env):
             x, y = square
             matrix[y, x] = 1
 
+        # Mark the goal square
+        if len(self.goal_observed_square) == 1:
+            x, y = self.goal_observed_square.pop()
+            matrix[y, x] = 2
+
         if self.orientation == 2 or self.orientation == 3:
             matrix = np.rot90(matrix, 2)
             matrix = np.roll(matrix, 1, axis=0)
@@ -270,6 +268,7 @@ class SunburstMazeDiscrete(gym.Env):
         self.observed_squares = set()
         self.wall_rays = set()
         self.observed_squares_map = set()
+        self.goal_observed_square = set()
 
         agent_angle = self.orientation * math.pi / 2  # 0, 90, 180, 270
 
@@ -282,15 +281,6 @@ class SunburstMazeDiscrete(gym.Env):
 
                 if self.env_map[x][y] == 1:
                     self.wall_rays.add((x, y))
-                    """pygame.draw.line(
-                        self.win,
-                        (255, 0, 0),
-                        (
-                            (position_ahead[1] * self.cell_size) + ray_shift_y,
-                            (position_ahead[0] * self.cell_size) + ray_shift_x,
-                        ),
-                        (y * self.cell_size + 15, x * self.cell_size + 15),
-                    )"""
                     break
 
                 if self.orientation == 0 or self.orientation == 2:
@@ -303,6 +293,10 @@ class SunburstMazeDiscrete(gym.Env):
                     )
                 self.observed_squares_map.add((x, y))
                 self.observed_squares.add((x_2, y_2))
+
+                # Add the goal square to the observed squares
+                if self.env_map[x][y] == 2:
+                    self.goal_observed_square.add((x_2, y_2))
             start_angle += self.step_angle
 
         matrix = self.calculate_fov_matrix()

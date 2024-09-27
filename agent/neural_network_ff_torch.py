@@ -23,7 +23,9 @@ class DQN_Network(nn.Module):
         self.FC = nn.Sequential(
             nn.Linear(input_dim, 128),
             nn.ReLU(inplace=True),
-            nn.Linear(128, 32),
+            nn.Linear(128, 64),
+            nn.ReLU(inplace=True),
+            nn.Linear(64, 32),
             nn.ReLU(inplace=True),
             nn.Linear(32, num_actions),
         )
