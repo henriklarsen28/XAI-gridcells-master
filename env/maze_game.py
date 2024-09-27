@@ -86,29 +86,7 @@ class Maze:
             return self.sprite_down
         elif orientation == 3:
             return self.sprite_left
-    """
-    def calculate_fov_matrix(self, orientation: int):
-        matrix = np.zeros((RAY_LENGTH, MATRIX_WIDTH))
 
-        # Create a matrix with the marked squares from the marked_2 set
-        for square in self.marked_2:
-            x, y = square
-            matrix[y, x] = 1
-
-        if orientation == 2 or orientation == 3:
-            matrix = np.rot90(matrix, 2)
-            matrix = np.roll(matrix, 1, axis=0)
-
-        if orientation == 3:
-            matrix = np.roll(matrix, 1, axis=0)
-
-        import pandas as pd
-
-        df = pd.DataFrame(matrix)
-        df.to_csv("matrix.csv")
-
-        return matrix
-    """
     # set up the maze
     def draw_maze(self, env_map: np.array) -> None:
         """

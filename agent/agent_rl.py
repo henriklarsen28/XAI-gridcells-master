@@ -7,6 +7,8 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(project_root)
 
 
+import math
+
 import gymnasium as gym
 import keras as keras
 import numpy as np
@@ -14,7 +16,6 @@ import pygame
 import torch
 import wandb
 from dqn_agent import DQN_Agent
-import math
 
 from env import SunburstMazeDiscrete
 from utils.calculate_fov import calculate_fov_matrix_size
@@ -109,26 +110,18 @@ class Model_TrainTest:
             seed=seed,
         )
 
-    def state_preprocess(self, state: int, num_states: int):
+    def state_preprocess(self, state: int):
         """
         Converts the state to a one-hot encoded tensor,
         that included the position as a one-hot encoding and the orientation as a one-hot encoding.
         """
         field_of_view = state[:-1]
         orientation = int(state[-1])
-        #print(field_of_view, orientation)
-        # Used for one-hot encoding of the position
-        # -----------------------------------
-        # onehot_vector_position = torch.zeros(
-        #     num_states, dtype=torch.float32, device=device
-        # )
-        # onehot_vector_position[position] = 1
 
         field_of_view = torch.tensor(field_of_view, dtype=torch.float32, device=device)
 
         onehot_vector_orientation = torch.zeros(4, dtype=torch.float32, device=device)
         onehot_vector_orientation[orientation] = 1
-        #return field_of_view
         return torch.concat((field_of_view, onehot_vector_orientation))
 
     def train(self):
@@ -144,7 +137,7 @@ class Model_TrainTest:
         # Training loop over episodes
         for episode in range(1, self.max_episodes + 1):
             state, _ = self.env.reset()
-            state = self.state_preprocess(state, num_states=self.num_states)
+            state = self.state_preprocess(state)
             done = False
             truncation = False
             steps_done = 0
@@ -161,13 +154,9 @@ class Model_TrainTest:
                 if render_mode == "human":
                     self.env.render()
 
-                next_state = self.state_preprocess(
-                    next_state, num_states=self.num_states
-                )
-
+                next_state = self.state_preprocess(next_state)
 
                 self.agent.replay_memory.store(state, action, next_state, reward, done)
-
 
                 if (
                     len(self.agent.replay_memory) > self.batch_size
@@ -193,7 +182,9 @@ class Model_TrainTest:
             # Create gif
             gif = None
             if frames:
-                gif = self.env.create_gif(gif_path=f"./gifs/{episode}.gif", frames=frames)
+                gif = self.env.create_gif(
+                    gif_path=f"./gifs/{episode}.gif", frames=frames
+                )
                 frames.clear()
 
             # -- based on interval
@@ -202,14 +193,15 @@ class Model_TrainTest:
 
                 print("\n~~~~~~Interval Save: Model saved.\n")
 
-
             wandb.log(
                 {
                     "Episode": episode,
                     "Reward per episode": total_reward,
                     "Epsilon": self.agent.epsilon,
                     "Steps done": steps_done,
-                    "Episode {episode}:": wandb.Video(gif, fps=4, format="gif") if gif else None,
+                    "Episode {episode}:": (
+                        wandb.Video(gif, fps=4, format="gif") if gif else None
+                    ),
                 }
             )
 
@@ -261,6 +253,7 @@ def get_num_states(map_path):
     num_states = num_rows * num_cols
     return num_states
 
+
 if __name__ == "__main__":
     # Parameters:
     train_mode = True
@@ -270,8 +263,8 @@ if __name__ == "__main__":
     map_version = map_path_train.split("/")[-2]
 
     # Read the map file to find the number of states
-    #num_states = get_num_states(map_path_train)
-    
+    # num_states = get_num_states(map_path_train)
+
     fov_config = {
         "fov": math.pi / 1.5,
         "ray_length": 20,
@@ -325,7 +318,6 @@ if __name__ == "__main__":
         "fov": math.pi / 1.5,
         "ray_length": 20,
         "number_of_rays": 100,
-        
     }
 
     # Run
