@@ -1,5 +1,6 @@
 import copy
 import math
+
 import random as rd
 
 import gymnasium as gym
@@ -10,7 +11,6 @@ from PIL import Image
 from tqdm import tqdm
 
 from utils.calculate_fov import calculate_fov_matrix_size, step_angle
-
 from .file_manager import build_map
 from .maze_game import Maze
 
@@ -28,6 +28,7 @@ def action_encoding(action: int) -> str:
     action_dict = {0: "forward", 1: "left", 2: "right"}
 
     return action_dict[action]
+
 
 
 class SunburstMazeDiscrete(gym.Env):
@@ -425,6 +426,7 @@ class SunburstMazeDiscrete(gym.Env):
         if self.render_mode == "human":
             self.render()
 
+
         return observation, reward, terminated, False, info
 
     def is_goal(self):
@@ -494,6 +496,7 @@ class SunburstMazeDiscrete(gym.Env):
             self.render_maze.draw_frame(
                 self.env_map, self.position, self.orientation, self.observed_squares_map, self.wall_rays
             )
+
 
     def close(self):  # TODO: Not tested
         if self.window is not None:

@@ -154,6 +154,11 @@ class Model_TrainTest:
                 if render_mode == "human":
                     self.env.render()
 
+
+                next_state = self.state_preprocess(
+                    next_state, num_states=self.num_states
+                )
+
                 next_state = self.state_preprocess(next_state)
 
                 self.agent.replay_memory.store(state, action, next_state, reward, done)
@@ -205,6 +210,7 @@ class Model_TrainTest:
                     "Gif:": (
                         wandb.Video(gif, fps=4, format="gif") if gif else None
                     ),
+
                 }
             )
 
@@ -268,6 +274,7 @@ if __name__ == "__main__":
     if train_mode:
         render_mode = "rgb_array" if render else None
 
+
     map_version = map_path_train.split("/")[-2]
 
     # Read the map file to find the number of states
@@ -309,6 +316,7 @@ if __name__ == "__main__":
             "hit_wall": -0.2,
             "has_not_moved": -0.2,
             "new_square": 0.2,
+
             "max_steps_reached": -0.5,
         },
         # TODO

@@ -47,6 +47,7 @@ class Maze:
             pygame.display.set_caption("First Game")
             self.win = pygame.display.set_mode((screen_width, screen_height))
 
+
         # load sprite
         script_dir = os.path.dirname(__file__)
         sprite_file = os.path.join(script_dir, "images", "orange_mouse_single.png")
@@ -64,8 +65,6 @@ class Maze:
 
         self.clock = pygame.time.Clock()
         self.framerate = framerate
-        self.draw_frame(self.env_map, position, orientation, observed_squares_map, wall_rays)
-
         self.draw_frame(self.env_map, position, orientation, observed_squares_map, wall_rays)
 
     def select_sprite(self, orientation: int):
@@ -357,6 +356,7 @@ class Maze:
         self.draw_sprite(position, orientation)
         self.draw_rays(position, orientation, wall_rays)
         self.draw_marked_blocks(observed_squares_map)
+
         if self.render_mode == "human":
             pygame.display.flip()
         self.clock.tick(self.framerate)
