@@ -182,6 +182,9 @@ class Model_TrainTest:
             # Create gif
             gif = None
             if frames:
+                if os.path.exists("./gifs") is False:
+                    os.makedirs("./gifs")
+
                 gif = self.env.create_gif(
                     gif_path=f"./gifs/{episode}.gif", frames=frames
                 )
@@ -199,7 +202,7 @@ class Model_TrainTest:
                     "Reward per episode": total_reward,
                     "Epsilon": self.agent.epsilon,
                     "Steps done": steps_done,
-                    "Episode {episode}:": (
+                    "Gif:": (
                         wandb.Video(gif, fps=4, format="gif") if gif else None
                     ),
                 }
@@ -223,7 +226,7 @@ class Model_TrainTest:
             total_reward = 0
 
             while not done and not truncation:
-                state = self.state_preprocess(state, num_states=self.num_states)
+                state = self.state_preprocess(state)
                 action = self.agent.select_action(state)
                 next_state, reward, done, truncation, _ = self.env.step(action)
 
@@ -256,9 +259,14 @@ def get_num_states(map_path):
 
 if __name__ == "__main__":
     # Parameters:
+
+
     train_mode = True
-    render = not train_mode
-    render_mode = "human" if render else None  # or "human"
+    render = True
+    render_mode = "human"
+
+    if train_mode:
+        render_mode = "rgb_array" if render else None
 
     map_version = map_path_train.split("/")[-2]
 
@@ -280,13 +288,13 @@ if __name__ == "__main__":
         "train_mode": train_mode,
         "render": render,
         "render_mode": render_mode,
-        "RL_load_path": f"./model/sunburst_maze_{map_version}_1000.pth",
+        "RL_load_path": f"./model/sunburst_maze_{map_version}_500.pth",
         "save_path": f"./model/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 6e-4,
         "batch_size": 100,
         "optimizer": "adam",
-        "total_episodes": 1500,
+        "total_episodes": 2000,
         "epsilon": 1 if train_mode else -1,
         "epsilon_decay": 0.995,
         "epsilon_min": 0.1,
@@ -298,8 +306,8 @@ if __name__ == "__main__":
         "random_start_position": True,
         "rewards": {
             "is_goal": 200,
-            "hit_wall": -0.1,
-            "has_not_moved": -0.1,
+            "hit_wall": -0.2,
+            "has_not_moved": -0.2,
             "new_square": 0.2,
             "max_steps_reached": -0.5,
         },

@@ -354,8 +354,8 @@ class Maze:
         self.marked_2 = set()
         self.win.fill(white)  # fill screen before drawing
         self.draw_maze(env_map)
-        self.draw_sprite(self.position, self.orientation)
-        self.draw_rays(self.position, self.orientation, wall_rays)
+        self.draw_sprite(position, orientation)
+        self.draw_rays(position, orientation, wall_rays)
         self.draw_marked_blocks(observed_squares_map)
         if self.render_mode == "human":
             pygame.display.flip()
