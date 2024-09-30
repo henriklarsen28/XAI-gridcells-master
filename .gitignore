@@ -6,3 +6,4 @@ agent/model*
 agent/wandb*
 agent/losses_rewards.csv
 
+agent/matrix.csv

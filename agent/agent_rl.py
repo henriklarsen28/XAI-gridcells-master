@@ -7,6 +7,8 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(project_root)
 
 
+import math
+
 import gymnasium as gym
 import keras as keras
 import numpy as np
@@ -16,6 +18,7 @@ import wandb
 from dqn_agent import DQN_Agent
 
 from env import SunburstMazeDiscrete
+from utils.calculate_fov import calculate_fov_matrix_size
 
 wandb.login()
 
@@ -73,6 +76,10 @@ class Model_TrainTest:
         self.random_start_position = config["random_start_position"]
         self.observation_space = config["observation_space"]
 
+        self.fov = config["fov"]
+        self.ray_length = config["ray_length"]
+        self.number_of_rays = config["number_of_rays"]
+
         # Define Env
         self.env = SunburstMazeDiscrete(
             map_path_train,
@@ -81,6 +88,9 @@ class Model_TrainTest:
             random_start_position=self.random_start_position,
             rewards=self.rewards,
             observation_space=self.observation_space,
+            fov=self.fov,
+            ray_length=self.ray_length,
+            number_of_rays=self.number_of_rays,
         )
         self.env.metadata["render_fps"] = (
             self.render_fps
@@ -100,22 +110,19 @@ class Model_TrainTest:
             seed=seed,
         )
 
-    def state_preprocess(self, state: int, num_states: int):
+    def state_preprocess(self, state: int):
         """
         Converts the state to a one-hot encoded tensor,
         that included the position as a one-hot encoding and the orientation as a one-hot encoding.
         """
-        position = state[0]
-        orientation = state[1]
-        onehot_vector_position = torch.zeros(
-            num_states, dtype=torch.float32, device=device
-        )
-        onehot_vector_position[position] = 1
+        field_of_view = state[:-1]
+        orientation = int(state[-1])
+
+        field_of_view = torch.tensor(field_of_view, dtype=torch.float32, device=device)
+
         onehot_vector_orientation = torch.zeros(4, dtype=torch.float32, device=device)
         onehot_vector_orientation[orientation] = 1
-
-        
-        return torch.concat((onehot_vector_position, onehot_vector_orientation))
+        return torch.concat((field_of_view, onehot_vector_orientation))
 
     def train(self):
         """
@@ -130,7 +137,7 @@ class Model_TrainTest:
         # Training loop over episodes
         for episode in range(1, self.max_episodes + 1):
             state, _ = self.env.reset()
-            state = self.state_preprocess(state, num_states=self.num_states)
+            state = self.state_preprocess(state)
             done = False
             truncation = False
             steps_done = 0
@@ -147,13 +154,14 @@ class Model_TrainTest:
                 if render_mode == "human":
                     self.env.render()
 
+
                 next_state = self.state_preprocess(
                     next_state, num_states=self.num_states
                 )
 
+                next_state = self.state_preprocess(next_state)
 
                 self.agent.replay_memory.store(state, action, next_state, reward, done)
-
 
                 if (
                     len(self.agent.replay_memory) > self.batch_size
@@ -179,7 +187,12 @@ class Model_TrainTest:
             # Create gif
             gif = None
             if frames:
-                gif = self.env.create_gif(gif_path=f"./gifs/{episode}.gif", frames=frames)
+                if os.path.exists("./gifs") is False:
+                    os.makedirs("./gifs")
+
+                gif = self.env.create_gif(
+                    gif_path=f"./gifs/{episode}.gif", frames=frames
+                )
                 frames.clear()
 
             # -- based on interval
@@ -188,14 +201,16 @@ class Model_TrainTest:
 
                 print("\n~~~~~~Interval Save: Model saved.\n")
 
-
             wandb.log(
                 {
                     "Episode": episode,
                     "Reward per episode": total_reward,
                     "Epsilon": self.agent.epsilon,
                     "Steps done": steps_done,
-                    "Episode {episode}:": wandb.Video(gif, fps=4, format="gif") if gif else None,
+                    "Gif:": (
+                        wandb.Video(gif, fps=4, format="gif") if gif else None
+                    ),
+
                 }
             )
 
@@ -217,7 +232,7 @@ class Model_TrainTest:
             total_reward = 0
 
             while not done and not truncation:
-                state = self.state_preprocess(state, num_states=self.num_states)
+                state = self.state_preprocess(state)
                 action = self.agent.select_action(state)
                 next_state, reward, done, truncation, _ = self.env.step(action)
 
@@ -247,25 +262,32 @@ def get_num_states(map_path):
     num_states = num_rows * num_cols
     return num_states
 
-    num_rows=0
-    num_cols=0
-    with open(map_path, "r") as f:
-        for line_num, line in enumerate(f):
-            num_rows += 1
-            num_cols = len(line.strip().split(","))
-    num_states = num_rows*num_cols
-    return num_states
 
 if __name__ == "__main__":
     # Parameters:
+
+
     train_mode = True
-    render = not train_mode
-    render_mode = "rgb_array" if render else None  # or "human"
+    render = True
+    render_mode = "human"
+
+    if train_mode:
+        render_mode = "rgb_array" if render else None
+
 
     map_version = map_path_train.split("/")[-2]
 
     # Read the map file to find the number of states
-    num_states = get_num_states(map_path_train)
+    # num_states = get_num_states(map_path_train)
+
+    fov_config = {
+        "fov": math.pi / 1.5,
+        "ray_length": 20,
+        "number_of_rays": 100,
+    }
+    half_fov = fov_config["fov"] / 2
+    matrix_size = calculate_fov_matrix_size(fov_config["ray_length"], half_fov)
+    num_states = matrix_size[0] * matrix_size[1]
     print(num_states)
 
     # Parameters
@@ -273,13 +295,13 @@ if __name__ == "__main__":
         "train_mode": train_mode,
         "render": render,
         "render_mode": render_mode,
-        "RL_load_path": f"./model/sunburst_maze_{map_version}_1000.pth",
+        "RL_load_path": f"./model/sunburst_maze_{map_version}_500.pth",
         "save_path": f"./model/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 6e-4,
         "batch_size": 100,
         "optimizer": "adam",
-        "total_episodes": 1000,
+        "total_episodes": 2000,
         "epsilon": 1 if train_mode else -1,
         "epsilon_decay": 0.995,
         "epsilon_min": 0.1,
@@ -287,14 +309,15 @@ if __name__ == "__main__":
         "alpha": 0.1,
         "map_path": map_path_train,
         "target_model_update": 10,  # hard update of the target model
-        "max_steps_per_episode": 500,
+        "max_steps_per_episode": 1000,
         "random_start_position": True,
         "rewards": {
             "is_goal": 200,
-            "hit_wall": -0.1,
-            "has_not_moved": -0.1,
+            "hit_wall": -0.2,
+            "has_not_moved": -0.2,
             "new_square": 0.2,
-            "max_steps_reached": 0
+
+            "max_steps_reached": -0.5,
         },
         # TODO
         "observation_space": {
@@ -305,9 +328,12 @@ if __name__ == "__main__":
         },
         "save_interval": 500,
         "memory_capacity": 500_000,
-        "render_fps": 8,
+        "render_fps": 10,
         "num_states": num_states,
         "clip_grad_normalization": 3,
+        "fov": math.pi / 1.5,
+        "ray_length": 20,
+        "number_of_rays": 100,
     }
 
     # Run

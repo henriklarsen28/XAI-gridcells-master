@@ -1,3 +1,4 @@
+import math
 import sys
 
 import pygame
@@ -42,13 +43,38 @@ def play_with_keyboard():
         None
     """
 
+    config = {
+        "rewards": {
+            "is_goal": 200,
+            "hit_wall": -0.1,
+            "has_not_moved": -0.1,
+            "new_square": 0.2,
+        },
+        # TODO
+        "observation_space": {
+            "position": True,
+            "orientation": True,
+            "steps_to_goal": True,
+            "last_known_steps": 5,
+        },
+        "fov": math.pi / 1.5,
+        "ray_length": 20,
+        "number_of_rays": 100,
+    }
+
     env = SunburstMazeDiscrete(
-        maze_file="../env/map_v0.1/map_closed_doors.csv", render_mode="human"
+        maze_file="../env/map_v0/map_closed_doors.csv",
+        render_mode="human",
+        rewards=config["rewards"],
+        observation_space=config["observation_space"],
+        fov=config["fov"],
+        ray_length=config["ray_length"],
+        number_of_rays=config["number_of_rays"],
     )
 
     pygame.init()
-    observation = env.reset()
-    print(observation)
+    observation, _ = env.reset()
+    #print(observation)
     legal_actions = env.legal_actions()
     print(legal_actions)
     running = True

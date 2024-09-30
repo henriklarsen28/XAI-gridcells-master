@@ -1,15 +1,17 @@
 import copy
+import math
+
 import random as rd
 
 import gymnasium as gym
 import numpy as np
 import pygame
 from gymnasium import spaces
+from PIL import Image
 from tqdm import tqdm
 
-# from .AStar import astar
+from utils.calculate_fov import calculate_fov_matrix_size, step_angle
 from .file_manager import build_map
-from .Graph import Graph
 from .maze_game import Maze
 
 checkpoints = [
@@ -28,34 +30,6 @@ def action_encoding(action: int) -> str:
     return action_dict[action]
 
 
-def build_step_length_map(env_map, goal):
-    graph = Graph(env_map)
-    env_graph = graph.make_graph()
-    print("Graph made")
-    # Iterate through every position in the map
-    '''steps_to_goal = np.zeros((env_map.shape[0], env_map.shape[1]))
-    for y in tqdm(range(env_map.shape[0])):
-        for x in range(env_map.shape[1]):
-            if env_map[y][x] == 1:
-                steps_to_goal[y][x] = -1
-                continue
-            # Calculate the distance to the goal from the current position
-            steps_to_goal[y][x] = calculate_a_star_distance(env_graph, (y, x), goal)
-            # Check if the distance above is more than 1 lower than the current position
-            if (
-                y > 0
-                and steps_to_goal[y - 1][x] < steps_to_goal[y][x] - 1
-                and env_map[y - 1][x] != 1
-                and x < env_map.shape[1] - 5
-            ):
-                steps_to_goal[y][x] = steps_to_goal[y - 1][x] + 1
-    return steps_to_goal
-'''
-
-def calculate_a_star_distance(graph, start, end):
-    a_star = astar(graph, start, end)
-    return len(a_star)
-
 
 class SunburstMazeDiscrete(gym.Env):
 
@@ -69,6 +43,9 @@ class SunburstMazeDiscrete(gym.Env):
         random_start_position=None,
         rewards=None,
         observation_space=None,
+        fov=math.pi / 2,
+        ray_length=10,
+        number_of_rays=100,
     ):
         self.map_file = maze_file
         self.env_map = build_map(maze_file)
@@ -77,7 +54,7 @@ class SunburstMazeDiscrete(gym.Env):
         self.random_start_position = random_start_position
         self.rewards = rewards
         self.observation_space = observation_space
-
+        self.render_mode = render_mode
         for y in range(self.height):
             for x in range(self.width):
                 if self.env_map[y][x] == 2:
@@ -85,18 +62,7 @@ class SunburstMazeDiscrete(gym.Env):
                     break
         print("height:", self.height, "width:", self.width, "goal:", self.goal)
 
-        # Create a graph
-        # print("Building a A* map for calculating steps to goal")
-        """self.steps_to_goal = build_step_length_map(
-            self.env_map, self.goal
-        )  # Comment this out for running with keyboard for faster loading"""
-        # self.last_steps_to_goal = None
-        # self.steps_to_goal = np.zeros((self.env_map.shape[0], self.env_map.shape[1])) # Comment out for running with keyboard for faster loading
-
         # Three possible actions: forward, left, right
-        self.action_space = spaces.Discrete(3)
-
-        self.observation_space = spaces.Discrete(self.height * self.width)
 
         self._action_to_direction = {
             "forward": self.move_forward,
@@ -126,6 +92,25 @@ class SunburstMazeDiscrete(gym.Env):
         self.visited_squares = []
         self.last_position = None
         self.last_moves = []
+
+        self.fov = fov
+        self.half_fov = self.fov / 2
+        self.ray_length = ray_length
+        self.number_of_rays = number_of_rays
+        self.matrix_size = calculate_fov_matrix_size(self.ray_length, self.half_fov)
+        self.step_angle = step_angle(self.fov, self.number_of_rays)
+        self.matrix_middle_index = int(self.matrix_size[1] / 2)
+
+        self.wall_rays = set()
+        self.observed_squares = set()
+        self.observed_squares_map = set()
+        self.goal_observed_square = set()
+
+        self.action_space = spaces.Discrete(3)
+
+        self.observation_space = spaces.Discrete(
+            self.matrix_size[0] * self.matrix_size[1]
+        )
 
     def goal_position(self):
         for y in range(self.height):
@@ -162,45 +147,64 @@ class SunburstMazeDiscrete(gym.Env):
         return {"legal_actions": self.legal_actions(), "orientation": self.orientation}
 
     def _get_observation(self):
-        position_as_int = self.position[0] * self.width + self.position[1]
-        maze = copy.deepcopy(self.env_map)
-        # Insert position to the agent
-        orientation_marker = {0: -1, 1: -2, 2: -3, 3: -4}
+        """
+        Generates an observation of the current environment state.
 
-        maze[self.position[0]][self.position[1]] = 3
-        # maze = maze.flatten()
+        This method performs ray casting to obtain a matrix representation of the environment,
+        flattens the matrix, and appends the agent's orientation to the resulting array.
 
-        # Rotate the map to match the orientation
-        """if self.orientation == 1:
-            maze = np.rot90(maze, 1).flatten()
-        elif self.orientation == 2:
-            maze = np.rot90(maze, 2).flatten()
-        elif self.orientation == 3:
-            maze = np.rot90(maze, 3).flatten()"""
-        # One hot encoding for orientation
-        # orientation = np.zeros(4)
-        # orientation[int(self.orientation)] = 1
-        return np.array([position_as_int, self.orientation])
+        Returns:
+            np.ndarray: A flattened array representing the environment state with the agent's orientation.
+        """
+        matrix = self.ray_casting()
+        matrix = matrix.flatten()
 
+        # Get the matrix of marked squares without rendering
+        return np.array([*matrix, self.orientation])
+
+    def calculate_fov_matrix(self):
+        matrix = np.zeros(calculate_fov_matrix_size(self.ray_length, self.half_fov))
+
+        # Create a matrix with the marked squares from the marked_2 set
+        for square in self.observed_squares:
+            x, y = square
+            matrix[y, x] = 1
+
+        # Mark the goal square
+        if len(self.goal_observed_square) == 1:
+            x, y = self.goal_observed_square.pop()
+            matrix[y, x] = 2
+
+        if self.orientation == 2 or self.orientation == 3:
+            matrix = np.rot90(matrix, 2)
+            matrix = np.roll(matrix, 1, axis=0)
+
+        if self.orientation == 3:
+            matrix = np.roll(matrix, 1, axis=0)
+
+        return matrix
+
+    
     def reset(self, seed=None, options=None) -> tuple:
 
         super().reset(seed=seed)
-        
+
         # self.visited_squares = []
         self.env_map = build_map(self.map_file)
         self.position = self.select_start_position()
-        # self.last_steps_to_goal = self.steps_to_goal[self.position[0]][self.position[1]]
 
         self.steps_current_episode = 0
 
         self.reset_checkpoints()
         self.last_moves = []
+        observation = self._get_observation()
 
         # Render the maze
         if self.render_mode == "human" or self.render_mode == "rgb_array":
             framerate = self.metadata["render_fps"]
 
             self.render_maze = Maze(
+                self.render_mode,
                 self.map_file,
                 self.env_map,
                 self.width,
@@ -208,13 +212,52 @@ class SunburstMazeDiscrete(gym.Env):
                 framerate,
                 self.position,
                 self.orientation,
+                self.observed_squares_map,
+                self.wall_rays,
             )
         self.goal = self.goal_position()
-        return self._get_observation(), self._get_info()
+        return observation, self._get_info()
 
     def reset_checkpoints(self):
         for checkpoint in checkpoints:
             checkpoint["visited"] = False
+
+    def ray_casting(self):
+        self.observed_squares = set()
+        self.wall_rays = set()
+        self.observed_squares_map = set()
+        self.goal_observed_square = set()
+
+        agent_angle = self.orientation * math.pi / 2  # 0, 90, 180, 270
+
+        start_angle = agent_angle - self.half_fov
+        for ray in range(self.number_of_rays):
+            for depth in range(self.ray_length):
+                x = int(self.position[0] - depth * math.cos(start_angle))
+                y = int(self.position[1] + depth * math.sin(start_angle))
+
+                if self.env_map[x][y] == 1:
+                    self.wall_rays.add((x, y))
+                    break
+
+                if self.orientation == 0 or self.orientation == 2:
+                    x_2 = int(self.matrix_middle_index + depth * math.sin(start_angle))
+                    y_2 = 0 + math.ceil(depth * math.cos(start_angle))
+                if self.orientation == 1 or self.orientation == 3:
+                    y_2 = int(depth * math.sin(start_angle))
+                    x_2 = self.matrix_middle_index - math.ceil(
+                        depth * math.cos(start_angle)
+                    )
+                self.observed_squares_map.add((x, y))
+                self.observed_squares.add((x_2, y_2))
+
+                # Add the goal square to the observed squares
+                if self.env_map[x][y] == 2:
+                    self.goal_observed_square.add((x_2, y_2))
+            start_angle += self.step_angle
+
+        matrix = self.calculate_fov_matrix()
+        return matrix
 
     def can_move_forward(self) -> bool:
         """
@@ -355,7 +398,13 @@ class SunburstMazeDiscrete(gym.Env):
         if self.steps_current_episode >= self.max_steps_per_episode:
             print("Reached max steps")
             self.steps_current_episode = 0
-            return observation, self.rewards["max_steps_reached"], True, True, self._get_info()
+            return (
+                observation,
+                self.rewards["max_steps_reached"],
+                True,
+                True,
+                self._get_info(),
+            )
 
         action = action_encoding(action)
         self.steps_current_episode += 1
@@ -373,6 +422,10 @@ class SunburstMazeDiscrete(gym.Env):
         observation = self._get_observation()
         terminated = self.is_goal()
         info = self._get_info()
+
+        if self.render_mode == "human":
+            self.render()
+
 
         return observation, reward, terminated, False, info
 
@@ -396,45 +449,6 @@ class SunburstMazeDiscrete(gym.Env):
         if all(last_move == position for last_move in self.last_moves):
             return True
         return False
-
-    # def decreased_steps_to_goal(self):
-    #     """
-    #     Checks if the steps to the goal have decreased from the last position.
-
-    #     Returns:
-    #         bool: True if the steps to the goal have decreased, False otherwise.
-    #     """
-
-    #     current_steps_to_goal = self.steps_to_goal[self.position[0]][self.position[1]]
-
-    #     delta_steps = self.last_steps_to_goal - current_steps_to_goal
-    #     if delta_steps > 0:
-    #         return True
-    #     return False
-
-    # def increased_steps_to_goal(self):
-    #     current_steps_to_goal = self.steps_to_goal[self.position[0]][self.position[1]]
-
-    #     delta_steps = self.last_steps_to_goal - current_steps_to_goal
-    #     if delta_steps < 0:
-    #         return True
-    #     return False
-
-    # def distance_to_goal(self, position):
-    #     return np.sqrt(
-    #         (position[0] - self.goal[0]) ** 2 + (position[1] - self.goal[1]) ** 2
-    #     )
-
-    # def distance_to_goal_reward(self):
-    #     max_distance = np.sqrt((self.height - 2) ** 2 + (self.width - 2) ** 2)
-
-    #     distance = self.distance_to_goal(self.position)
-    #     difference = max_distance - distance
-
-    #     reward = np.exp(-difference)
-    #     discounted_reward = reward * 0.02
-
-    #     return discounted_reward
 
     # TODO: Gets stuck at wall, q-values for other actions are negative
     def reward(self):
@@ -465,11 +479,7 @@ class SunburstMazeDiscrete(gym.Env):
         if self.position not in self.visited_squares:
             self.visited_squares.append(self.position)
             return self.rewards["new_square"]  # + self.distance_to_goal_reward()
-
-
-        # if self.increased_steps_to_goal():
-        #    return -0.0005"
-
+        
         return -0.1
 
     def render(self):
@@ -477,26 +487,35 @@ class SunburstMazeDiscrete(gym.Env):
 
     def _render_frame(self):
         if self.render_mode == "rgb_array":
-            return np.asarray(self.render_maze.draw_frame(self.env_map, self.position, self.orientation))
+            return np.asarray(
+                self.render_maze.draw_frame(
+                    self.env_map, self.position, self.orientation, self.observed_squares_map, self.wall_rays
+                )
+            )
         elif self.render_mode == "human":
-            self.render_maze.draw_frame(self.env_map, self.position, self.orientation)
+            self.render_maze.draw_frame(
+                self.env_map, self.position, self.orientation, self.observed_squares_map, self.wall_rays
+            )
+
 
     def close(self):  # TODO: Not tested
         if self.window is not None:
             pygame.display.quit()
 
     def create_gif(self, gif_path: str, frames: list):
-            """
-            Creates a GIF from a list of frames.
+        """
+        Creates a GIF from a list of frames.
 
-            Args:
-                frames (list): A list of frames to be included in the GIF.
-                gif_path (str): The path to save the GIF file.
-                duration (int): The duration of each frame in milliseconds.
+        Args:
+            frames (list): A list of frames to be included in the GIF.
+            gif_path (str): The path to save the GIF file.
+            duration (int): The duration of each frame in milliseconds.
 
-            Returns:
-                None
-            """
-            images = [Image.fromarray(frame) for frame in frames]
-            images[0].save(gif_path, save_all=True, append_images=images[1:], duration=100, loop=0)
-            return gif_path
+        Returns:
+            None
+        """
+        images = [Image.fromarray(frame) for frame in frames]
+        images[0].save(
+            gif_path, save_all=True, append_images=images[1:], duration=100, loop=0
+        )
+        return gif_path
