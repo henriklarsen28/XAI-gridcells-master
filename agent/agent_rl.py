@@ -134,6 +134,13 @@ class Model_TrainTest:
         frames = []
         wandb.init(project="sunburst-maze", config=self)
 
+        # Create the nessessary directories
+        if not os.path.exists("./gifs"):
+                    os.makedirs("./gifs")
+        
+        if not os.path.exists("./model"):
+                    os.makedirs("./model")
+
         # Training loop over episodes
         for episode in range(1, self.max_episodes + 1):
             state, _ = self.env.reset()
@@ -156,10 +163,8 @@ class Model_TrainTest:
 
 
                 next_state = self.state_preprocess(
-                    next_state, num_states=self.num_states
+                    next_state
                 )
-
-                next_state = self.state_preprocess(next_state)
 
                 self.agent.replay_memory.store(state, action, next_state, reward, done)
 
@@ -194,6 +199,7 @@ class Model_TrainTest:
                     gif_path=f"./gifs/{episode}.gif", frames=frames
                 )
                 frames.clear()
+
 
             # -- based on interval
             if episode % self.save_interval == 0:
@@ -326,8 +332,8 @@ if __name__ == "__main__":
             "steps_to_goal": True,
             "last_known_steps": 5,
         },
-        "save_interval": 500,
-        "memory_capacity": 500_000,
+        "save_interval": 100,
+        "memory_capacity": 50_000,
         "render_fps": 10,
         "num_states": num_states,
         "clip_grad_normalization": 3,
