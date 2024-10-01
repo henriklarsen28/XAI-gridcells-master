@@ -5,5 +5,5 @@ env/__pycache__/*
 agent/model*
 agent/wandb*
 agent/losses_rewards.csv
-
+agent/gifs*
 agent/matrix.csv
