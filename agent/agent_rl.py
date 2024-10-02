@@ -166,10 +166,7 @@ class Model_TrainTest:
                 if render_mode == "human":
                     self.env.render()
 
-
-                next_state = self.state_preprocess(
-                    next_state
-                )
+                next_state = self.state_preprocess(next_state)
 
                 self.agent.replay_memory.store(state, action, next_state, reward, done)
 
@@ -218,10 +215,7 @@ class Model_TrainTest:
                     "Reward per episode": total_reward,
                     "Epsilon": self.agent.epsilon,
                     "Steps done": steps_done,
-                    "Gif:": (
-                        wandb.Video(gif, fps=4, format="gif") if gif else None
-                    ),
-
+                    "Gif:": (wandb.Video(gif, fps=4, format="gif") if gif else None),
                 }
             )
 
@@ -277,14 +271,13 @@ def get_num_states(map_path):
 if __name__ == "__main__":
     # Parameters:
 
+    train_mode = True
 
-    train_mode = False
     render = True
     render_mode = "human"
 
     if train_mode:
         render_mode = "rgb_array" if render else None
-
 
     map_version = map_path_train.split("/")[-2]
 
@@ -327,7 +320,6 @@ if __name__ == "__main__":
             "hit_wall": -0.2,
             "has_not_moved": -0.2,
             "new_square": 0.2,
-
             "max_steps_reached": -0.5,
         },
         # TODO
