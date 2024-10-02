@@ -1,4 +1,3 @@
-import copy
 import math
 
 import random as rd
@@ -8,7 +7,8 @@ import numpy as np
 import pygame
 from gymnasium import spaces
 from PIL import Image
-from tqdm import tqdm
+import pandas as pd
+import copy
 
 from utils.calculate_fov import calculate_fov_matrix_size, step_angle
 from .file_manager import build_map
@@ -48,7 +48,8 @@ class SunburstMazeDiscrete(gym.Env):
         number_of_rays=100,
     ):
         self.map_file = maze_file
-        self.env_map = build_map(maze_file)
+        self.initial_map = build_map(maze_file)
+        self.env_map = copy.deepcopy(self.initial_map)
         self.height = self.env_map.shape[0]
         self.width = self.env_map.shape[1]
         self.random_start_position = random_start_position
@@ -162,27 +163,7 @@ class SunburstMazeDiscrete(gym.Env):
         # Get the matrix of marked squares without rendering
         return np.array([*matrix, self.orientation])
 
-    def calculate_fov_matrix(self):
-        matrix = np.zeros(calculate_fov_matrix_size(self.ray_length, self.half_fov))
 
-        # Create a matrix with the marked squares from the marked_2 set
-        for square in self.observed_squares:
-            x, y = square
-            matrix[y, x] = 1
-
-        # Mark the goal square
-        if len(self.goal_observed_square) == 1:
-            x, y = self.goal_observed_square.pop()
-            matrix[y, x] = 2
-
-        if self.orientation == 2 or self.orientation == 3:
-            matrix = np.rot90(matrix, 2)
-            matrix = np.roll(matrix, 1, axis=0)
-
-        if self.orientation == 3:
-            matrix = np.roll(matrix, 1, axis=0)
-
-        return matrix
 
     
     def reset(self, seed=None, options=None) -> tuple:
@@ -190,7 +171,7 @@ class SunburstMazeDiscrete(gym.Env):
         super().reset(seed=seed)
 
         # self.visited_squares = []
-        self.env_map = build_map(self.map_file)
+        self.env_map = copy.deepcopy(self.initial_map)
         self.position = self.select_start_position()
 
         self.steps_current_episode = 0
@@ -231,32 +212,72 @@ class SunburstMazeDiscrete(gym.Env):
         agent_angle = self.orientation * math.pi / 2  # 0, 90, 180, 270
 
         start_angle = agent_angle - self.half_fov
-        for ray in range(self.number_of_rays):
+        for _ in range(self.number_of_rays+1):
             for depth in range(self.ray_length):
-                x = int(self.position[0] - depth * math.cos(start_angle))
-                y = int(self.position[1] + depth * math.sin(start_angle))
+                x = round(self.position[0] - depth * math.cos(start_angle))
+                y = round(self.position[1] + depth * math.sin(start_angle))
 
                 if self.env_map[x][y] == 1:
                     self.wall_rays.add((x, y))
                     break
 
-                if self.orientation == 0 or self.orientation == 2:
-                    x_2 = int(self.matrix_middle_index + depth * math.sin(start_angle))
-                    y_2 = 0 + math.ceil(depth * math.cos(start_angle))
-                if self.orientation == 1 or self.orientation == 3:
-                    y_2 = int(depth * math.sin(start_angle))
-                    x_2 = self.matrix_middle_index - math.ceil(
-                        depth * math.cos(start_angle)
-                    )
                 self.observed_squares_map.add((x, y))
-                self.observed_squares.add((x_2, y_2))
 
-                # Add the goal square to the observed squares
-                if self.env_map[x][y] == 2:
-                    self.goal_observed_square.add((x_2, y_2))
+                self.find_relative_position_in_matrix(x,y)
             start_angle += self.step_angle
 
         matrix = self.calculate_fov_matrix()
+        return matrix
+    
+    def find_relative_position_in_matrix(self, x2,y2):
+        x,y = self.position
+
+
+        if self.orientation == 0:
+            marked_x = self.matrix_middle_index + y-  y2
+            marked_y = x - x2
+        if self.orientation == 1:
+            marked_x = self.matrix_middle_index + x2 - x
+            marked_y = y2 - y
+
+        if self.orientation == 2:
+            marked_x = self.matrix_middle_index + y - y2
+            marked_y = x2 - x
+
+        if self.orientation == 3:
+            marked_x = self.matrix_middle_index + x2 - x
+            marked_y = y - y2
+
+        # Add the goal square
+        if self.env_map[x2,y2] == 2:
+            self.goal_observed_square.add((marked_x, marked_y))
+
+        self.observed_squares.add((marked_x, marked_y))
+
+    def calculate_fov_matrix(self):
+        matrix = np.zeros(calculate_fov_matrix_size(self.ray_length, self.half_fov))
+
+        # Create a matrix with the marked squares from the marked_2 set
+        for square in self.observed_squares:
+            x, y = square
+            matrix[y, x] = 1
+
+        # Mark the goal square
+        if len(self.goal_observed_square) == 1:
+            x, y = self.goal_observed_square.pop()
+            matrix[y, x] = 2
+
+
+        df = pd.DataFrame(matrix)
+        df.to_csv("matrix.csv")
+
+        # if self.orientation == 2 or self.orientation == 3:
+        #     matrix = np.rot90(matrix, 2)
+        #     matrix = np.roll(matrix, 1, axis=0)
+
+        # if self.orientation == 3:
+        #     matrix = np.roll(matrix, 1, axis=0)
+
         return matrix
 
     def can_move_forward(self) -> bool:

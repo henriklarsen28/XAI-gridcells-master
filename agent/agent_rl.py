@@ -24,7 +24,7 @@ wandb.login()
 
 # Define the CSV file path relative to the project root
 map_path_train = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
-map_path_test = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
+map_path_test = os.path.join(project_root, "env/map_v0/map.csv")
 
 
 device = torch.device("cpu")
@@ -79,10 +79,15 @@ class Model_TrainTest:
         self.fov = config["fov"]
         self.ray_length = config["ray_length"]
         self.number_of_rays = config["number_of_rays"]
+        
+        map_path = map_path_train
+        if not self.train_mode:
+             map_path = map_path_test
+
 
         # Define Env
         self.env = SunburstMazeDiscrete(
-            map_path_train,
+            maze_file=map_path,
             render_mode=render_mode,
             max_steps_per_episode=self.max_steps,
             random_start_position=self.random_start_position,
@@ -133,6 +138,13 @@ class Model_TrainTest:
         self.reward_history = []
         frames = []
         wandb.init(project="sunburst-maze", config=self)
+
+        # Create the nessessary directories
+        if not os.path.exists("./gifs"):
+                    os.makedirs("./gifs")
+        
+        if not os.path.exists("./model"):
+                    os.makedirs("./model")
 
         # Training loop over episodes
         for episode in range(1, self.max_episodes + 1):
@@ -189,6 +201,7 @@ class Model_TrainTest:
                     gif_path=f"./gifs/{episode}.gif", frames=frames
                 )
                 frames.clear()
+
 
             # -- based on interval
             if episode % self.save_interval == 0:
@@ -259,6 +272,7 @@ if __name__ == "__main__":
     # Parameters:
 
     train_mode = True
+
     render = True
     render_mode = "human"
 
@@ -285,7 +299,7 @@ if __name__ == "__main__":
         "train_mode": train_mode,
         "render": render,
         "render_mode": render_mode,
-        "RL_load_path": f"./model/sunburst_maze_{map_version}_500.pth",
+        "RL_load_path": f"./model/sunburst_maze_{map_version}_2000.pth",
         "save_path": f"./model/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 6e-4,
@@ -293,9 +307,9 @@ if __name__ == "__main__":
         "optimizer": "adam",
         "total_episodes": 2000,
         "epsilon": 1 if train_mode else -1,
-        "epsilon_decay": 0.995,
+        "epsilon_decay": 0.997,
         "epsilon_min": 0.1,
-        "discount_factor": 0.93,
+        "discount_factor": 0.90,
         "alpha": 0.1,
         "map_path": map_path_train,
         "target_model_update": 10,  # hard update of the target model
@@ -313,10 +327,10 @@ if __name__ == "__main__":
             "position": True,
             "orientation": True,
             "steps_to_goal": True,
-            "last_known_steps": 5,
+            "last_known_steps": 0,
         },
-        "save_interval": 500,
-        "memory_capacity": 500_000,
+        "save_interval": 100,
+        "memory_capacity": 50_000,
         "render_fps": 10,
         "num_states": num_states,
         "clip_grad_normalization": 3,
