@@ -8,6 +8,7 @@ import pygame
 from gymnasium import spaces
 from PIL import Image
 import pandas as pd
+import copy
 
 from utils.calculate_fov import calculate_fov_matrix_size, step_angle
 from .file_manager import build_map
@@ -47,7 +48,8 @@ class SunburstMazeDiscrete(gym.Env):
         number_of_rays=100,
     ):
         self.map_file = maze_file
-        self.env_map = build_map(maze_file)
+        self.initial_map = build_map(maze_file)
+        self.env_map = copy.deepcopy(self.initial_map)
         self.height = self.env_map.shape[0]
         self.width = self.env_map.shape[1]
         self.random_start_position = random_start_position
@@ -169,7 +171,7 @@ class SunburstMazeDiscrete(gym.Env):
         super().reset(seed=seed)
 
         # self.visited_squares = []
-        self.env_map = build_map(self.map_file)
+        self.env_map = copy.deepcopy(self.initial_map)
         self.position = self.select_start_position()
 
         self.steps_current_episode = 0
@@ -264,6 +266,10 @@ class SunburstMazeDiscrete(gym.Env):
         if len(self.goal_observed_square) == 1:
             x, y = self.goal_observed_square.pop()
             matrix[y, x] = 2
+
+
+        df = pd.DataFrame(matrix)
+        df.to_csv("matrix.csv")
 
         # if self.orientation == 2 or self.orientation == 3:
         #     matrix = np.rot90(matrix, 2)
