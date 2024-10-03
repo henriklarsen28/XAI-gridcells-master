@@ -279,6 +279,58 @@ class Maze:
                 (y * self.cell_size + 15, x * self.cell_size + 15),
             )
 
+    def draw_triangle(self, position, orientation, color=(0, 255, 0)):
+
+        triangle_surface = pygame.Surface((self.cell_size, self.cell_size), pygame.SRCALPHA)
+        triangle_surface.set_alpha(128)
+
+
+        # Calculate coordinates of the triangle
+
+        if orientation == 0:
+            triangle_coordinates = [(0, 0),
+                                    (self.cell_size, 0),
+                                    (self.cell_size / 2, self.cell_size / 2)]
+        elif orientation == 1:
+            triangle_coordinates = [(self.cell_size, 0),
+                                    (self.cell_size, self.cell_size),
+                                    (self.cell_size / 2, self.cell_size / 2)]
+
+        elif orientation == 2:
+            triangle_coordinates = [(0, self.cell_size),
+                                    (self.cell_size, self.cell_size),
+                                    (self.cell_size / 2, self.cell_size / 2)]
+        
+        elif orientation == 3:
+            triangle_coordinates = [(0, 0),
+                                    (0, self.cell_size),
+                                    (self.cell_size / 2, self.cell_size / 2)]
+
+        pygame.draw.polygon(
+            triangle_surface,
+            color,
+            [
+                triangle_coordinates[0],
+                triangle_coordinates[1],
+                triangle_coordinates[2],
+            ],
+        )
+
+
+        self.win.blit(triangle_surface, (position[1] * self.cell_size, position[0] * self.cell_size))
+
+    def draw_triangles(self, position, orientation, color=(0, 255, 0)):
+        color_green = np.linspace(0, 255, 10)
+        color_red = np.linspace(255, 0, 10)
+
+        print(color_green)
+
+        for i in range(10):
+            for j in range(10):
+                for orientation in range(4):
+                    self.draw_triangle((position[0] + i, position[1] + j), orientation, (color_red[i], color_green[j], 0))
+
+
     def draw_frame(
         self,
         env_map: np.array,
@@ -305,7 +357,7 @@ class Maze:
         self.draw_sprite(position, orientation)
         self.draw_rays(position, orientation, wall_rays)
         self.draw_marked_blocks(observed_squares_map)
-
+        self.draw_triangles(position, orientation)
         if self.render_mode == "human":
             pygame.display.flip()
         self.clock.tick(self.framerate)
