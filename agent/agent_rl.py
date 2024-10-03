@@ -16,7 +16,7 @@ import pygame
 import torch
 from dqn_agent import DQN_Agent
 from explain_network import generate_q_values
-from scipy.special import softmax
+from collections import deque
 
 import wandb
 from env import SunburstMazeDiscrete
@@ -82,6 +82,8 @@ class Model_TrainTest:
         self.fov = config["fov"]
         self.ray_length = config["ray_length"]
         self.number_of_rays = config["number_of_rays"]
+
+        self.transformer = config["transformer"]
         
         map_path = map_path_train
         if not self.train_mode:
@@ -116,6 +118,7 @@ class Model_TrainTest:
             memory_capacity=self.memory_capacity,
             device=device,
             seed=seed,
+            transformer_param = self.transformer
         )
 
     
@@ -128,6 +131,7 @@ class Model_TrainTest:
         total_steps = 0
         self.reward_history = []
         frames = []
+        sequence = deque(maxlen=4)
         wandb.init(project="sunburst-maze", config=self)
 
         # Create the nessessary directories
@@ -320,7 +324,6 @@ if __name__ == "__main__":
             "position": True,
             "orientation": True,
             "steps_to_goal": True,
-            "last_known_steps": 0,
         },
         "save_interval": 100,
         "memory_capacity": 50_000,
@@ -330,6 +333,16 @@ if __name__ == "__main__":
         "fov": math.pi / 1.5,
         "ray_length": 20,
         "number_of_rays": 100,
+        "transformer": {
+            "sequence_length": 4,
+            "n_embd": 128,
+            "n_head": 8,
+            "n_layer": 2,
+            "dropout": 0.4,
+            "batch_dim": 3,
+            "state_dim": num_states,
+        },
+
     }
 
     # Run

@@ -4,6 +4,7 @@ from replay_memory import ReplayMemory
 from torch import nn, optim
 
 from agent.neural_network_ff_torch import DQN_Network
+from agent.transformer_decoder import TransformerDQN
 
 
 class DQN_Agent:
@@ -25,6 +26,7 @@ class DQN_Agent:
         memory_capacity,
         device,
         seed,
+        transformer_param
     ):
 
         # To save the history of network loss
@@ -45,8 +47,31 @@ class DQN_Agent:
         self.observation_space = env.observation_space
         self.replay_memory = ReplayMemory(memory_capacity, self.device)
 
+
+        n_embd = transformer_param["n_embd"]  # Embedding dimension
+        n_head = transformer_param["n_head"]  # Number of attention heads (in multi-head attention)
+        n_layer = transformer_param["n_layer"]  # Number of decoder layers
+        dropout = transformer_param["dropout"]  # Dropout probability
+
+        batch_dim = transformer_param["batch_dim"]  # Replace value
+        state_dim = self.observation_space.n + 4  # Replace value
+
+        sequence_length = transformer_param["sequence_length"] # Replace value
+
         # Initiate the network models
-        self.model = DQN_Network(
+        self.model = TransformerDQN(
+            state_dim, self.action_space.n, sequence_length, n_embd, n_head, n_layer, dropout, self.device
+            )
+        self.model = self.model.to(self.device)
+
+
+        self.target_model = TransformerDQN(
+            state_dim, self.action_space.n, sequence_length, n_embd, n_head, n_layer, dropout, self.device
+            )
+        self.target_model = self.target_model.to(self.device).eval()
+
+
+        """"self.model = DQN_Network(
             num_actions=self.action_space.n, input_dim=self.observation_space.n + 4
         ).to(self.device)
 
@@ -56,7 +81,7 @@ class DQN_Agent:
             )
             .to(self.device)
             .eval()
-        )
+        )""""
 
         # Copy the weights of the model
         self.target_model.load_state_dict(self.model.state_dict())
