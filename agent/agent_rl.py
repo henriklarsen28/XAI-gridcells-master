@@ -14,11 +14,14 @@ import keras as keras
 import numpy as np
 import pygame
 import torch
-import wandb
 from dqn_agent import DQN_Agent
+from explain_network import generate_q_values
+from scipy.special import softmax
 
+import wandb
 from env import SunburstMazeDiscrete
 from utils.calculate_fov import calculate_fov_matrix_size
+from utils.state_preprocess import state_preprocess
 
 wandb.login()
 
@@ -115,19 +118,7 @@ class Model_TrainTest:
             seed=seed,
         )
 
-    def state_preprocess(self, state: int):
-        """
-        Converts the state to a one-hot encoded tensor,
-        that included the position as a one-hot encoding and the orientation as a one-hot encoding.
-        """
-        field_of_view = state[:-1]
-        orientation = int(state[-1])
-
-        field_of_view = torch.tensor(field_of_view, dtype=torch.float32, device=device)
-
-        onehot_vector_orientation = torch.zeros(4, dtype=torch.float32, device=device)
-        onehot_vector_orientation[orientation] = 1
-        return torch.concat((field_of_view, onehot_vector_orientation))
+    
 
     def train(self):
         """
@@ -149,7 +140,7 @@ class Model_TrainTest:
         # Training loop over episodes
         for episode in range(1, self.max_episodes + 1):
             state, _ = self.env.reset()
-            state = self.state_preprocess(state)
+            state = state_preprocess(state, device)
             done = False
             truncation = False
             steps_done = 0
@@ -166,7 +157,7 @@ class Model_TrainTest:
                 if render_mode == "human":
                     self.env.render()
 
-                next_state = self.state_preprocess(next_state)
+                next_state = state_preprocess(next_state, device)
 
                 self.agent.replay_memory.store(state, action, next_state, reward, done)
 
@@ -228,6 +219,8 @@ class Model_TrainTest:
         self.agent.model.load_state_dict(torch.load(self.RL_load_path))
         self.agent.model.eval()
 
+        generate_q_values(env=self.env, model=self.agent.model)
+
         # Testing loop over episodes
         for episode in range(1, max_episodes + 1):
             state, _ = self.env.reset(seed=seed)
@@ -237,7 +230,7 @@ class Model_TrainTest:
             total_reward = 0
 
             while not done and not truncation:
-                state = self.state_preprocess(state)
+                state = state_preprocess(state, device)
                 action = self.agent.select_action(state)
                 next_state, reward, done, truncation, _ = self.env.step(action)
 
@@ -271,7 +264,7 @@ def get_num_states(map_path):
 if __name__ == "__main__":
     # Parameters:
 
-    train_mode = True
+    train_mode = False
 
     render = True
     render_mode = "human"
