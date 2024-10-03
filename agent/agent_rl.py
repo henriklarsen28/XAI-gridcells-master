@@ -27,7 +27,7 @@ wandb.login()
 
 # Define the CSV file path relative to the project root
 map_path_train = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
-map_path_test = os.path.join(project_root, "env/map_v0/map.csv")
+map_path_test = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
 
 
 device = torch.device("cpu")
@@ -219,8 +219,9 @@ class Model_TrainTest:
         self.agent.model.load_state_dict(torch.load(self.RL_load_path))
         self.agent.model.eval()
 
-        generate_q_values(env=self.env, model=self.agent.model)
-
+        q_val_list = generate_q_values(env=self.env, model=self.agent.model)
+        self.env.q_values = q_val_list
+        
         # Testing loop over episodes
         for episode in range(1, max_episodes + 1):
             state, _ = self.env.reset(seed=seed)
@@ -233,7 +234,6 @@ class Model_TrainTest:
                 state = state_preprocess(state, device)
                 action = self.agent.select_action(state)
                 next_state, reward, done, truncation, _ = self.env.step(action)
-
                 state = next_state
                 total_reward += reward
                 steps_done += 1
@@ -292,7 +292,7 @@ if __name__ == "__main__":
         "train_mode": train_mode,
         "render": render,
         "render_mode": render_mode,
-        "RL_load_path": f"./model/sunburst_maze_{map_version}_2000.pth",
+        "RL_load_path": f"./model/sunburst_maze_{map_version}_1800.pth",
         "save_path": f"./model/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 6e-4,
@@ -324,7 +324,7 @@ if __name__ == "__main__":
         },
         "save_interval": 100,
         "memory_capacity": 50_000,
-        "render_fps": 10,
+        "render_fps": 5,
         "num_states": num_states,
         "clip_grad_normalization": 3,
         "fov": math.pi / 1.5,

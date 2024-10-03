@@ -113,6 +113,8 @@ class SunburstMazeDiscrete(gym.Env):
             self.matrix_size[0] * self.matrix_size[1]
         )
 
+        self.q_values = []
+
     def goal_position(self):
         for y in range(self.height):
             for x in range(self.width):
@@ -502,6 +504,18 @@ class SunburstMazeDiscrete(gym.Env):
             return self.rewards["new_square"]  # + self.distance_to_goal_reward()
         
         return -0.1
+    
+    def render_q_value_overlay(self, q_values):
+        """
+        Renders the Q-values as an overlay on the maze.
+
+        Args:
+            q_values (np.ndarray): The Q-values to render as an overlay.
+
+        Returns:
+            None
+        """
+        self.render_maze.draw_q_values(q_values)
 
     def render(self):
         self._render_frame()
@@ -510,12 +524,12 @@ class SunburstMazeDiscrete(gym.Env):
         if self.render_mode == "rgb_array":
             return np.asarray(
                 self.render_maze.draw_frame(
-                    self.env_map, self.position, self.orientation, self.observed_squares_map, self.wall_rays
+                    self.env_map, self.position, self.orientation, self.observed_squares_map, self.wall_rays, []
                 )
             )
         elif self.render_mode == "human":
             self.render_maze.draw_frame(
-                self.env_map, self.position, self.orientation, self.observed_squares_map, self.wall_rays
+                self.env_map, self.position, self.orientation, self.observed_squares_map, self.wall_rays, self.q_values
             )
 
 
