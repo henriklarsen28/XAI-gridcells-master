@@ -349,8 +349,8 @@ if __name__ == "__main__":
         "ray_length": 20,
         "number_of_rays": 100,
         "transformer": {
-            "sequence_length": 4,
-            "n_embd": 128,
+            "sequence_length": 10,
+            "n_embd": 800,
             "n_head": 8,
             "n_layer": 2,
             "dropout": 0.4,
