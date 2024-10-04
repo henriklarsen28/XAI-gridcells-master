@@ -53,7 +53,6 @@ class DQN_Agent:
         n_layer = transformer_param["n_layer"]  # Number of decoder layers
         dropout = transformer_param["dropout"]  # Dropout probability
 
-        batch_dim = transformer_param["batch_dim"]  # Replace value
         state_dim = self.observation_space.n + 4  # Replace value
 
         sequence_length = transformer_param["sequence_length"] # Replace value
@@ -69,19 +68,6 @@ class DQN_Agent:
             state_dim, self.action_space.n, sequence_length, n_embd, n_head, n_layer, dropout, self.device
             )
         self.target_model = self.target_model.to(self.device).eval()
-
-
-        """"self.model = DQN_Network(
-            num_actions=self.action_space.n, input_dim=self.observation_space.n + 4
-        ).to(self.device)
-
-        self.target_model = (
-            DQN_Network(
-                num_actions=self.action_space.n, input_dim=self.observation_space.n + 4
-            )
-            .to(self.device)
-            .eval()
-        )""""
 
         # Copy the weights of the model
         self.target_model.load_state_dict(self.model.state_dict())
@@ -108,8 +94,11 @@ class DQN_Agent:
 
         # Exploitation: the action is selected based on the Q-values.
         with torch.no_grad():
+            #state = torch.tensor(state).to(self.device)
+            #stack = torch.stack(list(state))
+            state = state.unsqueeze(0)
             Q_values = self.model(state)
-            action = torch.argmax(Q_values).item()
+            action = torch.argmax(Q_values[0,0,:]).item()
             return action
 
     def learn(self, batch_size, done):
@@ -117,14 +106,14 @@ class DQN_Agent:
         states, actions, next_states, rewards, dones = self.replay_memory.sample(
             batch_size
         )
-
+        
         actions = actions.unsqueeze(1)
         rewards = rewards.unsqueeze(1)
         dones = dones.unsqueeze(1)
 
         current_q_values = self.model(states)
-
-        current_q_values = current_q_values.gather(dim=1, index=actions)
+        #print(current_q_values[:,0,:])
+        current_q_values = current_q_values[:,0,:].gather(dim=1, index=actions)
 
         # Compute the maximum Q-value for the next states using the target network
         with torch.no_grad():
@@ -134,9 +123,9 @@ class DQN_Agent:
 
         future_q_values[dones] = 0
 
-        target = rewards + (self.discount * future_q_values)
+        targets = rewards + (self.discount * future_q_values)
 
-        loss = self.critertion(current_q_values, target)
+        loss = self.critertion(current_q_values, targets)
 
         # Update the running loss and learned counts for logging and plotting
         self.running_loss += loss.item()

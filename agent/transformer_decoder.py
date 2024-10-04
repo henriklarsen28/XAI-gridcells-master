@@ -128,26 +128,26 @@ class TransformerDQN(nn.Module):
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device {device}")
 
-## Suggestion for hyperparameter values
-n_embd = 128  # Embedding dimension
-n_head = 8  # Number of attention heads (in multi-head attention)
-n_layer = 2  # Number of decoder layers
-dropout = 0.4  # Dropout probability
+# ## Suggestion for hyperparameter values
+# n_embd = 128  # Embedding dimension
+# n_head = 8  # Number of attention heads (in multi-head attention)
+# n_layer = 2  # Number of decoder layers
+# dropout = 0.4  # Dropout probability
 
-batch_dim = 3  # Replace value
-state_dim = 10  # Replace value
-action_dim = 3  # Replace value
-sequence_length = 2  # Replace value
+# batch_dim = 3  # Replace value
+# state_dim = 10  # Replace value
+# action_dim = 3  # Replace value
+# sequence_length = 2  # Replace value
 
-m = TransformerDQN(
-    state_dim, action_dim, sequence_length, n_embd, n_head, n_layer, dropout, device
-)
-m = m.to(device)
+# m = TransformerDQN(
+#     state_dim, action_dim, sequence_length, n_embd, n_head, n_layer, dropout, device
+# )
+# m = m.to(device)
 
-## Example
-print("Radn_vals", torch.rand(batch_dim, sequence_length, state_dim).to(device))
+# ## Example
+# print("Radn_vals", type(torch.rand(batch_dim, sequence_length, state_dim).to(device)))
 
-q_vals = m(
-    torch.rand(batch_dim, sequence_length, state_dim).to(device)
-)  # Q-values (for each action per sequence element)
-print(q_vals)
+# q_vals = m(
+#     torch.rand(batch_dim, sequence_length, state_dim).to(device)
+# )  # Q-values (for each action per sequence element)
+# print(q_vals)

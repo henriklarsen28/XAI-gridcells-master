@@ -14,6 +14,7 @@ import keras as keras
 import numpy as np
 import pygame
 import torch
+from torch.nn.utils.rnn import pad_sequence
 from dqn_agent import DQN_Agent
 from explain_network import generate_q_values
 from collections import deque
@@ -31,7 +32,7 @@ map_path_test = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
 
 
 device = torch.device("cpu")
-# device = torch.device("mps" if torch.backends.mps.is_available() else "cpu") # Was faster with cpu??? Loading between cpu and mps is slow maybe
+device = torch.device("mps" if torch.backends.mps.is_available() else "cpu") # Was faster with cpu??? Loading between cpu and mps is slow maybe
 
 
 # Seed everything for reproducible results
@@ -84,7 +85,7 @@ class Model_TrainTest:
         self.number_of_rays = config["number_of_rays"]
 
         self.transformer = config["transformer"]
-        
+        self.sequnence_length = self.transformer["sequence_length"]
         map_path = map_path_train
         if not self.train_mode:
              map_path = map_path_test
@@ -131,7 +132,9 @@ class Model_TrainTest:
         total_steps = 0
         self.reward_history = []
         frames = []
-        sequence = deque(maxlen=4)
+        sequence = deque(maxlen=self.sequnence_length)
+        new_sequence = deque(maxlen=self.sequnence_length)
+
         wandb.init(project="sunburst-maze", config=self)
 
         # Create the nessessary directories
@@ -149,9 +152,17 @@ class Model_TrainTest:
             truncation = False
             steps_done = 0
             total_reward = 0
+            
+            sequence.extend([state]*self.sequnence_length)
+            new_sequence.extend([state]*self.sequnence_length)
+
 
             while not done and not truncation:
-                action = self.agent.select_action(state)
+                sequence.append(state)
+                tensor_sequence = torch.stack(list(sequence))
+                tensor_sequence = pad_sequence(tensor_sequence, batch_first=True)
+
+                action = self.agent.select_action(tensor_sequence)
                 next_state, reward, done, truncation, _ = self.env.step(action)
                 if render_mode == "rgb_array":
                     if episode % 100 == 0:
@@ -162,8 +173,11 @@ class Model_TrainTest:
                     self.env.render()
 
                 next_state = state_preprocess(next_state, device)
+                new_sequence.append(next_state)
 
-                self.agent.replay_memory.store(state, action, next_state, reward, done)
+                tensor_new_sequence = torch.stack(list(new_sequence))
+                tensor_new_sequence = pad_sequence(tensor_new_sequence, batch_first=True)
+                self.agent.replay_memory.store(tensor_sequence, action, tensor_new_sequence, reward, done)
 
                 if (
                     len(self.agent.replay_memory) > self.batch_size
@@ -225,7 +239,7 @@ class Model_TrainTest:
 
         q_val_list = generate_q_values(env=self.env, model=self.agent.model)
         self.env.q_values = q_val_list
-        
+        sequence = deque(maxlen=self.sequnence_length)
         # Testing loop over episodes
         for episode in range(1, max_episodes + 1):
             state, _ = self.env.reset(seed=seed)
@@ -236,7 +250,8 @@ class Model_TrainTest:
 
             while not done and not truncation:
                 state = state_preprocess(state, device)
-                action = self.agent.select_action(state)
+                sequence.append
+                action = self.agent.select_action(sequence)
                 next_state, reward, done, truncation, _ = self.env.step(action)
                 state = next_state
                 total_reward += reward
@@ -268,7 +283,7 @@ def get_num_states(map_path):
 if __name__ == "__main__":
     # Parameters:
 
-    train_mode = False
+    train_mode = True
 
     render = True
     render_mode = "human"
@@ -339,7 +354,6 @@ if __name__ == "__main__":
             "n_head": 8,
             "n_layer": 2,
             "dropout": 0.4,
-            "batch_dim": 3,
             "state_dim": num_states,
         },
 
