@@ -160,7 +160,7 @@ class Model_TrainTest:
             while not done and not truncation:
                 sequence.append(state)
                 tensor_sequence = torch.stack(list(sequence))
-
+                tensor_sequence = pad_sequence(tensor_sequence, batch_first=True)
                 action = self.agent.select_action(tensor_sequence)
                 next_state, reward, done, truncation, _ = self.env.step(action)
                 if render_mode == "rgb_array":
