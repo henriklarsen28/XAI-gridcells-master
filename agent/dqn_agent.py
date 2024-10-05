@@ -95,8 +95,9 @@ class DQN_Agent:
         # Exploitation: the action is selected based on the Q-values.
         with torch.no_grad():
             #state = torch.tensor(state).to(self.device)
-            #stack = torch.stack(list(state))
+            #state = torch.stack(list(state))
             state = state.unsqueeze(0)
+            #print(state.shape)
             Q_values = self.model(state)
             action = torch.argmax(Q_values[0,0,:]).item()
             return action
@@ -106,14 +107,14 @@ class DQN_Agent:
         states, actions, next_states, rewards, dones = self.replay_memory.sample(
             batch_size
         )
-        
+
         actions = actions.unsqueeze(1)
         rewards = rewards.unsqueeze(1)
         dones = dones.unsqueeze(1)
-
+        #print(states.shape, actions.shape)
         current_q_values = self.model(states)
         #print(current_q_values[:,0,:])
-        current_q_values = current_q_values[:,0,:].gather(dim=1, index=actions)
+        current_q_values = current_q_values[:,:,0].gather(dim=1, index=actions)
 
         # Compute the maximum Q-value for the next states using the target network
         with torch.no_grad():

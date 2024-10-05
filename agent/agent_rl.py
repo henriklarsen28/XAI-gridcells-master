@@ -249,7 +249,7 @@ class Model_TrainTest:
 
             while not done and not truncation:
                 state = state_preprocess(state, device)
-                sequence.append
+                sequence.append(state)
                 action = self.agent.select_action(sequence)
                 next_state, reward, done, truncation, _ = self.env.step(action)
                 state = next_state
@@ -350,9 +350,9 @@ if __name__ == "__main__":
         "transformer": {
             "sequence_length": 10,
             "n_embd": num_states*2,
-            "n_head": 10,
-            "n_layer": 2,
-            "dropout": 0.4,
+            "n_head": 8,
+            "n_layer": 3,
+            "dropout": 0.2,
             "state_dim": num_states,
         },
 
