@@ -33,7 +33,7 @@ map_path_test = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
 
 device = torch.device("cpu")
 device = torch.device("mps" if torch.backends.mps.is_available() else "cpu") # Was faster with cpu??? Loading between cpu and mps is slow maybe
-
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Seed everything for reproducible results
 seed = 2024
@@ -43,10 +43,10 @@ os.environ["PYTHONHASHSEED"] = str(seed)
 torch.manual_seed(seed)
 
 # For cuda seed
-"""if torch.cuda.is_available():
+if torch.cuda.is_available():
     torch.cuda.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False"""
+    torch.backends.cudnn.benchmark = False
 
 
 class Model_TrainTest:
