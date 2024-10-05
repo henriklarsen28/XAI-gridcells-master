@@ -159,7 +159,6 @@ class Model_TrainTest:
 
             while not done and not truncation:
                 sequence.append(state)
-                print(sequence)
                 tensor_sequence = torch.stack(list(sequence))
 
                 action = self.agent.select_action(tensor_sequence)
