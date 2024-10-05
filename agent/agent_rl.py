@@ -159,8 +159,8 @@ class Model_TrainTest:
 
             while not done and not truncation:
                 sequence.append(state)
+                print(sequence)
                 tensor_sequence = torch.stack(list(sequence))
-                tensor_sequence = pad_sequence(tensor_sequence, batch_first=True)
 
                 action = self.agent.select_action(tensor_sequence)
                 next_state, reward, done, truncation, _ = self.env.step(action)
@@ -317,7 +317,7 @@ if __name__ == "__main__":
         "learning_rate": 6e-4,
         "batch_size": 100,
         "optimizer": "adam",
-        "total_episodes": 2000,
+        "total_episodes": 4000,
         "epsilon": 1 if train_mode else -1,
         "epsilon_decay": 0.997,
         "epsilon_min": 0.1,
@@ -341,7 +341,7 @@ if __name__ == "__main__":
             "steps_to_goal": True,
         },
         "save_interval": 100,
-        "memory_capacity": 50_000,
+        "memory_capacity": 100_000,
         "render_fps": 5,
         "num_states": num_states,
         "clip_grad_normalization": 3,
@@ -350,8 +350,8 @@ if __name__ == "__main__":
         "number_of_rays": 100,
         "transformer": {
             "sequence_length": 10,
-            "n_embd": 800,
-            "n_head": 8,
+            "n_embd": num_states*2,
+            "n_head": 10,
             "n_layer": 2,
             "dropout": 0.4,
             "state_dim": num_states,
