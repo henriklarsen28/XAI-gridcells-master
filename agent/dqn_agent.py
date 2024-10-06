@@ -114,18 +114,18 @@ class DQN_Agent:
         #print(states.shape, actions.shape)
         current_q_values = self.model(states)
         #print(current_q_values[:,0,:])
-        current_q_values = current_q_values[:,:,0].gather(dim=1, index=actions)
+        current_q_values = current_q_values.gather(2, actions).squeeze()
 
         # Compute the maximum Q-value for the next states using the target network
         with torch.no_grad():
-            future_q_values = self.target_model(next_states).max(dim=1, keepdim=True)[
+            future_q_values = self.target_model(next_states).max(dim=2, keepdim=True)[
                 0
             ]  # not argmax (cause we want the maxmimum q-value, not the action that maximize it)
 
         future_q_values[dones] = 0
 
         targets = rewards + (self.discount * future_q_values)
-
+        print(current_q_values.shape, targets.shape)
         loss = self.critertion(current_q_values, targets)
 
         # Update the running loss and learned counts for logging and plotting

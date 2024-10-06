@@ -1,4 +1,5 @@
 from collections import deque
+
 import numpy as np
 import torch
 
@@ -43,21 +44,33 @@ class ReplayMemory:
                 for i in indices
             ]
         ).to(self.device)
-        actions = torch.as_tensor(
-            [self.actions[i] for i in indices], dtype=torch.long, device=self.device
-        )
+
+        actions = torch.stack(
+            [
+                torch.as_tensor(self.actions[i], dtype=torch.float32, device=self.device)
+                for i in indices
+            ]
+        ).to(self.device)
+
         next_states = torch.stack(
             [
                 torch.as_tensor(self.next_states[i], dtype=torch.float32, device=self.device)
                 for i in indices
             ]
         ).to(self.device)
-        rewards = torch.as_tensor(
-            [self.rewards[i] for i in indices], dtype=torch.float32, device=self.device
-        )
-        dones = torch.as_tensor(
-            [self.dones[i] for i in indices], dtype=torch.bool, device=self.device
-        )
+
+        rewards = torch.stack(
+            [
+                torch.as_tensor(self.rewards[i], dtype=torch.float32, device=self.device)
+                for i in indices
+            ]
+        ).to(self.device)
+        dones = torch.stack(
+            [
+                torch.as_tensor(self.dones[i], dtype=torch.float32, device=self.device)
+                for i in indices
+            ]
+        ).to(self.device)
 
         return states, actions, next_states, rewards, dones
 
