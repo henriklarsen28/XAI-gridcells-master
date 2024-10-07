@@ -47,7 +47,7 @@ class ReplayMemory:
 
         actions = torch.stack(
             [
-                torch.as_tensor(self.actions[i], dtype=torch.float32, device=self.device)
+                torch.as_tensor(self.actions[i], dtype=torch.int64, device=self.device)
                 for i in indices
             ]
         ).to(self.device)
@@ -67,7 +67,7 @@ class ReplayMemory:
         ).to(self.device)
         dones = torch.stack(
             [
-                torch.as_tensor(self.dones[i], dtype=torch.float32, device=self.device)
+                torch.as_tensor(self.dones[i], dtype=torch.bool, device=self.device)
                 for i in indices
             ]
         ).to(self.device)

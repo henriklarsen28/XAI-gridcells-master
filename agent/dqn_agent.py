@@ -99,7 +99,7 @@ class DQN_Agent:
             state = state.unsqueeze(0)
             #print(state.shape)
             Q_values = self.model(state)
-            action = torch.argmax(Q_values[0,0,:]).item()
+            action = torch.argmax(Q_values[:,-1,:]).item()
             return action
 
     def learn(self, batch_size, done):
@@ -108,12 +108,15 @@ class DQN_Agent:
             batch_size
         )
 
-        actions = actions.unsqueeze(1)
-        rewards = rewards.unsqueeze(1)
-        dones = dones.unsqueeze(1)
+        # Sends in the sequence of states, actions, next_states, rewards, and dones
+        # For training we will use every q_value in the sequence, but only the last q_value will be used for selecting an action
+        actions = actions.unsqueeze(2)
+        rewards = rewards.unsqueeze(2)
+        dones = dones.unsqueeze(2)
         #print(states.shape, actions.shape)
         current_q_values = self.model(states)
         #print(current_q_values[:,0,:])
+        #print(current_q_values.shape, actions.shape, rewards.shape, dones.shape)
         current_q_values = current_q_values.gather(2, actions).squeeze()
 
         # Compute the maximum Q-value for the next states using the target network
@@ -124,8 +127,8 @@ class DQN_Agent:
 
         future_q_values[dones] = 0
 
-        targets = rewards + (self.discount * future_q_values)
-        print(current_q_values.shape, targets.shape)
+        targets = rewards.squeeze() + (self.discount * future_q_values.squeeze())
+        #print(current_q_values.shape, targets.shape)
         loss = self.critertion(current_q_values, targets)
 
         # Update the running loss and learned counts for logging and plotting
@@ -176,7 +179,3 @@ class DQN_Agent:
 
         """
         torch.save(self.model.state_dict(), path)
-
-    
-
-

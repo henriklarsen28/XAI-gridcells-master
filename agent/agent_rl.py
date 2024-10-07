@@ -251,7 +251,6 @@ class Model_TrainTest:
                     and sum(self.reward_history) > 0
                 ):  # Start learning after some episodes and the agent has achieved some reward
                     self.agent.learn(self.batch_size, (done or truncation))
-
                     # Update target-network weights
                     if total_steps % self.update_frequency == 0:
                         self.agent.hard_update()
@@ -381,7 +380,7 @@ if __name__ == "__main__":
         "save_path": f"./model/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 6e-4,
-        "batch_size": 200,
+        "batch_size": 32,
         "optimizer": "adam",
         "total_episodes": 4000,
         "epsilon": 1 if train_mode else -1,
