@@ -382,7 +382,7 @@ class Maze:
         """
         self.marked_squares = set()
         self.marked_2 = set()
-        self.win.fill(white)  # fill screen before drawing
+        self.win.fill(grey)  # fill screen before drawing
         self.draw_maze(env_map)
         
         #self.draw_rays(position, orientation, wall_rays)
