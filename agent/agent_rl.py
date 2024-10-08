@@ -206,6 +206,7 @@ class Model_TrainTest:
                     "Reward per episode": total_reward,
                     "Epsilon": self.agent.epsilon,
                     "Steps done": steps_done,
+                    "Discount factor": self.discount_factor,
                     "Gif:": (wandb.Video(gif, fps=4, format="gif") if gif else None),
                 }
             )
@@ -302,16 +303,16 @@ if __name__ == "__main__":
         "epsilon": 1 if train_mode else -1,
         "epsilon_decay": 0.998,
         "epsilon_min": 0.05,
-        "discount_factor": 0.90,
+        "discount_factor": 0.92,
         "alpha": 0.1,
         "map_path": map_path_train,
         "target_model_update": 10,  # hard update of the target model
-        "max_steps_per_episode": 1000,
+        "max_steps_per_episode": 800,
         "random_start_position": True,
         "rewards": {
-            "is_goal": 200,
+            "is_goal": 50,
             "hit_wall": -0.2,
-            "has_not_moved": -0.2,
+            "has_not_moved": -0.5,
             "new_square": 0.2,
             "max_steps_reached": -0.5,
         },
@@ -319,7 +320,7 @@ if __name__ == "__main__":
         "observation_space": {
             "position": True,
             "orientation": True,
-            "steps_to_goal": True,
+            "steps_to_goal": False,
             "last_known_steps": 0,
         },
         "save_interval": 100,
