@@ -413,8 +413,8 @@ if __name__ == "__main__":
         "random_start_position": True,
         "rewards": {
             "is_goal": 1,
-            "hit_wall": -0.25
-            "has_not_moved": -0.15
+            "hit_wall": -0.25,
+            "has_not_moved": -0.15,
             "new_square": 0.2,
             "max_steps_reached": 0,
         },
