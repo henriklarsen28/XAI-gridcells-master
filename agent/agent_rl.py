@@ -311,11 +311,9 @@ class Model_TrainTest:
         """
 
         # Load the weights of the test_network
-        self.agent.model.load_state_dict(torch.load(self.RL_load_path))
+        self.agent.model.load_state_dict(torch.load(self.RL_load_path, map_location=device))
         self.agent.model.eval()
 
-        q_val_list = generate_q_values(env=self.env, model=self.agent.model)
-        self.env.q_values = q_val_list
         sequence = deque(maxlen=self.sequnence_length)
         # Testing loop over episodes
         for episode in range(1, max_episodes + 1):
@@ -327,8 +325,17 @@ class Model_TrainTest:
 
             while not done and not truncation:
                 state = state_preprocess(state, device)
-                sequence.append(state)
-                action = self.agent.select_action(sequence)
+
+                sequence = add_to_sequence(sequence, state)
+                tensor_sequence = torch.stack(list(sequence))
+                tensor_sequence = padding_sequence(
+                    tensor_sequence, self.sequnence_length
+                )
+                print(tensor_sequence.shape)
+                #q_val_list = generate_q_values(env=self.env, model=self.agent.model)
+                #self.env.q_values = q_val_list
+
+                action = self.agent.select_action(tensor_sequence)
                 next_state, reward, done, truncation, _ = self.env.step(action)
                 state = next_state
                 total_reward += reward
@@ -360,7 +367,7 @@ def get_num_states(map_path):
 if __name__ == "__main__":
     # Parameters:
 
-    train_mode = True
+    train_mode = False
 
     render = True
     render_mode = "human"
@@ -388,7 +395,7 @@ if __name__ == "__main__":
         "train_mode": train_mode,
         "render": render,
         "render_mode": render_mode,
-        "RL_load_path": f"./model/sunburst_maze_{map_version}_1800.pth",
+        "RL_load_path": f"./model/sunburst_maze_{map_version}_300.pth",
         "save_path": f"./model/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 6e-4,
@@ -405,11 +412,11 @@ if __name__ == "__main__":
         "max_steps_per_episode": 1000,
         "random_start_position": True,
         "rewards": {
-            "is_goal": 200,
-            "hit_wall": -0.2,
-            "has_not_moved": -0.2,
+            "is_goal": 1,
+            "hit_wall": -0.25
+            "has_not_moved": -0.15
             "new_square": 0.2,
-            "max_steps_reached": -0.5,
+            "max_steps_reached": 0,
         },
         # TODO
         "observation_space": {
@@ -426,7 +433,7 @@ if __name__ == "__main__":
         "ray_length": 20,
         "number_of_rays": 100,
         "transformer": {
-            "sequence_length": 10,
+            "sequence_length": 45,
             "n_embd": num_states,
             "n_head": 8,
             "n_layer": 3,

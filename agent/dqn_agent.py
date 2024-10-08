@@ -100,6 +100,8 @@ class DQN_Agent:
             #print(state.shape)
             Q_values = self.model(state)
             action = torch.argmax(Q_values[:,-1,:]).item()
+            print("Q_vals: ", Q_values)
+            print("Selected q_val: ", Q_values[:,-1,:], "Action: ", action)
             return action
 
     def learn(self, batch_size, done):
