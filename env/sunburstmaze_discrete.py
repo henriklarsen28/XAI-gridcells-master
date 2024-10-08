@@ -503,7 +503,7 @@ class SunburstMazeDiscrete(gym.Env):
             self.visited_squares.append(self.position)
             return self.rewards["new_square"]  # + self.distance_to_goal_reward()
         
-        return -0.1
+        return -0.05
     
     def render_q_value_overlay(self, q_values):
         """

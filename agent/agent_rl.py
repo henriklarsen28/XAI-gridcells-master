@@ -68,6 +68,7 @@ def padding_sequence_int(sequence: torch.tensor, max_length):
             )
     return sequence
 
+
 def padding_sequence(sequence: torch.tensor, max_length):
     """
     Pad the sequence with zeros to the max_length
@@ -85,7 +86,8 @@ def padding_sequence(sequence: torch.tensor, max_length):
             )
     return sequence
 
-def add_to_sequence(sequence:deque, state):
+
+def add_to_sequence(sequence: deque, state):
     """
     Add the new state to the sequence
     """
@@ -200,7 +202,7 @@ class Model_TrainTest:
             total_reward = 0
             steps_done = 0
 
-            
+            print("Episode: ", episode)
             while not done and not truncation:
 
                 sequence = add_to_sequence(sequence, state)
@@ -221,35 +223,45 @@ class Model_TrainTest:
                 # Action sequence
                 action_sequence = add_to_sequence(action_sequence, action)
                 tensor_action_sequence = torch.stack(list(action_sequence))
-                tensor_action_sequence = padding_sequence_int(tensor_action_sequence, self.sequnence_length)
+                tensor_action_sequence = padding_sequence_int(
+                    tensor_action_sequence, self.sequnence_length
+                )
 
                 # New state sequence
                 next_state = state_preprocess(next_state, device)
                 new_sequence = add_to_sequence(new_sequence, next_state)
                 tensor_new_sequence = torch.stack(list(new_sequence))
-                tensor_new_sequence = padding_sequence(tensor_new_sequence, self.sequnence_length)
+                tensor_new_sequence = padding_sequence(
+                    tensor_new_sequence, self.sequnence_length
+                )
 
                 # Reward sequence
                 reward_sequence = add_to_sequence(reward_sequence, reward)
                 tensor_reward_sequence = torch.stack(list(reward_sequence))
-                tensor_reward_sequence = padding_sequence(tensor_reward_sequence, self.sequnence_length)
-            
+                tensor_reward_sequence = padding_sequence(
+                    tensor_reward_sequence, self.sequnence_length
+                )
 
                 # Done sequence
                 done_sequence = add_to_sequence(done_sequence, done)
                 tensor_done_sequence = torch.stack(list(done_sequence))
-                tensor_done_sequence = padding_sequence(tensor_done_sequence, self.sequnence_length)
-
-                
-                self.agent.replay_memory.store(
-                    tensor_sequence, tensor_action_sequence, tensor_new_sequence, tensor_reward_sequence, tensor_done_sequence
+                tensor_done_sequence = padding_sequence(
+                    tensor_done_sequence, self.sequnence_length
                 )
 
+                self.agent.replay_memory.store(
+                    tensor_sequence,
+                    tensor_action_sequence,
+                    tensor_new_sequence,
+                    tensor_reward_sequence,
+                    tensor_done_sequence,
+                )
 
                 if (
                     len(self.agent.replay_memory) > self.batch_size
                     and sum(self.reward_history) > 0
                 ):  # Start learning after some episodes and the agent has achieved some reward
+                    # print("Learning", len(self.agent.replay_memory), sum(self.reward_history), steps_done)
                     self.agent.learn(self.batch_size, (done or truncation))
                     # Update target-network weights
                     if total_steps % self.update_frequency == 0:
