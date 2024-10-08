@@ -32,10 +32,10 @@ map_path_test = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
 
 
 device = torch.device("cpu")
-device = torch.device(
+#device = torch.device(
     "mps" if torch.backends.mps.is_available() else "cpu"
-)  # Was faster with cpu??? Loading between cpu and mps is slow maybe
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#)  # Was faster with cpu??? Loading between cpu and mps is slow maybe
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Seed everything for reproducible results
 seed = 2024
