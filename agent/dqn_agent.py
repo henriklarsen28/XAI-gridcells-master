@@ -65,6 +65,7 @@ class DQN_Agent:
         self.critertion = nn.MSELoss()
         self.optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
 
+
     def select_action(self, state):
         """
         Selects an action using epsilon-greedy strategy OR based on the Q-values.
@@ -84,7 +85,6 @@ class DQN_Agent:
         with torch.no_grad():
             Q_values = self.model(state)
             action = torch.argmax(Q_values).item()
-
             return action
 
     def learn(self, batch_size, done):
@@ -161,4 +161,7 @@ class DQN_Agent:
 
         """
         torch.save(self.model.state_dict(), path)
+
+    
+
 

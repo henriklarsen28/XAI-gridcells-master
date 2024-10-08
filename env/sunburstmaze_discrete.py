@@ -113,6 +113,8 @@ class SunburstMazeDiscrete(gym.Env):
             self.matrix_size[0] * self.matrix_size[1]
         )
 
+        self.q_values = []
+
     def goal_position(self):
         for y in range(self.height):
             for x in range(self.width):
@@ -465,9 +467,9 @@ class SunburstMazeDiscrete(gym.Env):
 
         if len(self.last_moves) < 10:
             return False
-
-        self.last_moves = self.last_moves[-4:]
+        self.last_moves = self.last_moves[-10:]
         if all(last_move == position for last_move in self.last_moves):
+            # print("Has not moved from position: ", position)
             return True
         return False
 
@@ -482,7 +484,7 @@ class SunburstMazeDiscrete(gym.Env):
         if self.is_goal():
             print("Goal reached!")
             return self.rewards["is_goal"]
-        # TODO: Penalize for just rotating in place without moving
+        # Penalize for just rotating in place without moving
         current_pos = self.position
         if self.has_not_moved(self.position):
             return self.rewards["has_not_moved"]
@@ -502,6 +504,18 @@ class SunburstMazeDiscrete(gym.Env):
             return self.rewards["new_square"]  # + self.distance_to_goal_reward()
         
         return -0.1
+    
+    def render_q_value_overlay(self, q_values):
+        """
+        Renders the Q-values as an overlay on the maze.
+
+        Args:
+            q_values (np.ndarray): The Q-values to render as an overlay.
+
+        Returns:
+            None
+        """
+        self.render_maze.draw_q_values(q_values)
 
     def render(self):
         self._render_frame()
@@ -510,12 +524,12 @@ class SunburstMazeDiscrete(gym.Env):
         if self.render_mode == "rgb_array":
             return np.asarray(
                 self.render_maze.draw_frame(
-                    self.env_map, self.position, self.orientation, self.observed_squares_map, self.wall_rays
+                    self.env_map, self.position, self.orientation, self.observed_squares_map, self.wall_rays, []
                 )
             )
         elif self.render_mode == "human":
             self.render_maze.draw_frame(
-                self.env_map, self.position, self.orientation, self.observed_squares_map, self.wall_rays
+                self.env_map, self.position, self.orientation, self.observed_squares_map, self.wall_rays, self.q_values
             )
 
 

@@ -16,15 +16,18 @@ import pygame
 import torch
 import wandb
 from dqn_agent import DQN_Agent
+from explain_network import generate_q_values
+from scipy.special import softmax
 
 from env import SunburstMazeDiscrete
 from utils.calculate_fov import calculate_fov_matrix_size
+from utils.state_preprocess import state_preprocess
 
 wandb.login()
 
 # Define the CSV file path relative to the project root
 map_path_train = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
-map_path_test = os.path.join(project_root, "env/map_v0/map.csv")
+map_path_test = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
 
 
 device = torch.device("cpu")
@@ -115,19 +118,7 @@ class Model_TrainTest:
             seed=seed,
         )
 
-    def state_preprocess(self, state: int):
-        """
-        Converts the state to a one-hot encoded tensor,
-        that included the position as a one-hot encoding and the orientation as a one-hot encoding.
-        """
-        field_of_view = state[:-1]
-        orientation = int(state[-1])
-
-        field_of_view = torch.tensor(field_of_view, dtype=torch.float32, device=device)
-
-        onehot_vector_orientation = torch.zeros(4, dtype=torch.float32, device=device)
-        onehot_vector_orientation[orientation] = 1
-        return torch.concat((field_of_view, onehot_vector_orientation))
+    
 
     def train(self):
         """
@@ -149,7 +140,7 @@ class Model_TrainTest:
         # Training loop over episodes
         for episode in range(1, self.max_episodes + 1):
             state, _ = self.env.reset()
-            state = self.state_preprocess(state)
+            state = state_preprocess(state, device)
             done = False
             truncation = False
             steps_done = 0
@@ -166,7 +157,7 @@ class Model_TrainTest:
                 if render_mode == "human":
                     self.env.render()
 
-                next_state = self.state_preprocess(next_state)
+                next_state = state_preprocess(next_state, device)
 
                 self.agent.replay_memory.store(state, action, next_state, reward, done)
 
@@ -215,6 +206,7 @@ class Model_TrainTest:
                     "Reward per episode": total_reward,
                     "Epsilon": self.agent.epsilon,
                     "Steps done": steps_done,
+                    "Discount factor": self.discount_factor ** episode,
                     "Gif:": (wandb.Video(gif, fps=4, format="gif") if gif else None),
                 }
             )
@@ -228,6 +220,9 @@ class Model_TrainTest:
         self.agent.model.load_state_dict(torch.load(self.RL_load_path))
         self.agent.model.eval()
 
+        q_val_list = generate_q_values(env=self.env, model=self.agent.model)
+        self.env.q_values = q_val_list
+        
         # Testing loop over episodes
         for episode in range(1, max_episodes + 1):
             state, _ = self.env.reset(seed=seed)
@@ -237,10 +232,9 @@ class Model_TrainTest:
             total_reward = 0
 
             while not done and not truncation:
-                state = self.state_preprocess(state)
+                state = state_preprocess(state, device)
                 action = self.agent.select_action(state)
                 next_state, reward, done, truncation, _ = self.env.step(action)
-
                 state = next_state
                 total_reward += reward
                 steps_done += 1
@@ -271,7 +265,7 @@ def get_num_states(map_path):
 if __name__ == "__main__":
     # Parameters:
 
-    train_mode = True
+    train_mode = False
 
     render = True
     render_mode = "human"
@@ -305,15 +299,15 @@ if __name__ == "__main__":
         "learning_rate": 6e-4,
         "batch_size": 100,
         "optimizer": "adam",
-        "total_episodes": 2000,
+        "total_episodes": 4000,
         "epsilon": 1 if train_mode else -1,
-        "epsilon_decay": 0.997,
+        "epsilon_decay": 0.998,
         "epsilon_min": 0.1,
         "discount_factor": 0.90,
         "alpha": 0.1,
         "map_path": map_path_train,
         "target_model_update": 10,  # hard update of the target model
-        "max_steps_per_episode": 1000,
+        "max_steps_per_episode": 800,
         "random_start_position": True,
         "rewards": {
             "is_goal": 200,
@@ -326,12 +320,12 @@ if __name__ == "__main__":
         "observation_space": {
             "position": True,
             "orientation": True,
-            "steps_to_goal": True,
+            "steps_to_goal": False,
             "last_known_steps": 0,
         },
         "save_interval": 100,
         "memory_capacity": 50_000,
-        "render_fps": 10,
+        "render_fps": 5,
         "num_states": num_states,
         "clip_grad_normalization": 3,
         "fov": math.pi / 1.5,
