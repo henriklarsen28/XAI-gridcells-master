@@ -293,7 +293,7 @@ if __name__ == "__main__":
         "train_mode": train_mode,
         "render": render,
         "render_mode": render_mode,
-        "RL_load_path": f"./model/sunburst_maze_{map_version}_2000.pth",
+        "RL_load_path": f"./model/feed_forward/sunburst_maze_{map_version}_2000.pth",
         "save_path": f"./model/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 6e-4,
@@ -310,11 +310,11 @@ if __name__ == "__main__":
         "max_steps_per_episode": 800,
         "random_start_position": True,
         "rewards": {
-            "is_goal": 200,
-            "hit_wall": -0.2,
-            "has_not_moved": -0.2,
-            "new_square": 0.2,
-            "max_steps_reached": -0.5,
+            "is_goal": 1,
+            "hit_wall": -0.001,
+            "has_not_moved": -0.001,
+            "new_square": 0.05,
+            "max_steps_reached": -0.001,
         },
         # TODO
         "observation_space": {
