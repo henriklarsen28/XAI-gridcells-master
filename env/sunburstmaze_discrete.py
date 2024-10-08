@@ -469,7 +469,7 @@ class SunburstMazeDiscrete(gym.Env):
             return False
         self.last_moves = self.last_moves[-10:]
         if all(last_move == position for last_move in self.last_moves):
-            print("Has not moved from position: ", position)
+            # print("Has not moved from position: ", position)
             return True
         return False
 
