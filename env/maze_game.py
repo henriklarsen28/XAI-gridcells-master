@@ -286,7 +286,7 @@ class Maze:
     def draw_triangle(self, position, orientation, color=green):
 
         triangle_surface = pygame.Surface((self.cell_size, self.cell_size), pygame.SRCALPHA)
-        triangle_surface.set_alpha(80)
+        triangle_surface.set_alpha(100)
 
         width = 2
 
