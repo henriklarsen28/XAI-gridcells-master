@@ -14,11 +14,11 @@ import keras as keras
 import numpy as np
 import pygame
 import torch
+import wandb
 from dqn_agent import DQN_Agent
 from explain_network import generate_q_values
 from scipy.special import softmax
 
-import wandb
 from env import SunburstMazeDiscrete
 from utils.calculate_fov import calculate_fov_matrix_size
 from utils.state_preprocess import state_preprocess
@@ -292,16 +292,16 @@ if __name__ == "__main__":
         "train_mode": train_mode,
         "render": render,
         "render_mode": render_mode,
-        "RL_load_path": f"./model/sunburst_maze_{map_version}_1800.pth",
+        "RL_load_path": f"./model/sunburst_maze_{map_version}_2000.pth",
         "save_path": f"./model/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 6e-4,
         "batch_size": 100,
         "optimizer": "adam",
-        "total_episodes": 2000,
+        "total_episodes": 6000,
         "epsilon": 1 if train_mode else -1,
-        "epsilon_decay": 0.997,
-        "epsilon_min": 0.1,
+        "epsilon_decay": 0.998,
+        "epsilon_min": 0.05,
         "discount_factor": 0.90,
         "alpha": 0.1,
         "map_path": map_path_train,
