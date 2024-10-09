@@ -398,7 +398,7 @@ if __name__ == "__main__":
         "RL_load_path": f"./model/sunburst_maze_{map_version}_300.pth",
         "save_path": f"./model/sunburst_maze_{map_version}",
         "loss_function": "mse",
-        "learning_rate": 0.001,
+        "learning_rate": 0.01,
         "batch_size": 100,
         "optimizer": "adam",
         "total_episodes": 4000,
