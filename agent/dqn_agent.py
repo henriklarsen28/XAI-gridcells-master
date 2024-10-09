@@ -85,6 +85,7 @@ class DQN_Agent:
         with torch.no_grad():
             Q_values = self.model(state)
             action = torch.argmax(Q_values).item()
+            print('Q_values:', Q_values, 'action:', action)
             return action
 
     def learn(self, batch_size, done):

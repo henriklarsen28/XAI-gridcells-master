@@ -245,7 +245,7 @@ class Model_TrainTest:
                 f"Steps: {steps_done:}, "
                 f"Reward: {total_reward:.2f}, "
             )
-            print(result)
+            # print(result)
 
         pygame.quit()  # close the rendering window
 
@@ -265,7 +265,7 @@ def get_num_states(map_path):
 if __name__ == "__main__":
     # Parameters:
 
-    train_mode = False
+    train_mode = True
 
     render = True
     render_mode = "human"
@@ -296,7 +296,7 @@ if __name__ == "__main__":
         "RL_load_path": f"./model/feed_forward/sunburst_maze_{map_version}_2000.pth",
         "save_path": f"./model/sunburst_maze_{map_version}",
         "loss_function": "mse",
-        "learning_rate": 6e-4,
+        "learning_rate": 0.001,
         "batch_size": 100,
         "optimizer": "adam",
         "total_episodes": 4000,
@@ -307,14 +307,15 @@ if __name__ == "__main__":
         "alpha": 0.1,
         "map_path": map_path_train,
         "target_model_update": 10,  # hard update of the target model
-        "max_steps_per_episode": 800,
+        "max_steps_per_episode": 1000,
         "random_start_position": True,
         "rewards": {
             "is_goal": 1,
             "hit_wall": -0.001,
             "has_not_moved": -0.001,
-            "new_square": 0.05,
+            "new_square": 0.001,
             "max_steps_reached": -0.001,
+            "penalty_step": -0.0001,
         },
         # TODO
         "observation_space": {
