@@ -1,16 +1,16 @@
+import copy
 import math
-
 import random as rd
 
 import gymnasium as gym
 import numpy as np
+import pandas as pd
 import pygame
 from gymnasium import spaces
 from PIL import Image
-import pandas as pd
-import copy
 
 from utils.calculate_fov import calculate_fov_matrix_size, step_angle
+
 from .file_manager import build_map
 from .maze_game import Maze
 
@@ -503,7 +503,7 @@ class SunburstMazeDiscrete(gym.Env):
             self.visited_squares.append(self.position)
             return self.rewards["new_square"]  # + self.distance_to_goal_reward()
         
-        return -0.1
+        return self.rewards["penalty_step"]
     
     def render_q_value_overlay(self, q_values):
         """
