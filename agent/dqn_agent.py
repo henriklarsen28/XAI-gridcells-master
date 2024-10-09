@@ -79,14 +79,14 @@ class DQN_Agent:
 
         # Exploration: epsilon-greedy
         if np.random.random() < self.epsilon:
-            return self.action_space.sample()
+            return self.action_space.sample(), 0
 
         # Exploitation: the action is selected based on the Q-values.
         with torch.no_grad():
             Q_values = self.model(state)
             action = torch.argmax(Q_values).item()
-            print('Q_values:', Q_values, 'action:', action)
-            return action
+            q_variance = torch.var(Q_values).item()
+            return action, q_variance
 
     def learn(self, batch_size, done):
 

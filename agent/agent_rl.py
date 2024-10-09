@@ -1,3 +1,4 @@
+from collections import deque
 import os
 import sys
 
@@ -98,7 +99,7 @@ class Model_TrainTest:
             observation_space=self.observation_space,
             fov=self.fov,
             ray_length=self.ray_length,
-            number_of_rays=self.number_of_rays,
+            number_of_rays=self.number_of_rays
         )
         self.env.metadata["render_fps"] = (
             self.render_fps
@@ -146,8 +147,10 @@ class Model_TrainTest:
             steps_done = 0
             total_reward = 0
 
+
             while not done and not truncation:
-                action = self.agent.select_action(state)
+                action, _= self.agent.select_action(state)
+                
                 next_state, reward, done, truncation, _ = self.env.step(action)
                 if render_mode == "rgb_array":
                     if episode % 100 == 0:
@@ -233,11 +236,15 @@ class Model_TrainTest:
 
             while not done and not truncation:
                 state = state_preprocess(state, device)
-                action = self.agent.select_action(state)
+                action, q_variance = self.agent.select_action(state)
+                self.env.q_variance = q_variance
                 next_state, reward, done, truncation, _ = self.env.step(action)
                 state = next_state
                 total_reward += reward
                 steps_done += 1
+                if self.env.has_not_moved(self.env.position):
+                    print("Agent has not moved for 10 steps. Breaking the episode.")
+                    break  # Skip the episode if the agent is stuck in a loop
 
             # Print log
             result = (
@@ -265,7 +272,7 @@ def get_num_states(map_path):
 if __name__ == "__main__":
     # Parameters:
 
-    train_mode = True
+    train_mode = False
 
     render = True
     render_mode = "human"
@@ -293,10 +300,10 @@ if __name__ == "__main__":
         "train_mode": train_mode,
         "render": render,
         "render_mode": render_mode,
-        "RL_load_path": f"./model/feed_forward/sunburst_maze_{map_version}_4000.pth",
+        "RL_load_path": f"./model/feed_forward/faithful-violet-691/sunburst_maze_{map_version}_4000.pth",
         "save_path": f"./model/sunburst_maze_{map_version}",
         "loss_function": "mse",
-        "learning_rate": 0.001,
+        "learning_rate": 0.0005,
         "batch_size": 100,
         "optimizer": "adam",
         "total_episodes": 4000,

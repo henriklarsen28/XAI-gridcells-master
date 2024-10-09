@@ -1,3 +1,4 @@
+from collections import deque
 import math
 import os
 
@@ -345,21 +346,30 @@ class Maze:
         self.win.blit(triangle_surface, (position[1] * self.cell_size, position[0] * self.cell_size))
 
     def draw_q_values(self, q_values):
-        
-        
-
         for q_value in q_values:
             for position, value in q_value.items():
                 for orientation in range(4
                 ):
                     saturation = 255 * (1-value[orientation])
-                    if value[orientation] > 0.25:
+                    if value[orientation] > 0.255:
                         color = (0,0,saturation)
                     else:
                         color = grey
                         # color = (0,0,255-saturation)
                     self.draw_triangle((position[0], position[1]), orientation, color)
 
+    def draw_action_tail(self, last_ten_actions):
+        orientation = 0
+        for position, action, q_variance, orientation in last_ten_actions:
+            arrow_orientation = 0
+            if action == 0:
+                arrow_orientation = orientation
+            elif action == 1:
+                arrow_orientation = (orientation + 4 - 1) % 4
+            elif action == 2:
+                arrow_orientation = (orientation + 1) % 4
+
+            self.draw_triangle((position[0], position[1]), arrow_orientation, (255*(1-q_variance), 0, 0))
 
     def draw_frame(
         self,
@@ -369,6 +379,7 @@ class Maze:
         observed_squares_map: set,
         wall_rays: set,
         q_values: list = [],
+        last_ten_actions = deque(maxlen=10),
     ):
         """
         Draws a frame of the maze game.
@@ -391,6 +402,7 @@ class Maze:
 
         if self.render_mode == "human":
             self.draw_q_values(q_values)
+            self.draw_action_tail(last_ten_actions)
             self.draw_sprite(position, orientation)
             pygame.display.flip()
         self.clock.tick(self.framerate)

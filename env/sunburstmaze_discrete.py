@@ -1,16 +1,17 @@
-import copy
+from collections import deque
 import math
+
 import random as rd
 
 import gymnasium as gym
 import numpy as np
-import pandas as pd
 import pygame
 from gymnasium import spaces
 from PIL import Image
+import pandas as pd
+import copy
 
 from utils.calculate_fov import calculate_fov_matrix_size, step_angle
-
 from .file_manager import build_map
 from .maze_game import Maze
 
@@ -45,7 +46,7 @@ class SunburstMazeDiscrete(gym.Env):
         observation_space=None,
         fov=math.pi / 2,
         ray_length=10,
-        number_of_rays=100,
+        number_of_rays=100
     ):
         self.map_file = maze_file
         self.initial_map = build_map(maze_file)
@@ -106,6 +107,9 @@ class SunburstMazeDiscrete(gym.Env):
         self.observed_squares = set()
         self.observed_squares_map = set()
         self.goal_observed_square = set()
+
+        self.q_variance = 0
+        self.past_actions = deque(maxlen=10)
 
         self.action_space = spaces.Discrete(3)
 
@@ -171,6 +175,8 @@ class SunburstMazeDiscrete(gym.Env):
     def reset(self, seed=None, options=None) -> tuple:
 
         super().reset(seed=seed)
+
+        self.past_actions.clear()
 
         # self.visited_squares = []
         self.env_map = copy.deepcopy(self.initial_map)
@@ -411,6 +417,8 @@ class SunburstMazeDiscrete(gym.Env):
             terminated (bool): Whether the episode is terminated or not.
             info (dict): Additional information about the environment.
         """
+        self.past_actions.append((self.position, action, self.q_variance, self.orientation))
+
         self.last_moves.append(self.position)
         # Used if the action is invalid
         reward = self.reward()
@@ -467,7 +475,7 @@ class SunburstMazeDiscrete(gym.Env):
 
         if len(self.last_moves) < 10:
             return False
-        self.last_moves = self.last_moves[-10:]
+        self.last_moves = self.last_moves[-11:]
         if all(last_move == position for last_move in self.last_moves):
             # print("Has not moved from position: ", position)
             return True
@@ -529,7 +537,7 @@ class SunburstMazeDiscrete(gym.Env):
             )
         elif self.render_mode == "human":
             self.render_maze.draw_frame(
-                self.env_map, self.position, self.orientation, self.observed_squares_map, self.wall_rays, self.q_values
+                self.env_map, self.position, self.orientation, self.observed_squares_map, self.wall_rays, self.q_values, self.past_actions
             )
 
 
