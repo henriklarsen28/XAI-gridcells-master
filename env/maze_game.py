@@ -350,9 +350,10 @@ class Maze:
 
         for q_value in q_values:
             for position, value in q_value.items():
-                for orientation in range(4):
-                    saturation = 255 * value[orientation]
-                    if value[orientation] > 0.4:
+                for orientation in range(4
+                ):
+                    saturation = 255 * (1-value[orientation])
+                    if value[orientation] > 0.25:
                         color = (0,0,saturation)
                     else:
                         color = grey
