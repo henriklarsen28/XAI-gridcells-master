@@ -305,6 +305,145 @@ class Model_TrainTest:
                 }
             )
 
+    def train_from_model(self):
+        """
+        Reinforcement learning training loop.
+        """
+        self.agent.model.load_state_dict(torch.load(self.RL_load_path, map_location=device))
+        self.agent.target_model.load_state_dict(torch.load(self.RL_load_path, map_location=device))
+        total_steps = 0
+        self.reward_history = []
+        frames = []
+        sequence = deque(maxlen=self.sequnence_length)
+        action_sequence = deque(maxlen=self.sequnence_length)
+        new_sequence = deque(maxlen=self.sequnence_length)
+        reward_sequence = deque(maxlen=self.sequnence_length)
+        done_sequence = deque(maxlen=self.sequnence_length)
+
+        wandb.init(project="sunburst-maze", config=self)
+
+        # Create the nessessary directories
+        if not os.path.exists("./gifs"):
+            os.makedirs("./gifs")
+
+        if not os.path.exists("./model"):
+            os.makedirs("./model")
+
+        # Training loop over episodes
+        for episode in range(1, self.max_episodes + 1):
+            state, _ = self.env.reset()
+
+            state = state_preprocess(state, device)
+            done = False
+            truncation = False
+
+            total_reward = 0
+            steps_done = 0
+
+            print("Episode: ", episode)
+            while not done and not truncation:
+
+                sequence = add_to_sequence(sequence, state)
+                tensor_sequence = torch.stack(list(sequence))
+                tensor_sequence = padding_sequence(
+                    tensor_sequence, self.sequnence_length
+                )
+                action = self.agent.select_action(tensor_sequence)
+                next_state, reward, done, truncation, _ = self.env.step(action)
+                if render_mode == "rgb_array":
+                    if episode % 100 == 0:
+                        frame = self.env._render_frame()
+                        if type(frame) == np.ndarray:
+                            frames.append(frame)
+                if render_mode == "human":
+                    self.env.render()
+
+                # Action sequence
+                action_sequence = add_to_sequence(action_sequence, action)
+                tensor_action_sequence = torch.stack(list(action_sequence))
+                tensor_action_sequence = padding_sequence_int(
+                    tensor_action_sequence, self.sequnence_length
+                )
+
+                # New state sequence
+                next_state = state_preprocess(next_state, device)
+                new_sequence = add_to_sequence(new_sequence, next_state)
+                tensor_new_sequence = torch.stack(list(new_sequence))
+                tensor_new_sequence = padding_sequence(
+                    tensor_new_sequence, self.sequnence_length
+                )
+
+                # Reward sequence
+                reward_sequence = add_to_sequence(reward_sequence, reward)
+                tensor_reward_sequence = torch.stack(list(reward_sequence))
+                tensor_reward_sequence = padding_sequence(
+                    tensor_reward_sequence, self.sequnence_length
+                )
+
+                # Done sequence
+                done_sequence = add_to_sequence(done_sequence, done)
+                tensor_done_sequence = torch.stack(list(done_sequence))
+                tensor_done_sequence = padding_sequence(
+                    tensor_done_sequence, self.sequnence_length
+                )
+
+                self.agent.replay_memory.store(
+                    tensor_sequence,
+                    tensor_action_sequence,
+                    tensor_new_sequence,
+                    tensor_reward_sequence,
+                    tensor_done_sequence,
+                )
+
+                if (
+                    len(self.agent.replay_memory) > self.batch_size
+                    and sum(self.reward_history) > 0
+                ):  # Start learning after some episodes and the agent has achieved some reward
+                    # print("Learning", len(self.agent.replay_memory), sum(self.reward_history), steps_done)
+                    self.agent.learn(self.batch_size, (done or truncation))
+                    # Update target-network weights
+                    if total_steps % self.update_frequency == 0:
+                        self.agent.hard_update()
+
+                state = next_state
+                total_reward += reward
+                steps_done += 1
+
+            # Appends for tracking history
+            self.reward_history.append(total_reward)  # episode reward
+            total_steps += steps_done
+
+            # Decay epsilon at the end of each episode
+            self.agent.update_epsilon()
+
+            # Create gif
+            gif = None
+            if frames:
+                if os.path.exists("./gifs") is False:
+                    os.makedirs("./gifs")
+
+                gif = self.env.create_gif(
+                    gif_path=f"./gifs/{episode}.gif", frames=frames
+                )
+                frames.clear()
+
+            # -- based on interval
+            if episode % self.save_interval == 0:
+                self.agent.save(self.save_path + "_" + f"{episode}" + ".pth")
+
+                print("\n~~~~~~Interval Save: Model saved.\n")
+
+            wandb.log(
+                {
+                    "Episode": episode,
+                    "Reward per episode": total_reward,
+                    "Epsilon": self.agent.epsilon,
+                    "Steps done": steps_done,
+                    "Gif:": (wandb.Video(gif, fps=4, format="gif") if gif else None),
+                }
+            )
+
+
     def test(self, max_episodes):
         """
         Reinforcement learning policy evaluation.
@@ -395,7 +534,7 @@ if __name__ == "__main__":
         "train_mode": train_mode,
         "render": render,
         "render_mode": render_mode,
-        "RL_load_path": f"./model/sunburst_maze_{map_version}_300.pth",
+        "RL_load_path": f"./model/sunburst_maze_{map_version}_900.pth",
         "save_path": f"./model/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 0.01,
@@ -447,7 +586,8 @@ if __name__ == "__main__":
     DRL = Model_TrainTest(config)
     # Train
     if train_mode:
-        DRL.train()
+        #DRL.train()
+        DRL.train_from_model()
     else:
         # Test
         DRL.test(max_episodes=config["total_episodes"])
