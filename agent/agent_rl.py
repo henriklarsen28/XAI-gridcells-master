@@ -537,7 +537,7 @@ if __name__ == "__main__":
         "RL_load_path": f"./model/sunburst_maze_{map_version}_900.pth",
         "save_path": f"./model/sunburst_maze_{map_version}",
         "loss_function": "mse",
-        "learning_rate": 0.01,
+        "learning_rate": 0.001,
         "batch_size": 100,
         "optimizer": "adam",
         "total_episodes": 4000,
@@ -551,7 +551,7 @@ if __name__ == "__main__":
         "max_steps_per_episode": 1000,
         "random_start_position": True,
         "rewards": {
-            "is_goal": 400/200,
+            "is_goal": 200/200,
             "hit_wall": -0.5/200,
             "has_not_moved": -0.2/200,
             "new_square": 0.2/200,
