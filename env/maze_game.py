@@ -395,20 +395,4 @@ class Maze:
         self.marked_squares = set()
         self.marked_2 = set()
         self.win.fill(grey)  # fill screen before drawing
-        self.draw_maze(env_map)
-        
-        #self.draw_rays(position, orientation, wall_rays)
-        self.draw_marked_blocks(observed_squares_map)
-
-        if self.render_mode == "human":
-            self.draw_q_values(q_values)
-            self.draw_action_tail(last_ten_actions)
-            self.draw_sprite(position, orientation)
-            pygame.display.flip()
-        self.clock.tick(self.framerate)
-
-        if self.render_mode == "rgb_array":
-            self.draw_sprite(position, orientation)
-            rgb_array = pygame.surfarray.array3d(self.win)
-            rgb_array = np.transpose(rgb_array, (1, 0, 2))
-            return rgb_array
+  

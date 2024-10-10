@@ -49,3 +49,16 @@ def generate_q_values(env:SunburstMazeDiscrete, model):
             #print('q_list', q_list)
 
     return q_val_list_to_position
+
+
+# concepts 
+
+'''
+- Toril sees goal
+- Toril sees wall
+- Toril sees open space
+- Toril is spinning
+- Toril moves away from goal
+- Toril moves towards goal
+
+'''

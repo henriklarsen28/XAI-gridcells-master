@@ -457,6 +457,8 @@ class SunburstMazeDiscrete(gym.Env):
         if self.render_mode == "human":
             self.render()
 
+        if 2 in observation[:-1]:
+            print("Goal in observation")
 
         return observation, reward, terminated, False, info
 
@@ -552,13 +554,4 @@ class SunburstMazeDiscrete(gym.Env):
         Args:
             frames (list): A list of frames to be included in the GIF.
             gif_path (str): The path to save the GIF file.
-            duration (int): The duration of each frame in milliseconds.
-
-        Returns:
-            None
-        """
-        images = [Image.fromarray(frame) for frame in frames]
-        images[0].save(
-            gif_path, save_all=True, append_images=images[1:], duration=100, loop=0
-        )
-        return gif_path
+            duration (int): The dura

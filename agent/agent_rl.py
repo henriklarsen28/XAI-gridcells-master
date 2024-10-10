@@ -146,6 +146,7 @@ class Model_TrainTest:
             truncation = False
             steps_done = 0
             total_reward = 0
+            stuck_behavior = 0
 
 
             while not done and not truncation:
@@ -161,7 +162,6 @@ class Model_TrainTest:
                     self.env.render()
 
                 next_state = state_preprocess(next_state, device)
-
                 self.agent.replay_memory.store(state, action, next_state, reward, done)
 
                 if (
@@ -177,6 +177,10 @@ class Model_TrainTest:
                 state = next_state
                 total_reward += reward
                 steps_done += 1
+
+                if self.env.has_not_moved(self.env.position):
+                    # record stuck behavior
+                    stuck_behavior += 1
 
             # Appends for tracking history
             self.reward_history.append(total_reward)  # episode reward
@@ -209,8 +213,8 @@ class Model_TrainTest:
                     "Reward per episode": total_reward,
                     "Epsilon": self.agent.epsilon,
                     "Steps done": steps_done,
-                    "Discount factor": self.discount_factor ** episode,
                     "Gif:": (wandb.Video(gif, fps=4, format="gif") if gif else None),
+                    "Stuck behavior": stuck_behavior,
                 }
             )
 
@@ -225,6 +229,8 @@ class Model_TrainTest:
 
         q_val_list = generate_q_values(env=self.env, model=self.agent.model)
         self.env.q_values = q_val_list
+
+        stuck_behavior = dict()
         
         # Testing loop over episodes
         for episode in range(1, max_episodes + 1):
@@ -243,6 +249,8 @@ class Model_TrainTest:
                 total_reward += reward
                 steps_done += 1
                 if self.env.has_not_moved(self.env.position):
+                    # record stuck behavior
+                    stuck_behavior[episode] = self.env.position
                     print("Agent has not moved for 10 steps. Breaking the episode.")
                     break  # Skip the episode if the agent is stuck in a loop
 
@@ -253,6 +261,8 @@ class Model_TrainTest:
                 f"Reward: {total_reward:.2f}, "
             )
             # print(result)
+
+            print("Stuck behavior: ", stuck_behavior)
 
         pygame.quit()  # close the rendering window
 
@@ -306,7 +316,7 @@ if __name__ == "__main__":
         "learning_rate": 0.0005,
         "batch_size": 100,
         "optimizer": "adam",
-        "total_episodes": 4000,
+        "total_episodes": 100_000,
         "epsilon": 1 if train_mode else -1,
         "epsilon_decay": 0.998,
         "epsilon_min": 0.1,
