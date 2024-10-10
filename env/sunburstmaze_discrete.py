@@ -119,6 +119,8 @@ class SunburstMazeDiscrete(gym.Env):
 
         self.q_values = []
 
+        self.goal_in_sight = False
+
     def goal_position(self):
         for y in range(self.height):
             for x in range(self.width):
@@ -151,7 +153,7 @@ class SunburstMazeDiscrete(gym.Env):
 
     def _get_info(self):
 
-        return {"legal_actions": self.legal_actions(), "orientation": self.orientation}
+        return {"legal_actions": self.legal_actions(), "orientation": self.orientation, "goal_in_sight": self.goal_in_sight}
 
     def _get_observation(self):
         """
@@ -458,7 +460,7 @@ class SunburstMazeDiscrete(gym.Env):
             self.render()
 
         if 2 in observation[:-1]:
-            print("Goal in observation")
+            self.goal_in_sight = True
 
         return observation, reward, terminated, False, info
 
@@ -554,4 +556,13 @@ class SunburstMazeDiscrete(gym.Env):
         Args:
             frames (list): A list of frames to be included in the GIF.
             gif_path (str): The path to save the GIF file.
-            duration (int): The dura
+            duration (int): The duration of each frame in milliseconds.
+
+        Returns:
+            None
+        """
+        images = [Image.fromarray(frame) for frame in frames]
+        images[0].save(
+            gif_path, save_all=True, append_images=images[1:], duration=100, loop=0
+        )
+        return gif_path
