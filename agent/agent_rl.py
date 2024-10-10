@@ -1,6 +1,6 @@
-from collections import deque
 import os
 import sys
+from collections import deque
 
 # get the path to the project root directory and add it to sys.path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -272,7 +272,7 @@ def get_num_states(map_path):
 if __name__ == "__main__":
     # Parameters:
 
-    train_mode = False
+    train_mode = True
 
     render = True
     render_mode = "human"
@@ -309,7 +309,7 @@ if __name__ == "__main__":
         "total_episodes": 4000,
         "epsilon": 1 if train_mode else -1,
         "epsilon_decay": 0.998,
-        "epsilon_min": 0,
+        "epsilon_min": 0.1,
         "discount_factor": 0.90,
         "alpha": 0.1,
         "map_path": map_path_train,
