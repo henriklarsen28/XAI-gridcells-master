@@ -548,7 +548,7 @@ if __name__ == "__main__":
         "alpha": 0.1,
         "map_path": map_path_train,
         "target_model_update": 10,  # hard update of the target model
-        "max_steps_per_episode": 1000,
+        "max_steps_per_episode": 250,
         "random_start_position": True,
         "rewards": {
             "is_goal": 200/200,
