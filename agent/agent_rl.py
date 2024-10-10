@@ -538,7 +538,7 @@ if __name__ == "__main__":
         "save_path": f"./model/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 0.001,
-        "batch_size": 100,
+        "batch_size": 64,
         "optimizer": "adam",
         "total_episodes": 4000,
         "epsilon": 1 if train_mode else -1,
