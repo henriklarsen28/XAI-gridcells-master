@@ -302,8 +302,13 @@ class Model_TrainTest:
                     "Epsilon": self.agent.epsilon,
                     "Steps done": steps_done,
                     "Gif:": (wandb.Video(gif, fps=4, format="gif") if gif else None),
-                }
+                },
+                commit=False
             )
+
+            if episode % 10 == 0:
+                wandb.log()
+
 
     def train_from_model(self):
         """
@@ -440,8 +445,12 @@ class Model_TrainTest:
                     "Epsilon": self.agent.epsilon,
                     "Steps done": steps_done,
                     "Gif:": (wandb.Video(gif, fps=4, format="gif") if gif else None),
-                }
+                },
+                commit=False
             )
+
+            if episode % 10 == 0:
+                wandb.log()
 
 
     def test(self, max_episodes):
@@ -537,8 +546,8 @@ if __name__ == "__main__":
         "RL_load_path": f"./model/sunburst_maze_{map_version}_900.pth",
         "save_path": f"./model/sunburst_maze_{map_version}",
         "loss_function": "mse",
-        "learning_rate": 0.001,
-        "batch_size": 64,
+        "learning_rate": 0.0001,
+        "batch_size": 1000,
         "optimizer": "adam",
         "total_episodes": 4000,
         "epsilon": 1 if train_mode else -1,
@@ -552,7 +561,7 @@ if __name__ == "__main__":
         "random_start_position": True,
         "rewards": {
             "is_goal": 200/200,
-            "hit_wall": -0.5/200,
+            "hit_wall": -1/200,
             "has_not_moved": -0.2/200,
             "new_square": 0.2/200,
             "max_steps_reached": -0.5/200,
@@ -573,7 +582,7 @@ if __name__ == "__main__":
         "ray_length": 20,
         "number_of_rays": 100,
         "transformer": {
-            "sequence_length": 35,
+            "sequence_length": 310,
             "n_embd": num_states,
             "n_head": 8,
             "n_layer": 3,
@@ -586,8 +595,8 @@ if __name__ == "__main__":
     DRL = Model_TrainTest(config)
     # Train
     if train_mode:
-        #DRL.train()
-        DRL.train_from_model()
+        DRL.train()
+        #DRL.train_from_model()
     else:
         # Test
         DRL.test(max_episodes=config["total_episodes"])
