@@ -561,7 +561,7 @@ class SunburstMazeDiscrete(gym.Env):
         Returns:
             None
         """
-        images = [Image.fromarray(frame) for frame in frames]
+        images = [Image.fromarray(frame, mode='RGB') for frame in frames]
         images[0].save(
             gif_path, save_all=True, append_images=images[1:], duration=100, loop=0
         )
