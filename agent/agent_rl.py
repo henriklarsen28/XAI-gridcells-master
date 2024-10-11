@@ -303,11 +303,9 @@ class Model_TrainTest:
                     "Steps done": steps_done,
                     "Gif:": (wandb.Video(gif, fps=4, format="gif") if gif else None),
                 },
-                commit=False
+                commit=True
             )
 
-            if episode % 10 == 0:
-                wandb.log(data={"batch": True})
 
 
     def train_from_model(self):
@@ -446,12 +444,8 @@ class Model_TrainTest:
                     "Steps done": steps_done,
                     "Gif:": (wandb.Video(gif, fps=4, format="gif") if gif else None),
                 },
-                commit=False
+                commit=True
             )
-
-            if episode % 10 == 0:
-                wandb.log()
-
 
     def test(self, max_episodes):
         """
