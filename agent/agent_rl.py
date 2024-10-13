@@ -555,11 +555,11 @@ if __name__ == "__main__":
         "random_start_position": True,
         "rewards": {
             "is_goal": 200/200,
-            "hit_wall": -50/200,
-            "has_not_moved": -0.2/200,
-            "new_square": 0.2/200,
-            "max_steps_reached": -0.5/200,
-            "penalty_per_step": -0.01/200,
+            "hit_wall": -100/200,
+            "has_not_moved": -50/200,
+            "new_square": 100/200,
+            "max_steps_reached": 0/200,
+            "penalty_per_step": -0.1/200,
         },
         # TODO
         "observation_space": {
