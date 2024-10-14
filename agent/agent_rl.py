@@ -559,7 +559,7 @@ if __name__ == "__main__":
             "has_not_moved": -0.2/200,
             "new_square": 0.2/200,
             "max_steps_reached": -0.5/200,
-            "penalty_per_step": -0.1/200,
+            "penalty_per_step": -0.01/200,
         },
         # TODO
         "observation_space": {
@@ -576,7 +576,7 @@ if __name__ == "__main__":
         "ray_length": 20,
         "number_of_rays": 100,
         "transformer": {
-            "sequence_length": 10,
+            "sequence_length": 15,
             "n_embd": num_states,
             "n_head": 8,
             "n_layer": 3,
