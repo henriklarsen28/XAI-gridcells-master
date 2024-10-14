@@ -7,9 +7,9 @@ from agent.neural_network_ff_torch import DQN_Network
 from agent.transformer_decoder import TransformerDQN
 
 
-class DQN_Agent:
+class DTQN_Agent:
     """
-    DQN Agent Class. This class defines some key elements of the DQN algorithm,
+    DTQN Agent Class. This class defines some key elements of the DQN algorithm,
     such as the learning method, hard update, and action selection based on the
     Q-value of actions or the epsilon-greedy policy.
     """
@@ -26,7 +26,7 @@ class DQN_Agent:
         memory_capacity,
         device,
         seed,
-        transformer_param
+        transformer_param,
     ):
 
         # To save the history of network loss
@@ -47,26 +47,40 @@ class DQN_Agent:
         self.observation_space = env.observation_space
         self.replay_memory = ReplayMemory(memory_capacity, self.device)
 
-
         n_embd = transformer_param["n_embd"]  # Embedding dimension
-        n_head = transformer_param["n_head"]  # Number of attention heads (in multi-head attention)
+        n_head = transformer_param[
+            "n_head"
+        ]  # Number of attention heads (in multi-head attention)
         n_layer = transformer_param["n_layer"]  # Number of decoder layers
         dropout = transformer_param["dropout"]  # Dropout probability
 
         state_dim = self.observation_space.n + 4  # Replace value
 
-        sequence_length = transformer_param["sequence_length"] # Replace value
+        sequence_length = transformer_param["sequence_length"]  # Replace value
 
         # Initiate the network models
         self.model = TransformerDQN(
-            state_dim, self.action_space.n, sequence_length, n_embd, n_head, n_layer, dropout, self.device
-            )
+            state_dim,
+            self.action_space.n,
+            sequence_length,
+            n_embd,
+            n_head,
+            n_layer,
+            dropout,
+            self.device,
+        )
         self.model = self.model.to(self.device)
 
-
         self.target_model = TransformerDQN(
-            state_dim, self.action_space.n, sequence_length, n_embd, n_head, n_layer, dropout, self.device
-            )
+            state_dim,
+            self.action_space.n,
+            sequence_length,
+            n_embd,
+            n_head,
+            n_layer,
+            dropout,
+            self.device,
+        )
         self.target_model = self.target_model.to(self.device).eval()
 
         # Copy the weights of the model
@@ -75,7 +89,6 @@ class DQN_Agent:
         self.clip_grad_normalization = clip_grad_normalization  # For clipping exploding gradients caused by high reward value
         self.critertion = nn.MSELoss()
         self.optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
-
 
     def select_action(self, state):
         """
@@ -94,14 +107,14 @@ class DQN_Agent:
 
         # Exploitation: the action is selected based on the Q-values.
         with torch.no_grad():
-            #state = torch.tensor(state).to(self.device)
-            #state = torch.stack(list(state))
+            # state = torch.tensor(state).to(self.device)
+            # state = torch.stack(list(state))
             state = state.unsqueeze(0)
-            #print(state.shape)
+            # print(state.shape)
             Q_values = self.model(state)
-            action = torch.argmax(Q_values[:,-1,:]).item()
-            #print("Q_vals: ", Q_values)
-            #print("Selected q_val: ", Q_values[:,-1,:], "Action: ", action)
+            action = torch.argmax(Q_values[:, -1, :]).item()
+            # print("Q_vals: ", Q_values)
+            # print("Selected q_val: ", Q_values[:,-1,:], "Action: ", action)
             return action
 
     def learn(self, batch_size, done):
@@ -115,10 +128,10 @@ class DQN_Agent:
         actions = actions.unsqueeze(2)
         rewards = rewards.unsqueeze(2)
         dones = dones.unsqueeze(2)
-        #print(states.shape, actions.shape)
+        # print(states.shape, actions.shape)
         current_q_values = self.model(states)
-        #print(current_q_values[:,0,:])
-        #print(current_q_values.shape, actions.shape, rewards.shape, dones.shape)
+        # print(current_q_values[:,0,:])
+        # print(current_q_values.shape, actions.shape, rewards.shape, dones.shape)
         current_q_values = current_q_values.gather(2, actions).squeeze()
 
         # Compute the maximum Q-value for the next states using the target network
@@ -130,7 +143,7 @@ class DQN_Agent:
         future_q_values[dones] = 0
 
         targets = rewards.squeeze() + (self.discount * future_q_values.squeeze())
-        #print(current_q_values.shape, targets.shape)
+        # print(current_q_values.shape, targets.shape)
         loss = self.critertion(current_q_values, targets)
 
         # Update the running loss and learned counts for logging and plotting

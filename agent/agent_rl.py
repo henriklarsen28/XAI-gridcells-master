@@ -16,10 +16,10 @@ import numpy as np
 import pygame
 import torch
 import wandb
-from dqn_agent import DQN_Agent
 from explain_network import generate_q_values
 from torch.nn.utils.rnn import pad_sequence
 
+from agent.dtqn_agent import DTQN_Agent
 from env import SunburstMazeDiscrete
 from utils.calculate_fov import calculate_fov_matrix_size
 from utils.state_preprocess import state_preprocess
@@ -32,9 +32,9 @@ map_path_test = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
 
 
 device = torch.device("cpu")
-#device = torch.device(
+# device = torch.device(
 #   "mps" if torch.backends.mps.is_available() else "cpu"
-#)  # Was faster with cpu??? Loading between cpu and mps is slow maybe
+# )  # Was faster with cpu??? Loading between cpu and mps is slow maybe
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Seed everything for reproducible results
@@ -154,7 +154,7 @@ class Model_TrainTest:
         )  # For max frame rate make it 0
 
         # Define the agent class
-        self.agent = DQN_Agent(
+        self.agent = DTQN_Agent(
             env=self.env,
             epsilon=self.epsilon,
             epsilon_min=self.epsilon_min,
@@ -303,17 +303,19 @@ class Model_TrainTest:
                     "Steps done": steps_done,
                     "Gif:": (wandb.Video(gif, fps=4, format="gif") if gif else None),
                 },
-                commit=True
+                commit=True,
             )
-
-
 
     def train_from_model(self):
         """
         Reinforcement learning training loop.
         """
-        self.agent.model.load_state_dict(torch.load(self.RL_load_path, map_location=device))
-        self.agent.target_model.load_state_dict(torch.load(self.RL_load_path, map_location=device))
+        self.agent.model.load_state_dict(
+            torch.load(self.RL_load_path, map_location=device)
+        )
+        self.agent.target_model.load_state_dict(
+            torch.load(self.RL_load_path, map_location=device)
+        )
         total_steps = 0
         self.reward_history = []
         frames = []
@@ -442,10 +444,10 @@ class Model_TrainTest:
                     "Reward per episode": total_reward,
                     "Epsilon": self.agent.epsilon,
                     "Steps done": steps_done,
-                    "Discount factor": self.discount_factor ** episode,
+                    "Discount factor": self.discount_factor**episode,
                     "Gif:": (wandb.Video(gif, fps=4, format="gif") if gif else None),
                 },
-                commit=True
+                commit=True,
             )
 
     def test(self, max_episodes):
@@ -454,7 +456,9 @@ class Model_TrainTest:
         """
 
         # Load the weights of the test_network
-        self.agent.model.load_state_dict(torch.load(self.RL_load_path, map_location=device))
+        self.agent.model.load_state_dict(
+            torch.load(self.RL_load_path, map_location=device)
+        )
         self.agent.model.eval()
 
         sequence = deque(maxlen=self.sequnence_length)
@@ -475,8 +479,8 @@ class Model_TrainTest:
                     tensor_sequence, self.sequnence_length
                 )
                 print(tensor_sequence.shape)
-                #q_val_list = generate_q_values(env=self.env, model=self.agent.model)
-                #self.env.q_values = q_val_list
+                # q_val_list = generate_q_values(env=self.env, model=self.agent.model)
+                # self.env.q_values = q_val_list
 
                 action = self.agent.select_action(tensor_sequence)
                 next_state, reward, done, truncation, _ = self.env.step(action)
@@ -555,12 +559,12 @@ if __name__ == "__main__":
         "max_steps_per_episode": 250,
         "random_start_position": True,
         "rewards": {
-            "is_goal": 200/200,
-            "hit_wall": -0.5/200,
-            "has_not_moved": -0.2/200,
-            "new_square": 0.2/200,
-            "max_steps_reached": -0.5/200,
-            "penalty_per_step": -0.01/200,
+            "is_goal": 200 / 200,
+            "hit_wall": -0.5 / 200,
+            "has_not_moved": -0.2 / 200,
+            "new_square": 0.2 / 200,
+            "max_steps_reached": -0.5 / 200,
+            "penalty_per_step": -0.01 / 200,
         },
         # TODO
         "observation_space": {
@@ -592,7 +596,7 @@ if __name__ == "__main__":
     # Train
     if train_mode:
         DRL.train()
-        #DRL.train_from_model()
+        # DRL.train_from_model()
     else:
         # Test
         DRL.test(max_episodes=config["total_episodes"])
