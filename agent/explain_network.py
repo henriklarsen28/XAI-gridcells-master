@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import torch
 from dqn_agent import DQN_Agent
@@ -19,8 +20,7 @@ def generate_q_values(env:SunburstMazeDiscrete, model):
     
 
     q_val_list_to_position = []
-    print('y-range', y_range)
-    
+
     for x in range(x_range):
         for y in range(y_range):
             if env.env_map[y, x] == 1:
@@ -40,16 +40,29 @@ def generate_q_values(env:SunburstMazeDiscrete, model):
                 right = q_list[orientation - 1][2] / 2
                 q_value_sum = forward + left + right
                 q_value_list[orientation] = q_value_sum
-            #print('q_value_list', q_value_list)
+
             q_value_list = softmax(q_value_list)
             dicti = {(y, x): q_value_list}
             q_val_list_to_position.append(dicti)
-            #print('q_value_list', q_value_list)
 
-            #print('q_list', q_list)
 
     return q_val_list_to_position
 
+
+
+def compare_model_q_values(agent: DQN_Agent, env: SunburstMazeDiscrete):
+    # iterate through each model in the folder "model" and compare the q-values of the models
+    # for each position in the maze
+    # save the q-values in a dictionary with the position as the key and the q-values as the value
+    # return the dictionary
+
+    # Load the models
+    for model in os.listdir('model/feed_forward/lunar-darkness-740'):
+        agent.model.load_state_dict(torch.load(model))
+        agent.model.eval()
+        q_values = generate_q_values(agent.env, agent.model)
+        # Save the q-values in a dictionary
+        # return the dictionary
 
 # concepts 
 
