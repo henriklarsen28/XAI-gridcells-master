@@ -3,7 +3,7 @@ import os
 
 import numpy as np
 import pygame
-
+from collections import deque
 from PIL import Image
 
 white = (255, 255, 255)
@@ -350,15 +350,28 @@ class Maze:
 
         for q_value in q_values:
             for position, value in q_value.items():
-                for orientation in range(4):
-                    saturation = 255 * value[orientation]
-                    if value[orientation] > 0.4:
+                for orientation in range(4
+                ):
+                    saturation = 255 * (1-value[orientation])
+                    if value[orientation] > 0.255:
                         color = (0,0,saturation)
                     else:
                         color = grey
                         # color = (0,0,255-saturation)
                     self.draw_triangle((position[0], position[1]), orientation, color)
 
+    def draw_action_tail(self, last_ten_actions):
+        orientation = 0
+        for position, action, q_variance, orientation in last_ten_actions:
+            arrow_orientation = 0
+            if action == 0:
+                arrow_orientation = orientation
+            elif action == 1:
+                arrow_orientation = (orientation + 4 - 1) % 4
+            elif action == 2:
+                arrow_orientation = (orientation + 1) % 4
+
+            self.draw_triangle((position[0], position[1]), arrow_orientation, (255*(1-q_variance), 0, 0))
 
     def draw_frame(
         self,
@@ -368,6 +381,7 @@ class Maze:
         observed_squares_map: set,
         wall_rays: set,
         q_values: list = [],
+        last_ten_actions = deque(maxlen=10),
     ):
         """
         Draws a frame of the maze game.
@@ -384,7 +398,7 @@ class Maze:
         self.marked_2 = set()
         self.win.fill(grey)  # fill screen before drawing
         self.draw_maze(env_map)
-        
+        self.draw_action_tail(last_ten_actions)
         #self.draw_rays(position, orientation, wall_rays)
         self.draw_marked_blocks(observed_squares_map)
 
