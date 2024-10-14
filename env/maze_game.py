@@ -4,11 +4,13 @@ import os
 import numpy as np
 import pygame
 
-white = (200, 200, 200)
+from PIL import Image
+
+white = (255, 255, 255)
 black = (0, 0, 0)
-green = (0, 255, 0)
+green = (91, 240, 146)
 red = (255, 0, 0)
-grey = (192, 192, 192)
+grey = (174, 174, 174)
 
 
 class Maze:
@@ -67,6 +69,7 @@ class Maze:
         self.clock = pygame.time.Clock()
         self.framerate = framerate
         self.draw_frame(self.env_map, position, orientation, observed_squares_map, wall_rays)
+
 
     def select_sprite(self, orientation: int):
         """
@@ -241,7 +244,7 @@ class Maze:
     def draw_marked_blocks(self, observed_squares_map: set):
         surface = pygame.Surface((self.cell_size, self.cell_size), pygame.SRCALPHA)
         surface.set_alpha(128)
-        surface.fill((255, 255, 255))
+        # surface.fill((255, 255, 255))
         for square in observed_squares_map:
             surface.fill(
                 (255, 255, 255),
@@ -280,15 +283,17 @@ class Maze:
                 (y * self.cell_size + 15, x * self.cell_size + 15),
             )
 
-    def draw_triangle(self, position, orientation, color=(0, 255, 0)):
+    def draw_triangle(self, position, orientation, color=green):
 
         triangle_surface = pygame.Surface((self.cell_size, self.cell_size), pygame.SRCALPHA)
-        triangle_surface.set_alpha(80)
+        triangle_surface.set_alpha(100)
+
+        width = 2
 
 
         # Calculate coordinates of the triangle
 
-        if orientation == 0:
+        '''if orientation == 0:
             triangle_coordinates = [(0, 0),
                                     (self.cell_size, 0),
                                     (self.cell_size / 2, self.cell_size / 2)]
@@ -305,6 +310,25 @@ class Maze:
         elif orientation == 3:
             triangle_coordinates = [(0, 0),
                                     (0, self.cell_size),
+                                    (self.cell_size / 2, self.cell_size / 2)]'''
+        
+        if orientation == 2:
+            triangle_coordinates = [(0, 0),
+                                    (self.cell_size, 0),
+                                    (self.cell_size / 2, self.cell_size / 2)]
+        elif orientation == 3:
+            triangle_coordinates = [(self.cell_size, 0),
+                                    (self.cell_size, self.cell_size),
+                                    (self.cell_size / 2, self.cell_size / 2)]
+
+        elif orientation == 0:
+            triangle_coordinates = [(0, self.cell_size),
+                                    (self.cell_size, self.cell_size),
+                                    (self.cell_size / 2, self.cell_size / 2)]
+        
+        elif orientation == 1:
+            triangle_coordinates = [(0, 0),
+                                    (0, self.cell_size),
                                     (self.cell_size / 2, self.cell_size / 2)]
 
         pygame.draw.polygon(
@@ -314,7 +338,7 @@ class Maze:
                 triangle_coordinates[0],
                 triangle_coordinates[1],
                 triangle_coordinates[2],
-            ],
+            ]
         )
 
 
@@ -329,9 +353,10 @@ class Maze:
                 for orientation in range(4):
                     saturation = 255 * value[orientation]
                     if value[orientation] > 0.4:
-                        color = (saturation,0,0)
+                        color = (0,0,saturation)
                     else:
-                        color = (0,0,255-saturation)
+                        color = grey
+                        # color = (0,0,255-saturation)
                     self.draw_triangle((position[0], position[1]), orientation, color)
 
 
@@ -357,7 +382,7 @@ class Maze:
         """
         self.marked_squares = set()
         self.marked_2 = set()
-        self.win.fill(white)  # fill screen before drawing
+        self.win.fill(grey)  # fill screen before drawing
         self.draw_maze(env_map)
         
         #self.draw_rays(position, orientation, wall_rays)

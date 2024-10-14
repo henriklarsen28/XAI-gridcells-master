@@ -467,9 +467,9 @@ class SunburstMazeDiscrete(gym.Env):
 
         if len(self.last_moves) < 10:
             return False
-
-        self.last_moves = self.last_moves[-4:]
+        self.last_moves = self.last_moves[-10:]
         if all(last_move == position for last_move in self.last_moves):
+            # print("Has not moved from position: ", position)
             return True
         return False
 
@@ -484,7 +484,7 @@ class SunburstMazeDiscrete(gym.Env):
         if self.is_goal():
             print("Goal reached!")
             return self.rewards["is_goal"]
-        # TODO: Penalize for just rotating in place without moving
+        # Penalize for just rotating in place without moving
         current_pos = self.position
         if self.has_not_moved(self.position):
             return self.rewards["has_not_moved"]
