@@ -26,8 +26,6 @@ from utils.calculate_fov import calculate_fov_matrix_size
 from utils.state_preprocess import state_preprocess
 from utils.sequence_preprocessing import padding_sequence, padding_sequence_int, add_to_sequence
 
-wandb.login()
-
 # Define the CSV file path relative to the project root
 map_path_train = os.path.join(project_root, "env/map_v0/map_open_doors_horizontal.csv")
 map_path_train_2 = os.path.join(project_root, "env/map_v0/map_open_doors_vertical.csv")
@@ -148,6 +146,8 @@ class Model_TrainTest:
         """
         Reinforcement learning training loop.
         """
+
+        wandb.login()
 
         total_steps = 0
         self.reward_history = []
@@ -307,6 +307,9 @@ class Model_TrainTest:
         """
         Reinforcement learning training loop.
         """
+
+        wandb.login()
+
         self.agent.model.load_state_dict(
             torch.load(self.RL_load_path, map_location=device)
         )
@@ -481,6 +484,8 @@ class Model_TrainTest:
                 # self.env.q_values = q_val_list
 
                 action, att_weights_list = self.agent.select_action(tensor_sequence)
+                block_1 = np.mean(np.stack(att_weights_list[0], axis=0), axis=0)
+                print(block_1)
                 next_state, reward, done, truncation, _ = self.env.step(action)
                 state = next_state
                 total_reward += reward
@@ -490,6 +495,8 @@ class Model_TrainTest:
                     #stuck_behavior[episode] = self.env.position
                     print("Agent has not moved for 10 steps. Breaking the episode.")
                     break  # Skip the episode if the agent is stuck in a loop
+
+                sys.exit()
 
             # Print log
             result = (
