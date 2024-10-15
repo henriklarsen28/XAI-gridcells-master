@@ -582,10 +582,10 @@ if __name__ == "__main__":
         "ray_length": 20,
         "number_of_rays": 100,
         "transformer": {
-            "sequence_length": 15,
+            "sequence_length": 20,
             "n_embd": num_states,
             "n_head": 8,
-            "n_layer": 2,
+            "n_layer": 4,
             "dropout": 0.4,
             "state_dim": num_states,
         },
