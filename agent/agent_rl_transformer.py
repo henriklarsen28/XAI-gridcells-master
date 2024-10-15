@@ -24,8 +24,6 @@ from env import SunburstMazeDiscrete
 from utils.calculate_fov import calculate_fov_matrix_size
 from utils.state_preprocess import state_preprocess
 
-wandb.login()
-
 # Define the CSV file path relative to the project root
 map_path_train = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
 map_path_test = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
@@ -173,6 +171,8 @@ class Model_TrainTest:
         Reinforcement learning training loop.
         """
 
+        wandb.login()
+
         total_steps = 0
         self.reward_history = []
         frames = []
@@ -310,6 +310,9 @@ class Model_TrainTest:
         """
         Reinforcement learning training loop.
         """
+
+        wandb.login()
+
         self.agent.model.load_state_dict(
             torch.load(self.RL_load_path, map_location=device)
         )
@@ -479,15 +482,19 @@ class Model_TrainTest:
                 tensor_sequence = padding_sequence(
                     tensor_sequence, self.sequnence_length
                 )
-                print(tensor_sequence.shape)
+                # print(tensor_sequence.shape)
                 # q_val_list = generate_q_values(env=self.env, model=self.agent.model)
                 # self.env.q_values = q_val_list
 
                 action, att_weights_list = self.agent.select_action(tensor_sequence)
+                block_1 = np.mean(np.stack(att_weights_list[0], axis=0), axis=0)
+                print(block_1)
                 next_state, reward, done, truncation, _ = self.env.step(action)
                 state = next_state
                 total_reward += reward
                 steps_done += 1
+
+                sys.exit()
 
             # Print log
             result = (
