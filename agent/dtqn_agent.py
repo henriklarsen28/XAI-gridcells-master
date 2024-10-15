@@ -67,7 +67,7 @@ class DTQN_Agent:
             n_head,
             n_layer,
             dropout,
-            self.device,
+            self.device
         )
         self.model = self.model.to(self.device)
 
@@ -111,11 +111,12 @@ class DTQN_Agent:
             # state = torch.stack(list(state))
             state = state.unsqueeze(0)
             # print(state.shape)
-            Q_values = self.model(state)
+            Q_values, att_weights_list = self.model(state)
             action = torch.argmax(Q_values[:, -1, :]).item()
             # print("Q_vals: ", Q_values)
             # print("Selected q_val: ", Q_values[:,-1,:], "Action: ", action)
-            return action
+            # print("att_weights_list: ", att_weights_list)
+            return action, att_weights_list
 
     def learn(self, batch_size, done):
 
