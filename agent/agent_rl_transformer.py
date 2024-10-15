@@ -16,10 +16,10 @@ import keras as keras
 import numpy as np
 import pygame
 import torch
-import wandb
 from explain_network import generate_q_values
 from torch.nn.utils.rnn import pad_sequence
 
+import wandb
 from agent.dtqn_agent import DTQN_Agent
 from env import SunburstMazeDiscrete
 from utils.calculate_fov import calculate_fov_matrix_size
@@ -461,6 +461,7 @@ class Model_TrainTest:
         sequence = deque(maxlen=self.sequence_length)
         # Testing loop over episodes
         for episode in range(1, max_episodes + 1):
+
             state, _ = self.env.reset(seed=seed)
             done = False
             truncation = False
@@ -479,7 +480,7 @@ class Model_TrainTest:
                 # q_val_list = generate_q_values(env=self.env, model=self.agent.model)
                 # self.env.q_values = q_val_list
 
-                action = self.agent.select_action(tensor_sequence)
+                action, att_weights_list = self.agent.select_action(tensor_sequence)
                 next_state, reward, done, truncation, _ = self.env.step(action)
                 state = next_state
                 total_reward += reward
