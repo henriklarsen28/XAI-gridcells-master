@@ -1,6 +1,7 @@
 import copy
 import math
 import random as rd
+from collections import deque
 
 import gymnasium as gym
 import numpy as np
@@ -109,6 +110,9 @@ class SunburstMazeDiscrete(gym.Env):
         self.observed_red_wall = set()
         self.goal_observed_square = set()
 
+        self.q_variance = 0
+        self.past_actions = deque(maxlen=10)
+
         self.action_space = spaces.Discrete(3)
 
         self.observation_space = spaces.Discrete(
@@ -116,6 +120,7 @@ class SunburstMazeDiscrete(gym.Env):
         )
 
         self.q_values = []
+        self.goal_in_sight = False
 
     def goal_position(self):
         for y in range(self.height):
@@ -161,8 +166,11 @@ class SunburstMazeDiscrete(gym.Env):
         return position
 
     def _get_info(self):
-
-        return {"legal_actions": self.legal_actions(), "orientation": self.orientation}
+        return {
+            "legal_actions": self.legal_actions(),
+            "orientation": self.orientation,
+            "goal_in_sight": self.goal_in_sight,
+        }
 
     def _get_observation(self):
         """
@@ -184,7 +192,9 @@ class SunburstMazeDiscrete(gym.Env):
 
         super().reset(seed=seed)
 
-        self.visited_squares = []
+        self.past_actions.clear()
+
+        # self.visited_squares = []
         self.env_map = copy.deepcopy(self.initial_map)
         self.position = self.select_start_position()
         self.goal = self.goal_position()
@@ -241,13 +251,7 @@ class SunburstMazeDiscrete(gym.Env):
                     self.observed_red_wall.add((marked_x, marked_y))
                     break
 
-                self.observed_squares_map.add((x, y))
-                if self.env_map[x][y] == 2:
-                    marked_x, marked_y = self.find_relative_position_in_matrix(x, y)
-                    self.goal_observed_square.add((marked_x, marked_y))
-
-                marked_x, marked_y = self.find_relative_position_in_matrix(x, y)
-                self.observed_squares.add((marked_x, marked_y))
+                self.find_relative_position_in_matrix(x, y)
             start_angle += self.step_angle
 
         matrix = self.calculate_fov_matrix()
@@ -271,7 +275,11 @@ class SunburstMazeDiscrete(gym.Env):
             marked_x = self.matrix_middle_index + x2 - x
             marked_y = y - y2
 
-        return marked_x, marked_y
+        # Add the goal square
+        if self.env_map[x2, y2] == 2:
+            self.goal_observed_square.add((marked_x, marked_y))
+
+        self.observed_squares.add((marked_x, marked_y))
 
     def calculate_fov_matrix(self):
         matrix = np.zeros(calculate_fov_matrix_size(self.ray_length, self.half_fov))
@@ -431,6 +439,9 @@ class SunburstMazeDiscrete(gym.Env):
             terminated (bool): Whether the episode is terminated or not.
             info (dict): Additional information about the environment.
         """
+        self.past_actions.append(
+            (self.position, action, self.q_variance, self.orientation)
+        )
         self.last_moves.append(self.position)
         # Used if the action is invalid
         reward = self.reward()
@@ -469,6 +480,9 @@ class SunburstMazeDiscrete(gym.Env):
         if self.render_mode == "human":
             self.render()
 
+        if 2 in observation[:-1]:
+            self.goal_in_sight = True
+
         return observation, reward, terminated, False, info
 
     def is_goal(self):
@@ -486,7 +500,7 @@ class SunburstMazeDiscrete(gym.Env):
 
         if len(self.last_moves) < 10:
             return False
-        self.last_moves = self.last_moves[-10:]
+        self.last_moves = self.last_moves[-11:]
         if all(last_move == position for last_move in self.last_moves):
             # print("Has not moved from position: ", position)
             return True
@@ -568,6 +582,7 @@ class SunburstMazeDiscrete(gym.Env):
                 self.observed_squares_map,
                 self.wall_rays,
                 self.q_values,
+                self.past_actions
             )
 
     def close(self):  # TODO: Not tested
@@ -586,7 +601,7 @@ class SunburstMazeDiscrete(gym.Env):
         Returns:
             None
         """
-        images = [Image.fromarray(frame) for frame in frames]
+        images = [Image.fromarray(frame, mode="RGB") for frame in frames]
         images[0].save(
             gif_path, save_all=True, append_images=images[1:], duration=100, loop=0
         )

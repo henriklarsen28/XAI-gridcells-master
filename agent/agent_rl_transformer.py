@@ -505,8 +505,7 @@ class Model_TrainTest:
                     break  # Skip the episode if the agent is stuck in a loop
 
                 print(last_positions, last_attention_row[-len(last_positions):])
-                if steps_done == 15:
-                    sys.exit()
+                
             # Print log
             result = (
                 f"Episode: {episode}, "
