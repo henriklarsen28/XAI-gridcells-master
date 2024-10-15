@@ -24,6 +24,8 @@ from env import SunburstMazeDiscrete
 from utils.calculate_fov import calculate_fov_matrix_size
 from utils.state_preprocess import state_preprocess
 
+from scipy.special import softmax
+
 # Define the CSV file path relative to the project root
 map_path_train = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
 map_path_test = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
@@ -465,6 +467,7 @@ class Model_TrainTest:
         self.agent.model.eval()
 
         sequence = deque(maxlen=self.sequnence_length)
+        last_positions = deque(maxlen=self.sequnence_length)
         # Testing loop over episodes
         for episode in range(1, max_episodes + 1):
 
@@ -482,20 +485,26 @@ class Model_TrainTest:
                 tensor_sequence = padding_sequence(
                     tensor_sequence, self.sequnence_length
                 )
+
+
                 # print(tensor_sequence.shape)
                 # q_val_list = generate_q_values(env=self.env, model=self.agent.model)
                 # self.env.q_values = q_val_list
 
                 action, att_weights_list = self.agent.select_action(tensor_sequence)
+                #print(att_weights_list[0][1])
                 block_1 = np.mean(np.stack(att_weights_list[0], axis=0), axis=0)
-                print(block_1)
+                #block_1 = att_weights_list[0][1]
+                last_attention_row = softmax(block_1[0,-1])
                 next_state, reward, done, truncation, _ = self.env.step(action)
+                last_positions.append((self.env.position, self.env.orientation))
                 state = next_state
                 total_reward += reward
                 steps_done += 1
 
-                sys.exit()
-
+                print(last_positions, last_attention_row[-len(last_positions):])
+                if steps_done == 15:
+                    sys.exit()
             # Print log
             result = (
                 f"Episode: {episode}, "
