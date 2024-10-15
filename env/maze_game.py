@@ -370,7 +370,6 @@ class Maze:
                 arrow_orientation = (orientation + 4 - 1) % 4
             elif action == 2:
                 arrow_orientation = (orientation + 1) % 4
-
             self.draw_triangle((position[0], position[1]), arrow_orientation, (255*(1-q_variance), 0, 0))
 
     def draw_frame(

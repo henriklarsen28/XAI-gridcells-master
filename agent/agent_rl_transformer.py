@@ -501,10 +501,9 @@ class Model_TrainTest:
                 state = next_state
                 total_reward += reward
                 steps_done += 1
-
+                # TODO: Why are all the attentions almost the same?
                 print(last_positions, last_attention_row[-len(last_positions):])
-                if steps_done == 15:
-                    sys.exit()
+                
             # Print log
             result = (
                 f"Episode: {episode}, "
