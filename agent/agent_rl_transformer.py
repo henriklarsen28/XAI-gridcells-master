@@ -568,7 +568,7 @@ if __name__ == "__main__":
         "optimizer": "adam",
         "total_episodes": 5500,
         "epsilon": 1 if train_mode else -1,
-        "epsilon_decay": 0.998,
+        "epsilon_decay": 0.997,
         "epsilon_min": 0.01,
         "discount_factor": 0.90,
         "alpha": 0.1,
@@ -604,7 +604,7 @@ if __name__ == "__main__":
         "number_of_rays": 100,
         "transformer": {
             "sequence_length": 15,
-            "n_embd": 128,
+            "n_embd": num_states,
             "n_head": 8,
             "n_layer": 3,
             "dropout": 0.3,
