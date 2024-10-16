@@ -490,7 +490,7 @@ class Model_TrainTest:
 
                 action, att_weights_list = self.agent.select_action(tensor_sequence)
                 #print(att_weights_list[0][1])
-                block_1 = np.mean(np.stack(att_weights_list[0], axis=0), axis=0)
+                block_1 = np.mean(np.stack(att_weights_list[0], axis=0), axis=0) # TODO: Not sure if we should average this or just look at a single head.
                 #block_1 = att_weights_list[0][1]
                 last_attention_row = softmax(block_1[0,-1])
                 next_state, reward, done, truncation, _ = self.env.step(action)
@@ -603,7 +603,7 @@ if __name__ == "__main__":
         "ray_length": 10,
         "number_of_rays": 100,
         "transformer": {
-            "sequence_length": 30,
+            "sequence_length": 15,
             "n_embd": 128,
             "n_head": 8,
             "n_layer": 3,
