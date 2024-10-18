@@ -485,6 +485,7 @@ class Model_TrainTest:
                 tensor_sequence = padding_sequence(
                     tensor_sequence, self.sequnence_length
                 )
+                
 
 
                 # print(tensor_sequence.shape)
@@ -492,17 +493,26 @@ class Model_TrainTest:
                 # self.env.q_values = q_val_list
 
                 action, att_weights_list = self.agent.select_action(tensor_sequence)
-                #print(att_weights_list[0][1])
+
                 block_1 = np.mean(np.stack(att_weights_list[0], axis=0), axis=0) # TODO: Not sure if we should average this or just look at a single head.
                 #block_1 = att_weights_list[0][1]
-                last_attention_row = softmax(block_1[0,-1])
+                #last_attention_row = softmax(block_1[0,-1])
                 next_state, reward, done, truncation, _ = self.env.step(action)
+                next_state_preprosessed = state_preprocess(next_state, device)
+                new_sequence = add_to_sequence(sequence, next_state_preprosessed)
+                tensor_new_sequence = torch.stack(list(new_sequence))
+                tensor_new_sequence = padding_sequence(
+                    tensor_new_sequence, self.sequnence_length
+                )
+
+
+                self.agent.calculate_gradients(tensor_sequence, tensor_new_sequence, reward)
                 last_positions.append((self.env.position, self.env.orientation))
                 state = next_state
                 total_reward += reward
                 steps_done += 1
                 # TODO: Why are all the attentions almost the same?
-                print(last_positions, last_attention_row[-len(last_positions):])
+                #print(last_positions, last_attention_row[-len(last_positions):])
                 
             # Print log
             result = (

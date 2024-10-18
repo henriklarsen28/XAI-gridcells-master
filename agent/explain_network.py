@@ -64,6 +64,8 @@ def compare_model_q_values(agent: DQN_Agent, env: SunburstMazeDiscrete):
         # Save the q-values in a dictionary
         # return the dictionary
 
+
+
 # concepts 
 
 '''
@@ -75,3 +77,4 @@ def compare_model_q_values(agent: DQN_Agent, env: SunburstMazeDiscrete):
 - Toril moves towards goal
 
 '''
+

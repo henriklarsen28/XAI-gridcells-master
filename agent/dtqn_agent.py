@@ -7,6 +7,12 @@ from agent.neural_network_ff_torch import DQN_Network
 from agent.transformer_decoder import TransformerDQN
 
 
+def get_attention_gradients(module, grad_input, grad_output):
+    global attention_gradients
+    attention_gradients = grad_output[0]
+
+
+
 class DTQN_Agent:
     """
     DTQN Agent Class. This class defines some key elements of the DQN algorithm,
@@ -89,6 +95,22 @@ class DTQN_Agent:
         self.clip_grad_normalization = clip_grad_normalization  # For clipping exploding gradients caused by high reward value
         self.critertion = nn.MSELoss()
         self.optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
+
+    def calculate_gradients(self, state, next_state, reward):
+        state = state.unsqueeze(0)
+        next_state = next_state.unsqueeze(0)
+        for i in range(8):
+            attention_layer = self.model.blocks[0].sa.heads[i]
+            hook = attention_layer.register_backward_hook(get_attention_gradients)
+            Q_values, att_weights_list = self.model(state)
+            action = torch.argmax(Q_values[:, -1, :]).item()
+            
+            future_q, _ = self.model(next_state)
+
+            target = reward + self.discount * torch.max(future_q[:, -1, :])
+            loss = self.critertion(Q_values, target)
+            loss.backward()
+            print(attention_gradients)
 
     def select_action(self, state):
         """
