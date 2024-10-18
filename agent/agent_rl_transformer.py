@@ -583,7 +583,7 @@ if __name__ == "__main__":
         "number_of_rays": 100,
         "transformer": {
             "sequence_length": 45,
-            "n_embd": 128,
+            "n_embd": 256,
             "n_head": 8,
             "n_layer": 3,
             "dropout": 0.3,
