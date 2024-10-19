@@ -96,11 +96,12 @@ class DTQN_Agent:
         self.critertion = nn.MSELoss()
         self.optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
 
-    def calculate_gradients(self, state, next_state, reward):
+    def calculate_gradients(self, state, next_state, reward, block=0):
         state = state.unsqueeze(0)
         next_state = next_state.unsqueeze(0)
+        gradient_list = []
         for i in range(8):
-            attention_layer = self.model.blocks[0].sa.heads[i]
+            attention_layer = self.model.blocks[block].sa.heads[i]
             hook = attention_layer.register_backward_hook(get_attention_gradients)
             Q_values, att_weights_list = self.model(state)
             action = torch.argmax(Q_values[:, -1, :]).item()
@@ -109,8 +110,10 @@ class DTQN_Agent:
 
             target = reward + self.discount * torch.max(future_q[:, -1, :])
             loss = self.critertion(Q_values, target)
-            loss.backward()
-            print(attention_gradients)
+            loss.backward(retain_graph=True)
+            gradient_list.append(attention_gradients)
+        #print("Gradient_list: ", gradient_list)
+        return gradient_list
 
     def select_action(self, state):
         """
