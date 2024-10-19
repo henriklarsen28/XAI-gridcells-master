@@ -3,7 +3,8 @@ import numpy as np
 import torch
 from dqn_agent import DQN_Agent
 from scipy.special import softmax
-
+import seaborn as sns
+import matplotlib.pyplot as plt
 from env.sunburstmaze_discrete import SunburstMazeDiscrete
 from utils.state_preprocess import state_preprocess
 
@@ -55,7 +56,7 @@ def compare_model_q_values(agent: DQN_Agent, env: SunburstMazeDiscrete):
     # for each position in the maze
     # save the q-values in a dictionary with the position as the key and the q-values as the value
     # return the dictionary
-
+  
     # Load the models
     for model in os.listdir('model/feed_forward/lunar-darkness-740'):
         agent.model.load_state_dict(torch.load(model))
@@ -65,6 +66,21 @@ def compare_model_q_values(agent: DQN_Agent, env: SunburstMazeDiscrete):
         # return the dictionary
 
 
+# Grad-SAM
+def grad_sam(attention_weights, gradients):
+    # Apply ReLU to the gradients
+    gradients = torch.relu(gradients)
+    attention_weights = attention_weights.squeeze(0)
+    gradients = gradients.squeeze(0)
+    print(attention_weights.shape)
+    print(gradients.shape)
+    # Multiply the gradients with the attention weights
+    grad_sam = attention_weights @ gradients
+    # Show the grad-sam as a heatmap
+    sns.heatmap(grad_sam)
+    plt.show()
+    
+    
 
 # concepts 
 
