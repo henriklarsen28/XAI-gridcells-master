@@ -9,6 +9,7 @@ from agent.transformer_decoder import TransformerDQN
 
 def get_attention_gradients(module, grad_input, grad_output):
     global attention_gradients
+    print("Grad_input: ", len(grad_input))
     attention_gradients = grad_output[0]
 
 

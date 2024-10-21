@@ -495,7 +495,7 @@ class Model_TrainTest:
                 action, att_weights_list = self.agent.select_action(tensor_sequence)
 
                 #block_1 = np.mean(np.stack(att_weights_list[0], axis=0), axis=0) # TODO: Not sure if we should average this or just look at a single head.
-                block_1 = att_weights_list[0][0] # Block 1, head 1
+                block_1 = att_weights_list[2] # Block 1, head 1
                 #last_attention_row = softmax(block_1[0,-1])
                 next_state, reward, done, truncation, _ = self.env.step(action)
                 next_state_preprosessed = state_preprocess(next_state, device)
@@ -506,9 +506,9 @@ class Model_TrainTest:
                 )
 
         
-                gradients = self.agent.calculate_gradients(tensor_sequence, tensor_new_sequence, reward, block=0)
+                gradients = self.agent.calculate_gradients(tensor_sequence, tensor_new_sequence, reward, block=2)
 
-                grad_sam(block_1, gradients[0])
+                grad_sam(block_1, gradients)
                 last_positions.append((self.env.position, self.env.orientation))
                 state = next_state
                 total_reward += reward
