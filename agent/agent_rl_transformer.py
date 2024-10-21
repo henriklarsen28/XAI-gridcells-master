@@ -15,16 +15,16 @@ import keras as keras
 import numpy as np
 import pygame
 import torch
-from explain_network import generate_q_values, grad_sam
+import wandb
+from explain_network import generate_q_values
 from torch.nn.utils.rnn import pad_sequence
 
-import wandb
 from agent.dtqn_agent import DTQN_Agent
 from env import SunburstMazeDiscrete
 from utils.calculate_fov import calculate_fov_matrix_size
 from utils.state_preprocess import state_preprocess
 
-from scipy.special import softmax
+wandb.login()
 
 # Define the CSV file path relative to the project root
 map_path_train = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
@@ -173,8 +173,6 @@ class Model_TrainTest:
         Reinforcement learning training loop.
         """
 
-        wandb.login()
-
         total_steps = 0
         self.reward_history = []
         frames = []
@@ -184,14 +182,18 @@ class Model_TrainTest:
         reward_sequence = deque(maxlen=self.sequnence_length)
         done_sequence = deque(maxlen=self.sequnence_length)
 
-        wandb.init(project="sunburst-maze", config=self)
+        run = wandb.init(project="sunburst-maze", config=self)
 
+        gif_path = f"./gifs/{run.name}"
         # Create the nessessary directories
-        if not os.path.exists("./gifs"):
-            os.makedirs("./gifs")
+        if not os.path.exists(gif_path):
+            os.makedirs(gif_path)
 
-        if not os.path.exists("./model"):
-            os.makedirs("./model")
+        model_path = f"./model_{run.name}"
+        if not os.path.exists(model_path):
+            os.makedirs(model_path)
+
+        self.save_path = model_path + self.save_path
 
         # Training loop over episodes
         for episode in range(1, self.max_episodes + 1):
@@ -312,9 +314,6 @@ class Model_TrainTest:
         """
         Reinforcement learning training loop.
         """
-
-        wandb.login()
-
         self.agent.model.load_state_dict(
             torch.load(self.RL_load_path, map_location=device)
         )
@@ -467,10 +466,8 @@ class Model_TrainTest:
         self.agent.model.eval()
 
         sequence = deque(maxlen=self.sequnence_length)
-        last_positions = deque(maxlen=self.sequnence_length)
         # Testing loop over episodes
         for episode in range(1, max_episodes + 1):
-
             state, _ = self.env.reset(seed=seed)
             done = False
             truncation = False
@@ -485,36 +482,16 @@ class Model_TrainTest:
                 tensor_sequence = padding_sequence(
                     tensor_sequence, self.sequnence_length
                 )
-                
-
-
-                # print(tensor_sequence.shape)
+                print(tensor_sequence.shape)
                 # q_val_list = generate_q_values(env=self.env, model=self.agent.model)
                 # self.env.q_values = q_val_list
 
-                action, att_weights_list = self.agent.select_action(tensor_sequence)
-
-                #block_1 = np.mean(np.stack(att_weights_list[0], axis=0), axis=0) # TODO: Not sure if we should average this or just look at a single head.
-                
-                #last_attention_row = softmax(block_1[0,-1])
+                action = self.agent.select_action(tensor_sequence)
                 next_state, reward, done, truncation, _ = self.env.step(action)
-                next_state_preprosessed = state_preprocess(next_state, device)
-                new_sequence = add_to_sequence(sequence, next_state_preprosessed)
-                tensor_new_sequence = torch.stack(list(new_sequence))
-                tensor_new_sequence = padding_sequence(
-                    tensor_new_sequence, self.sequnence_length
-                )
-
-                gradients = self.agent.calculate_gradients(tensor_sequence, tensor_new_sequence, reward, block=2)
-                block_1 = att_weights_list[2] # Block 1, head 1
-                grad_sam(block_1, gradients, block=2)
-                last_positions.append((self.env.position, self.env.orientation))
                 state = next_state
                 total_reward += reward
                 steps_done += 1
-                # TODO: Why are all the attentions almost the same?
-                #print(last_positions, last_attention_row[-len(last_positions):])
-                
+
             # Print log
             result = (
                 f"Episode: {episode}, "
@@ -541,7 +518,7 @@ def get_num_states(map_path):
 if __name__ == "__main__":
     # Parameters:
 
-    train_mode = False
+    train_mode = True
 
     render = True
     render_mode = "human"
@@ -569,8 +546,8 @@ if __name__ == "__main__":
         "train_mode": train_mode,
         "render": render,
         "render_mode": render_mode,
-        "RL_load_path": f"./model/transformers/ruby-snowflake/sunburst_maze_{map_version}_4300.pth",
-        "save_path": f"./model/sunburst_maze_{map_version}",
+        "RL_load_path": f"./model/sunburst_maze_{map_version}_2000.pth",
+        "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 0.0001,
         "batch_size": 100,
@@ -606,7 +583,7 @@ if __name__ == "__main__":
         "num_states": num_states,
         "clip_grad_normalization": 3,
         "fov": math.pi / 1.5,
-        "ray_length": 20,
+        "ray_length": 10,
         "number_of_rays": 100,
         "transformer": {
             "sequence_length": 45,

@@ -80,7 +80,7 @@ def grad_sam(attention_weights, gradients, block=0):
         print("Att_w:", att_w.shape, type(att_w))
         print(grad.shape, type(grad))
         # Multiply the gradients with the attention weights
-        grad_sam = att_w @ grad
+        grad_sam = torch.tensordot(att_w, grad)
         # Show the grad-sam as a heatmap
         sns.heatmap(grad_sam, ax=axes[math.floor(i/3), i%3])
         axes[math.floor(i/3), i%3].set_title(f"Attention head {i}")
