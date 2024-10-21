@@ -7,6 +7,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from env.sunburstmaze_discrete import SunburstMazeDiscrete
 from utils.state_preprocess import state_preprocess
+import math
 
 device = torch.device("cpu")
 # device = torch.device("mps" if torch.backends.mps.is_available() else "cpu") # Was faster with cpu??? Loading between cpu and mps is slow maybe
@@ -68,16 +69,21 @@ def compare_model_q_values(agent: DQN_Agent, env: SunburstMazeDiscrete):
 
 # Grad-SAM
 def grad_sam(attention_weights, gradients):
+
     # Apply ReLU to the gradients
-    gradients = torch.relu(gradients)
-    attention_weights = attention_weights.squeeze(0)
-    gradients = gradients.squeeze(0)
-    print(attention_weights.shape)
-    print(gradients.shape)
-    # Multiply the gradients with the attention weights
-    grad_sam = attention_weights @ gradients
-    # Show the grad-sam as a heatmap
-    sns.heatmap(grad_sam)
+    fig, axes = plt.subplots(3, math.ceil(len(attention_weights)/3), figsize=(30, 10))
+
+    for i in range(len(attention_weights)):
+        grad = torch.relu(gradients[i])
+        att_w = attention_weights[i].squeeze(0)
+        grad = grad.squeeze(0)
+        print("Att_w:", att_w.shape, type(att_w))
+        print(grad.shape, type(grad))
+        # Multiply the gradients with the attention weights
+        grad_sam = att_w @ grad
+        # Show the grad-sam as a heatmap
+        sns.heatmap(grad_sam, ax=axes[math.floor(i/3), i%3])
+        axes[math.floor(i/3), i%3].set_title(f"Attention head {i}")
     plt.show()
     
     
