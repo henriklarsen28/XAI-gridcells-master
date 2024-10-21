@@ -182,14 +182,18 @@ class Model_TrainTest:
         reward_sequence = deque(maxlen=self.sequnence_length)
         done_sequence = deque(maxlen=self.sequnence_length)
 
-        wandb.init(project="sunburst-maze", config=self)
+        run = wandb.init(project="sunburst-maze", config=self)
 
+        gif_path = f"./gifs/{run.name}"
         # Create the nessessary directories
-        if not os.path.exists("./gifs"):
-            os.makedirs("./gifs")
+        if not os.path.exists(gif_path):
+            os.makedirs(gif_path)
 
-        if not os.path.exists("./model"):
-            os.makedirs("./model")
+        model_path = f"./model_{run.name}"
+        if not os.path.exists(model_path):
+            os.makedirs(model_path)
+
+        self.save_path = model_path + self.save_path
 
         # Training loop over episodes
         for episode in range(1, self.max_episodes + 1):
@@ -543,7 +547,7 @@ if __name__ == "__main__":
         "render": render,
         "render_mode": render_mode,
         "RL_load_path": f"./model/sunburst_maze_{map_version}_2000.pth",
-        "save_path": f"./model/sunburst_maze_{map_version}",
+        "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 0.0001,
         "batch_size": 100,
@@ -579,11 +583,11 @@ if __name__ == "__main__":
         "num_states": num_states,
         "clip_grad_normalization": 3,
         "fov": math.pi / 1.5,
-        "ray_length": 20,
+        "ray_length": 10,
         "number_of_rays": 100,
         "transformer": {
             "sequence_length": 45,
-            "n_embd": 256,
+            "n_embd": 128,
             "n_head": 8,
             "n_layer": 3,
             "dropout": 0.3,
