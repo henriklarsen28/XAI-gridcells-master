@@ -68,11 +68,11 @@ def compare_model_q_values(agent: DQN_Agent, env: SunburstMazeDiscrete):
 
 
 # Grad-SAM
-def grad_sam(attention_weights, gradients):
+def grad_sam(attention_weights, gradients, block=0):
 
     # Apply ReLU to the gradients
     fig, axes = plt.subplots(3, math.ceil(len(attention_weights)/3), figsize=(30, 10))
-
+    fig.suptitle(f"Grad-SAM for block {block}")
     for i in range(len(attention_weights)):
         grad = torch.relu(gradients[i])
         att_w = attention_weights[i].squeeze(0)
@@ -84,6 +84,8 @@ def grad_sam(attention_weights, gradients):
         # Show the grad-sam as a heatmap
         sns.heatmap(grad_sam, ax=axes[math.floor(i/3), i%3])
         axes[math.floor(i/3), i%3].set_title(f"Attention head {i}")
+
+    
     plt.show()
     
     

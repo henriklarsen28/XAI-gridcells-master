@@ -492,7 +492,7 @@ class Model_TrainTest:
                 action, att_weights_list = self.agent.select_action(tensor_sequence)
 
                 #block_1 = np.mean(np.stack(att_weights_list[0], axis=0), axis=0) # TODO: Not sure if we should average this or just look at a single head.
-                block_1 = att_weights_list[2] # Block 1, head 1
+                
                 #last_attention_row = softmax(block_1[0,-1])
                 next_state, reward, done, truncation, _ = self.env.step(action)
                 next_state_preprosessed = state_preprocess(next_state, device)
@@ -502,10 +502,9 @@ class Model_TrainTest:
                     tensor_new_sequence, self.sequnence_length
                 )
 
-        
                 gradients = self.agent.calculate_gradients(tensor_sequence, tensor_new_sequence, reward, block=2)
-
-                grad_sam(block_1, gradients)
+                block_1 = att_weights_list[2] # Block 1, head 1
+                grad_sam(block_1, gradients, block=2)
                 last_positions.append((self.env.position, self.env.orientation))
                 state = next_state
                 total_reward += reward
@@ -567,8 +566,8 @@ if __name__ == "__main__":
         "train_mode": train_mode,
         "render": render,
         "render_mode": render_mode,
-        "RL_load_path": f"./model/transformers/seq_len_45/model_visionary-hill-816",
-        "save_path": f"/sunburst_maze_{map_version}",
+        "RL_load_path": f"./model/transformers/ruby-snowflake/sunburst_maze_{map_version}_4300.pth",
+        "save_path": f"./model/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 0.0001,
         "batch_size": 128,
@@ -610,8 +609,8 @@ if __name__ == "__main__":
         "ray_length": 10,
         "number_of_rays": 100,
         "transformer": {
-            "sequence_length": 15,
-            "n_embd": num_states,
+            "sequence_length": 45,
+            "n_embd": 128,
             "n_head": 8,
             "n_layer": 3,
             "dropout": 0.3,
