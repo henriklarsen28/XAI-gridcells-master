@@ -101,6 +101,17 @@ def get_random_map():
     map_list = [map_path_train, map_path_train_2]
     return rd.choice(map_list)
 
+def salt_and_pepper_noise(matrix, prob=0.1):
+
+    goal_index = np.where(matrix == 2)
+
+    noisy_matrix = np.copy(matrix)
+    noise = np.random.rand(*matrix.shape)
+    noisy_matrix[noise < prob / 2] = 1  # Add "salt"
+    noisy_matrix[noise > 1 - prob / 2] = 0  # Add "pepper"
+    noisy_matrix[goal_index] = 2  # Ensure the goal is not obscured
+    return noisy_matrix
+
 
 class Model_TrainTest:
     def __init__(self, config):
@@ -204,7 +215,7 @@ class Model_TrainTest:
         # Training loop over episodes
         for episode in range(1, self.max_episodes + 1):
             
-            train_env = get_random_map()
+            """train_env = get_random_map()
             self.env = SunburstMazeDiscrete(
                 maze_file=train_env,
                 render_mode=render_mode,
@@ -215,7 +226,7 @@ class Model_TrainTest:
                 fov=self.fov,
                 ray_length=self.ray_length,
                 number_of_rays=self.number_of_rays,
-            )
+            )"""
 
             state, _ = self.env.reset()
 
@@ -228,6 +239,9 @@ class Model_TrainTest:
 
             print("Episode: ", episode)
             while not done and not truncation:
+                # Add noise 70% of the time and to 10% of the pixels
+                if rd.random() < 0.7:
+                    state = salt_and_pepper_noise(state, prob=0.1)
 
                 sequence = add_to_sequence(sequence, state)
                 tensor_sequence = torch.stack(list(sequence))
