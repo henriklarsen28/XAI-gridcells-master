@@ -17,7 +17,7 @@ import numpy as np
 import pygame
 import torch
 import wandb
-from explain_network import generate_q_values
+from explain_network import generate_q_values, grad_sam
 from torch.nn.utils.rnn import pad_sequence
 
 from agent.dtqn_agent import DTQN_Agent
@@ -479,8 +479,26 @@ class Model_TrainTest:
                 # q_val_list = generate_q_values(env=self.env, model=self.agent.model)
                 # self.env.q_values = q_val_list
 
-                action = self.agent.select_action(tensor_sequence)
+                action, att_weights_list = self.agent.select_action(tensor_sequence)
                 next_state, reward, done, truncation, _ = self.env.step(action)
+
+                # Render rgb_array
+                frame = self.env.render_rgb_array()
+                print("Hello", frame)
+                
+                next_state_preprosessed = state_preprocess(next_state, device)
+                new_sequence = add_to_sequence(sequence, next_state_preprosessed)
+                tensor_new_sequence = torch.stack(list(new_sequence))
+                tensor_new_sequence = padding_sequence(
+                    tensor_new_sequence, self.sequnence_length
+                )
+
+                block_1 = att_weights_list[0]  # Block 1, head 1
+                gradients = self.agent.calculate_gradients(
+                    tensor_sequence, tensor_new_sequence, reward, block=0
+                )
+                grad_sam(block_1, gradients, block=0, episode=episode, step=steps_done, rgb_array=frame)
+
                 state = next_state
                 total_reward += reward
                 steps_done += 1
@@ -511,7 +529,7 @@ def get_num_states(map_path):
 if __name__ == "__main__":
     # Parameters:
 
-    train_mode = True
+    train_mode = False
 
     render = True
     render_mode = "human"
@@ -539,7 +557,7 @@ if __name__ == "__main__":
         "train_mode": train_mode,
         "render": render,
         "render_mode": render_mode,
-        "RL_load_path": f"./model/sunburst_maze_{map_version}_2000.pth",
+        "RL_load_path": f"./model/transformers/model_summer-water-768/sunburst_maze_map_v0_3700.pth",
         "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 0.0001,

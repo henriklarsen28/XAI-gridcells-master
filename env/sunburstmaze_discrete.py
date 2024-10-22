@@ -564,16 +564,8 @@ class SunburstMazeDiscrete(gym.Env):
 
     def _render_frame(self):
         if self.render_mode == "rgb_array":
-            return np.asarray(
-                self.render_maze.draw_frame(
-                    self.env_map,
-                    self.position,
-                    self.orientation,
-                    self.observed_squares_map,
-                    self.wall_rays,
-                    [],
-                )
-            )
+            return self.render_rgb_array()
+        
         elif self.render_mode == "human":
             self.render_maze.draw_frame(
                 self.env_map,
@@ -584,6 +576,22 @@ class SunburstMazeDiscrete(gym.Env):
                 self.q_values,
                 self.past_actions
             )
+
+    def render_rgb_array(self):
+        
+        self.render_maze.render_mode = "rgb_array"
+        frame = np.asarray(
+                self.render_maze.draw_frame(
+                    self.env_map,
+                    self.position,
+                    self.orientation,
+                    self.observed_squares_map,
+                    self.wall_rays,
+                    [],
+                )
+            )
+        self.render_maze.render_mode = self.render_mode
+        return frame
 
     def close(self):  # TODO: Not tested
         if self.window is not None:
