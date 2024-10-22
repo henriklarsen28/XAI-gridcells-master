@@ -105,8 +105,8 @@ def salt_and_pepper_noise(matrix, prob=0.1):
 
     goal_index = torch.where(matrix == 2)
 
-    noisy_matrix = torch.copy(matrix)
-    noise = torch.random.rand(*matrix.shape)
+    noisy_matrix = matrix.clone()
+    noise = torch.rand(*matrix.shape)
     noisy_matrix[noise < prob / 2] = 1  # Add "salt"
     noisy_matrix[noise > 1 - prob / 2] = 0  # Add "pepper"
     noisy_matrix[goal_index] = 2  # Ensure the goal is not obscured
