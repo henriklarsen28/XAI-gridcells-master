@@ -16,6 +16,7 @@ import numpy as np
 import pygame
 import torch
 import wandb
+import random as rd
 from explain_network import generate_q_values
 from torch.nn.utils.rnn import pad_sequence
 
@@ -28,6 +29,7 @@ wandb.login()
 
 # Define the CSV file path relative to the project root
 map_path_train = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
+map_path_train_2 = os.path.join(project_root, "env/map_v0/map.csv")
 map_path_test = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
 
 
@@ -94,6 +96,10 @@ def add_to_sequence(sequence: deque, state):
     state = torch.as_tensor(state, dtype=torch.float32, device=device)
     sequence.append(state)
     return sequence
+
+def get_random_map():
+    map_list = [map_path_train, map_path_train_2]
+    return rd.choice(map_list)
 
 
 class Model_TrainTest:
@@ -197,6 +203,20 @@ class Model_TrainTest:
 
         # Training loop over episodes
         for episode in range(1, self.max_episodes + 1):
+            
+            train_env = get_random_map()
+            self.env = SunburstMazeDiscrete(
+                maze_file=train_env,
+                render_mode=render_mode,
+                max_steps_per_episode=self.max_steps,
+                random_start_position=self.random_start_position,
+                rewards=self.rewards,
+                observation_space=self.observation_space,
+                fov=self.fov,
+                ray_length=self.ray_length,
+                number_of_rays=self.number_of_rays,
+            )
+
             state, _ = self.env.reset()
 
             state = state_preprocess(state, device)
