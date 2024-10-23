@@ -217,7 +217,7 @@ class Model_TrainTest:
         # Training loop over episodes
         for episode in range(1, self.max_episodes + 1):
             
-            """train_env = get_random_map()
+            train_env = get_random_map()
             self.env = SunburstMazeDiscrete(
                 maze_file=train_env,
                 render_mode=render_mode,
@@ -228,7 +228,7 @@ class Model_TrainTest:
                 fov=self.fov,
                 ray_length=self.ray_length,
                 number_of_rays=self.number_of_rays,
-            )"""
+            )
 
             state, _ = self.env.reset()
 
