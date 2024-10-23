@@ -186,8 +186,8 @@ class SunburstMazeDiscrete(gym.Env):
 
         # self.visited_squares = []
         self.env_map = copy.deepcopy(self.initial_map)
-        print(self.env_map)
         self.position = self.select_start_position()
+        self.goal = self.goal_position()
 
         self.steps_current_episode = 0
 
@@ -211,7 +211,6 @@ class SunburstMazeDiscrete(gym.Env):
                 self.observed_squares_map,
                 self.wall_rays,
             )
-        self.goal = self.goal_position()
         return observation, self._get_info()
 
     def reset_checkpoints(self):
