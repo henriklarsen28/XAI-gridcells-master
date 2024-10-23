@@ -16,6 +16,7 @@ import numpy as np
 import pygame
 import torch
 import wandb
+import random as rd
 from explain_network import generate_q_values
 from torch.nn.utils.rnn import pad_sequence
 
@@ -28,7 +29,8 @@ wandb.login()
 
 # Define the CSV file path relative to the project root
 map_path_train = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
-map_path_test = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
+map_path_train_2 = os.path.join(project_root, "env/map_v0/map_closed_doors_left.csv")
+map_path_test = os.path.join(project_root, "env/map_v0/map.csv")
 
 
 device = torch.device("cpu")
@@ -94,6 +96,21 @@ def add_to_sequence(sequence: deque, state):
     state = torch.as_tensor(state, dtype=torch.float32, device=device)
     sequence.append(state)
     return sequence
+
+def get_random_map():
+    map_list = [map_path_train, map_path_train_2]
+    return rd.choice(map_list)
+
+def salt_and_pepper_noise(matrix, prob=0.1):
+
+    goal_index = torch.where(matrix == 2)
+
+    noisy_matrix = matrix.clone()
+    noise = torch.rand(*matrix.shape)
+    noisy_matrix[noise < prob / 2] = 1  # Add "salt"
+    noisy_matrix[noise > 1 - prob / 2] = 0  # Add "pepper"
+    noisy_matrix[goal_index] = 2  # Ensure the goal is not obscured
+    return noisy_matrix
 
 
 class Model_TrainTest:
@@ -199,6 +216,20 @@ class Model_TrainTest:
 
         # Training loop over episodes
         for episode in range(1, self.max_episodes + 1):
+            
+            """train_env = get_random_map()
+            self.env = SunburstMazeDiscrete(
+                maze_file=train_env,
+                render_mode=render_mode,
+                max_steps_per_episode=self.max_steps,
+                random_start_position=self.random_start_position,
+                rewards=self.rewards,
+                observation_space=self.observation_space,
+                fov=self.fov,
+                ray_length=self.ray_length,
+                number_of_rays=self.number_of_rays,
+            )"""
+
             state, _ = self.env.reset()
 
             state = state_preprocess(state, device)
@@ -210,6 +241,9 @@ class Model_TrainTest:
 
             print("Episode: ", episode)
             while not done and not truncation:
+                # Add noise 80% of the time and to 10% of the pixels
+                if rd.random() < 0.8:
+                    state = salt_and_pepper_noise(state, prob=0.1)
 
                 sequence = add_to_sequence(sequence, state)
                 tensor_sequence = torch.stack(list(sequence))
@@ -548,7 +582,7 @@ if __name__ == "__main__":
         "train_mode": train_mode,
         "render": render,
         "render_mode": render_mode,
-        "RL_load_path": f"./model/transformers/50_50/model_denim-pond-775/sunburst_maze_{map_version}_5500.pth",
+        "RL_load_path": f"./model/transformers/model_denim-pond-775/sunburst_maze_{map_version}_4000.pth",
         "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 0.0001,
@@ -572,6 +606,7 @@ if __name__ == "__main__":
             "new_square": 0.4 / 200,
             "max_steps_reached": -0.5 / 200,
             "penalty_per_step": -0.01 / 200,
+            "goal_in_sight": 0.5 / 200,
         },
         # TODO
         "observation_space": {
