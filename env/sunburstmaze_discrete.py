@@ -41,6 +41,7 @@ class SunburstMazeDiscrete(gym.Env):
         render_mode=None,
         max_steps_per_episode=200,
         random_start_position=None,
+        random_goal_position=None,
         rewards=None,
         observation_space=None,
         fov=math.pi / 2,
@@ -53,6 +54,7 @@ class SunburstMazeDiscrete(gym.Env):
         self.height = self.env_map.shape[0]
         self.width = self.env_map.shape[1]
         self.random_start_position = random_start_position
+        self.random_goal_position = random_goal_position
         self.rewards = rewards
         self.observation_space = observation_space
         self.render_mode = render_mode
@@ -119,8 +121,14 @@ class SunburstMazeDiscrete(gym.Env):
         for y in range(self.height):
             for x in range(self.width):
                 if self.env_map[y][x] == 2:
+                    if self.random_start_position is True:
+                        self.env_map[y][x] = 0
+                        position = self.random_position()
+                        self.env_map[position[0]][position[1]] = 2
+                        return position
                     return (y, x)
         return None
+                
 
     def select_start_position(self) -> tuple:
         """
@@ -131,18 +139,25 @@ class SunburstMazeDiscrete(gym.Env):
         """
 
         if self.random_start_position is True:
-            position = (rd.randint(0, self.height - 1), rd.randint(0, self.width - 1))
-            # Check if the position is not a wall
-            while int(self.env_map[position[0]][position[1]]) == 1:
-                position = (
-                    rd.randint(0, self.height - 1),
-                    rd.randint(0, self.width - 1),
-                )
+            position = self.random_position()
             self.orientation = rd.randint(0, 3)
         else:
             # position = (10, 13)
             position = (self.height - 2, 10)  # Bottom left for the small maze
         # print("Starting at random position: ", random_position)
+        return position
+    
+    def random_position(self):
+
+        # move the goal to a random position
+        position = (rd.randint(0, self.height - 1), rd.randint(0, self.width - 1))
+        # Check if the position is not a wall
+        while int(self.env_map[position[0]][position[1]]) == 1:
+            position = (
+                rd.randint(0, self.height - 1),
+                rd.randint(0, self.width - 1),
+            )
+
         return position
 
     def _get_info(self):
@@ -174,6 +189,7 @@ class SunburstMazeDiscrete(gym.Env):
 
         # self.visited_squares = []
         self.env_map = copy.deepcopy(self.initial_map)
+        print(self.env_map)
         self.position = self.select_start_position()
 
         self.steps_current_episode = 0
