@@ -30,7 +30,7 @@ wandb.login()
 # Define the CSV file path relative to the project root
 map_path_train = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
 map_path_train_2 = os.path.join(project_root, "env/map_v0/map.csv")
-map_path_test = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
+map_path_test = os.path.join(project_root, "env/map_v0/map.csv")
 
 
 device = torch.device("cpu")
@@ -580,7 +580,7 @@ if __name__ == "__main__":
         "train_mode": train_mode,
         "render": render,
         "render_mode": render_mode,
-        "RL_load_path": f"./model/sunburst_maze_{map_version}_2000.pth",
+        "RL_load_path": f"./model/transformers/model_denim-pond-775/sunburst_maze_{map_version}_4000.pth",
         "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 0.0001,
@@ -603,6 +603,7 @@ if __name__ == "__main__":
             "new_square": 0.4 / 200,
             "max_steps_reached": -0.5 / 200,
             "penalty_per_step": -0.01 / 200,
+            "goal_in_sight": 5 / 200,
         },
         # TODO
         "observation_space": {
