@@ -99,6 +99,7 @@ class Model_TrainTest:
 
         self.rewards = config["rewards"]
         self.random_start_position = config["random_start_position"]
+        self.random_goal_position = config["random_goal_position"]
         self.observation_space = config["observation_space"]
 
         self.fov = config["fov"]
@@ -117,6 +118,7 @@ class Model_TrainTest:
             render_mode=render_mode,
             max_steps_per_episode=self.max_steps,
             random_start_position=self.random_start_position,
+            random_goal_position=self.random_goal_position,
             rewards=self.rewards,
             observation_space=self.observation_space,
             fov=self.fov,
@@ -473,7 +475,7 @@ class Model_TrainTest:
                 tensor_sequence = padding_sequence(
                     tensor_sequence, self.sequence_length, device
                 )
-                print(tensor_sequence.shape)
+                # print(tensor_sequence.shape)
                 # q_val_list = generate_q_values(env=self.env, model=self.agent.model)
                 # self.env.q_values = q_val_list
 
@@ -553,6 +555,7 @@ if __name__ == "__main__":
         "target_model_update": 10,  # hard update of the target model
         "max_steps_per_episode": 250,
         "random_start_position": True,
+        "random_goal_position": True,
         "rewards": {
             "is_goal": 200 / 200,
             "hit_wall": -1 / 200,
