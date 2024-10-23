@@ -29,7 +29,7 @@ wandb.login()
 
 # Define the CSV file path relative to the project root
 map_path_train = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
-map_path_train_2 = os.path.join(project_root, "env/map_v0/map.csv")
+map_path_train_2 = os.path.join(project_root, "env/map_v0/map_closed_doors_left.csv")
 map_path_test = os.path.join(project_root, "env/map_v0/map.csv")
 
 
@@ -215,7 +215,7 @@ class Model_TrainTest:
         # Training loop over episodes
         for episode in range(1, self.max_episodes + 1):
             
-            """train_env = get_random_map()
+            train_env = get_random_map()
             self.env = SunburstMazeDiscrete(
                 maze_file=train_env,
                 render_mode=render_mode,
@@ -226,7 +226,7 @@ class Model_TrainTest:
                 fov=self.fov,
                 ray_length=self.ray_length,
                 number_of_rays=self.number_of_rays,
-            )"""
+            )
 
             state, _ = self.env.reset()
 
@@ -239,8 +239,8 @@ class Model_TrainTest:
 
             print("Episode: ", episode)
             while not done and not truncation:
-                # Add noise 70% of the time and to 10% of the pixels
-                if rd.random() < 0.7:
+                # Add noise 80% of the time and to 10% of the pixels
+                if rd.random() < 0.8:
                     state = salt_and_pepper_noise(state, prob=0.1)
 
                 sequence = add_to_sequence(sequence, state)
@@ -603,7 +603,7 @@ if __name__ == "__main__":
             "new_square": 0.4 / 200,
             "max_steps_reached": -0.5 / 200,
             "penalty_per_step": -0.01 / 200,
-            "goal_in_sight": 5 / 200,
+            "goal_in_sight": 0.5 / 200,
         },
         # TODO
         "observation_space": {
