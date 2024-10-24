@@ -29,9 +29,9 @@ from utils.sequence_preprocessing import padding_sequence, padding_sequence_int,
 wandb.login()
 
 # Define the CSV file path relative to the project root
-map_path_train = os.path.join(project_root, "env/map_v0/map_colored_wall_closed_doors.csv")
-map_path_train_2 = os.path.join(project_root, "env/map_v0/map_closed_doors_left.csv")
-map_path_test = os.path.join(project_root, "env/map_v0/map_colored_wall.csv")
+map_path_train = os.path.join(project_root, "env/map_v0/map_open_doors_horizontal.csv")
+map_path_train_2 = os.path.join(project_root, "env/map_v0/map_open_doors_vertical.csv")
+map_path_test = os.path.join(project_root, "env/map_v0/map.csv")
 
 
 device = torch.device("cpu")
@@ -174,7 +174,7 @@ class Model_TrainTest:
         # Training loop over episodes
         for episode in range(1, self.max_episodes + 1):
             
-            '''train_env = get_random_map()
+            train_env = get_random_map()
             self.env = SunburstMazeDiscrete(
                 maze_file=train_env,
                 render_mode=render_mode,
@@ -185,7 +185,7 @@ class Model_TrainTest:
                 fov=self.fov,
                 ray_length=self.ray_length,
                 number_of_rays=self.number_of_rays,
-            )'''
+            )
 
             state, _ = self.env.reset()
 
