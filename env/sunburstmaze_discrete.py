@@ -274,11 +274,7 @@ class SunburstMazeDiscrete(gym.Env):
             marked_x = self.matrix_middle_index + x2 - x
             marked_y = y - y2
 
-        # Add the goal square
-        if self.env_map[x2, y2] == 2:
-            self.goal_observed_square.add((marked_x, marked_y))
-
-        self.observed_squares.add((marked_x, marked_y))
+        return marked_x, marked_y
 
     def calculate_fov_matrix(self):
         matrix = np.zeros(calculate_fov_matrix_size(self.ray_length, self.half_fov))
@@ -509,7 +505,7 @@ class SunburstMazeDiscrete(gym.Env):
         # Return the number of squares that are 1 in the observation
         observation = self._get_observation()
         return len([square for square in observation if square == 1])
-
+    
     # TODO: Gets stuck at wall, q-values for other actions are negative
     def reward(self):
         """
