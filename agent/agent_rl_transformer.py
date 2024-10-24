@@ -602,8 +602,8 @@ if __name__ == "__main__":
             "has_not_moved": -1 / 200,
             "new_square": 0.4 / 200,
             "max_steps_reached": -0.5 / 200,
-            "penalty_per_step": -0.01 / 200,
-            "goal_in_sight": 10 / 200,
+            "penalty_per_step": -0.1 / 200,
+            "goal_in_sight": 0.5 / 200,
         },
         # TODO
         "observation_space": {
