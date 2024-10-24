@@ -590,13 +590,13 @@ if __name__ == "__main__":
         "optimizer": "adam",
         "total_episodes": 5500,
         "epsilon": 1 if train_mode else -1,
-        "epsilon_decay": 0.997,
+        "epsilon_decay": 0.998,
         "epsilon_min": 0.01,
-        "discount_factor": 0.99,
+        "discount_factor": 0.85,
         "alpha": 0.1,
         "map_path": map_path_train,
         "target_model_update": 10,  # hard update of the target model
-        "max_steps_per_episode": 250,
+        "max_steps_per_episode": 300,
         "random_start_position": True,
         "random_goal_position": False,
         "rewards": {
@@ -606,7 +606,7 @@ if __name__ == "__main__":
             "new_square": 0.4 / 200,
             "max_steps_reached": -0.5 / 200,
             "penalty_per_step": -0.01 / 200,
-            "goal_in_sight": 50 / 200,
+            "goal_in_sight": 10 / 200,
         },
         # TODO
         "observation_space": {
