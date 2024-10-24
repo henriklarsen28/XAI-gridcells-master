@@ -28,9 +28,9 @@ from utils.state_preprocess import state_preprocess
 wandb.login()
 
 # Define the CSV file path relative to the project root
-map_path_train = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
+map_path_train = os.path.join(project_root, "env/map_v0/map_colored_wall_closed_doors.csv")
 map_path_train_2 = os.path.join(project_root, "env/map_v0/map_closed_doors_left.csv")
-map_path_test = os.path.join(project_root, "env/map_v0/map.csv")
+map_path_test = os.path.join(project_root, "env/map_v0/map_colored_wall.csv")
 
 
 device = torch.device("cpu")
@@ -552,7 +552,7 @@ def get_num_states(map_path):
 if __name__ == "__main__":
     # Parameters:
 
-    train_mode = True
+    train_mode = False
 
     render = True
     render_mode = "human"
@@ -580,7 +580,7 @@ if __name__ == "__main__":
         "train_mode": train_mode,
         "render": render,
         "render_mode": render_mode,
-        "RL_load_path": f"./model/transformers/model_denim-pond-775/sunburst_maze_{map_version}_4000.pth",
+        "RL_load_path": f"./model/transformers/model_tough-haze-782/sunburst_maze_{map_version}_5500.pth",
         "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 0.0001,
@@ -603,7 +603,7 @@ if __name__ == "__main__":
             "new_square": 0.4 / 200,
             "max_steps_reached": -0.5 / 200,
             "penalty_per_step": -0.01 / 200,
-            "goal_in_sight": 0.5 / 200,
+            "goal_in_sight": 25 / 200,
         },
         # TODO
         "observation_space": {

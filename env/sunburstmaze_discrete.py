@@ -104,6 +104,7 @@ class SunburstMazeDiscrete(gym.Env):
         self.wall_rays = set()
         self.observed_squares = set()
         self.observed_squares_map = set()
+        self.observed_red_wall = set()
         self.goal_observed_square = set()
 
         self.action_space = spaces.Discrete(3)
@@ -206,6 +207,7 @@ class SunburstMazeDiscrete(gym.Env):
         self.wall_rays = set()
         self.observed_squares_map = set()
         self.goal_observed_square = set()
+        self.observed_red_wall = set()
 
         agent_angle = self.orientation * math.pi / 2  # 0, 90, 180, 270
 
@@ -219,9 +221,18 @@ class SunburstMazeDiscrete(gym.Env):
                     self.wall_rays.add((x, y))
                     break
 
-                self.observed_squares_map.add((x, y))
+                if self.env_map[x][y] == -1:  # Red wall
+                    marked_x, marked_y = self.find_relative_position_in_matrix(x, y)
+                    self.observed_red_wall.add((marked_x, marked_y))
+                    break
 
-                self.find_relative_position_in_matrix(x, y)
+                self.observed_squares_map.add((x, y))
+                if self.env_map[x][y] == 2:
+                    marked_x, marked_y = self.find_relative_position_in_matrix(x, y)
+                    self.goal_observed_square.add((marked_x, marked_y))
+
+                marked_x, marked_y = self.find_relative_position_in_matrix(x, y)
+                self.observed_squares.add((marked_x, marked_y))
             start_angle += self.step_angle
 
         matrix = self.calculate_fov_matrix()
@@ -245,11 +256,7 @@ class SunburstMazeDiscrete(gym.Env):
             marked_x = self.matrix_middle_index + x2 - x
             marked_y = y - y2
 
-        # Add the goal square
-        if self.env_map[x2, y2] == 2:
-            self.goal_observed_square.add((marked_x, marked_y))
-
-        self.observed_squares.add((marked_x, marked_y))
+        return marked_x, marked_y
 
     def calculate_fov_matrix(self):
         matrix = np.zeros(calculate_fov_matrix_size(self.ray_length, self.half_fov))
@@ -259,13 +266,17 @@ class SunburstMazeDiscrete(gym.Env):
             x, y = square
             matrix[y, x] = 1
 
+        for square in self.observed_red_wall:
+            x, y = square
+            matrix[y, x] = -1
+
         # Mark the goal square
         if len(self.goal_observed_square) == 1:
             x, y = self.goal_observed_square.pop()
             matrix[y, x] = 2
 
-        df = pd.DataFrame(matrix)
-        df.to_csv("matrix.csv")
+        #df = pd.DataFrame(matrix)
+        #df.to_csv("matrix.csv")
 
         # if self.orientation == 2 or self.orientation == 3:
         #     matrix = np.rot90(matrix, 2)
@@ -469,6 +480,7 @@ class SunburstMazeDiscrete(gym.Env):
     def goal_in_sight(self):
         observation = self._get_observation()
         if np.isin(2, observation[:-1]):
+            print("Goal in sight!")
             return True
         return False
 
