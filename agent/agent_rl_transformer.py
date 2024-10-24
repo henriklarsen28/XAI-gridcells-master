@@ -8,6 +8,7 @@ sys.path.append(project_root)
 
 
 import math
+import random as rd
 from collections import deque
 
 import gymnasium as gym
@@ -15,11 +16,10 @@ import keras as keras
 import numpy as np
 import pygame
 import torch
-import wandb
-import random as rd
 from explain_network import generate_q_values
 from torch.nn.utils.rnn import pad_sequence
 
+import wandb
 from agent.dtqn_agent import DTQN_Agent
 from env import SunburstMazeDiscrete
 from utils.calculate_fov import calculate_fov_matrix_size
@@ -554,7 +554,7 @@ if __name__ == "__main__":
         "map_path": map_path_train,
         "target_model_update": 10,  # hard update of the target model
         "max_steps_per_episode": 250,
-        "random_start_position": True,
+        "random_start_position": False,
         "random_goal_position": True,
         "rewards": {
             "is_goal": 200 / 200,
