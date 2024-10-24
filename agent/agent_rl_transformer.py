@@ -242,7 +242,7 @@ class Model_TrainTest:
             print("Episode: ", episode)
             while not done and not truncation:
                 # Add noise 80% of the time and to 10% of the pixels
-                if rd.random() < 0.8:
+                if rd.random() < self.observation_space["salt_and_pepper_noise"]:
                     state = salt_and_pepper_noise(state, prob=0.1)
 
                 sequence = add_to_sequence(sequence, state)
@@ -606,7 +606,7 @@ if __name__ == "__main__":
             "new_square": 0.4 / 200,
             "max_steps_reached": -0.5 / 200,
             "penalty_per_step": -0.01 / 200,
-            "goal_in_sight": 10 / 200,
+            "goal_in_sight": 0.5 / 200,
         },
         # TODO
         "observation_space": {
@@ -614,6 +614,7 @@ if __name__ == "__main__":
             "orientation": True,
             "steps_to_goal": False,
             "last_known_steps": 0,
+            "salt_and_pepper_noise": 0.8,
         },
         "save_interval": 100,
         "memory_capacity": 200_000,
