@@ -133,7 +133,7 @@ class SunburstMazeDiscrete(gym.Env):
         if self.random_start_position is True:
             position = (rd.randint(0, self.height - 1), rd.randint(0, self.width - 1))
             # Check if the position is not a wall
-            while int(self.env_map[position[0]][position[1]]) == 1:
+            while int(self.env_map[position[0]][position[1]]) == 1 or int(self.env_map[position[0]][position[1]]) == -1 or int(self.env_map[position[0]][position[1]]) == 2:
                 position = (
                     rd.randint(0, self.height - 1),
                     rd.randint(0, self.width - 1),
@@ -312,7 +312,7 @@ class SunburstMazeDiscrete(gym.Env):
 
         return True
 
-    def next_to_wall(self) -> list:
+    def next_to_wall(self) -> list: # TODO: Can be removed
         """
         Determines which directions the agent is next to a wall.
 
