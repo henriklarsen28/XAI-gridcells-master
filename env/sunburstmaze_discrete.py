@@ -307,7 +307,7 @@ class SunburstMazeDiscrete(gym.Env):
             raise ValueError("Invalid orientation")
 
         # Check if the cell in front of the agent is a wall
-        if int(self.env_map[next_position[0]][next_position[1]]) == 1:
+        if int(self.env_map[next_position[0]][next_position[1]]) == 1 or int(self.env_map[next_position[0]][next_position[1]]) == -1:
             return False
 
         return True
