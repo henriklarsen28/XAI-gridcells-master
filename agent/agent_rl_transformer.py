@@ -24,6 +24,7 @@ from agent.dtqn_agent import DTQN_Agent
 from env import SunburstMazeDiscrete
 from utils.calculate_fov import calculate_fov_matrix_size
 from utils.state_preprocess import state_preprocess
+from utils.sequence_preprocessing import padding_sequence, padding_sequence_int, add_to_sequence
 
 wandb.login()
 
@@ -52,50 +53,6 @@ if torch.cuda.is_available():
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
-
-def padding_sequence_int(sequence: torch.tensor, max_length):
-    """
-    Pad the sequence with zeros to the max_length
-    """
-    last_state = sequence[-1]
-    if len(sequence) < max_length:
-        for _ in range(max_length - len(sequence)):
-            sequence = torch.cat(
-                [
-                    sequence,
-                    torch.as_tensor(
-                        last_state, dtype=torch.int64, device=device
-                    ).unsqueeze(0),
-                ]
-            )
-    return sequence
-
-
-def padding_sequence(sequence: torch.tensor, max_length):
-    """
-    Pad the sequence with zeros to the max_length
-    """
-    last_state = sequence[-1]
-    if len(sequence) < max_length:
-        for _ in range(max_length - len(sequence)):
-            sequence = torch.cat(
-                [
-                    sequence,
-                    torch.as_tensor(
-                        last_state, dtype=torch.float32, device=device
-                    ).unsqueeze(0),
-                ]
-            )
-    return sequence
-
-
-def add_to_sequence(sequence: deque, state):
-    """
-    Add the new state to the sequence
-    """
-    state = torch.as_tensor(state, dtype=torch.float32, device=device)
-    sequence.append(state)
-    return sequence
 
 def get_random_map():
     map_list = [map_path_train, map_path_train_2]
@@ -149,7 +106,7 @@ class Model_TrainTest:
         self.number_of_rays = config["number_of_rays"]
 
         self.transformer = config["transformer"]
-        self.sequnence_length = self.transformer["sequence_length"]
+        self.sequence_length = self.transformer["sequence_length"]
         map_path = map_path_train
         if not self.train_mode:
             map_path = map_path_test
@@ -193,11 +150,11 @@ class Model_TrainTest:
         total_steps = 0
         self.reward_history = []
         frames = []
-        sequence = deque(maxlen=self.sequnence_length)
-        action_sequence = deque(maxlen=self.sequnence_length)
-        new_sequence = deque(maxlen=self.sequnence_length)
-        reward_sequence = deque(maxlen=self.sequnence_length)
-        done_sequence = deque(maxlen=self.sequnence_length)
+        sequence = deque(maxlen=self.sequence_length)
+        action_sequence = deque(maxlen=self.sequence_length)
+        new_sequence = deque(maxlen=self.sequence_length)
+        reward_sequence = deque(maxlen=self.sequence_length)
+        done_sequence = deque(maxlen=self.sequence_length)
 
         run = wandb.init(project="sunburst-maze", config=self)
 
@@ -243,10 +200,10 @@ class Model_TrainTest:
                 if rd.random() < 0.8:
                     state = salt_and_pepper_noise(state, prob=0.1)
 
-                sequence = add_to_sequence(sequence, state)
+                sequence = add_to_sequence(sequence, state, device)
                 tensor_sequence = torch.stack(list(sequence))
                 tensor_sequence = padding_sequence(
-                    tensor_sequence, self.sequnence_length
+                    tensor_sequence, self.sequence_length, device
                 )
                 action = self.agent.select_action(tensor_sequence)
                 next_state, reward, done, truncation, _ = self.env.step(action)
@@ -259,32 +216,32 @@ class Model_TrainTest:
                     self.env.render()
 
                 # Action sequence
-                action_sequence = add_to_sequence(action_sequence, action)
+                action_sequence = add_to_sequence(action_sequence, action, device)
                 tensor_action_sequence = torch.stack(list(action_sequence))
                 tensor_action_sequence = padding_sequence_int(
-                    tensor_action_sequence, self.sequnence_length
+                    tensor_action_sequence, self.sequence_length, device
                 )
 
                 # New state sequence
                 next_state = state_preprocess(next_state, device)
-                new_sequence = add_to_sequence(new_sequence, next_state)
+                new_sequence = add_to_sequence(new_sequence, next_state, device)
                 tensor_new_sequence = torch.stack(list(new_sequence))
                 tensor_new_sequence = padding_sequence(
-                    tensor_new_sequence, self.sequnence_length
+                    tensor_new_sequence, self.sequence_length, device
                 )
 
                 # Reward sequence
-                reward_sequence = add_to_sequence(reward_sequence, reward)
+                reward_sequence = add_to_sequence(reward_sequence, reward, device)
                 tensor_reward_sequence = torch.stack(list(reward_sequence))
                 tensor_reward_sequence = padding_sequence(
-                    tensor_reward_sequence, self.sequnence_length
+                    tensor_reward_sequence, self.sequence_length, device
                 )
 
                 # Done sequence
-                done_sequence = add_to_sequence(done_sequence, done)
+                done_sequence = add_to_sequence(done_sequence, done, device)
                 tensor_done_sequence = torch.stack(list(done_sequence))
                 tensor_done_sequence = padding_sequence(
-                    tensor_done_sequence, self.sequnence_length
+                    tensor_done_sequence, self.sequence_length, device
                 )
 
                 self.agent.replay_memory.store(
@@ -357,11 +314,11 @@ class Model_TrainTest:
         total_steps = 0
         self.reward_history = []
         frames = []
-        sequence = deque(maxlen=self.sequnence_length)
-        action_sequence = deque(maxlen=self.sequnence_length)
-        new_sequence = deque(maxlen=self.sequnence_length)
-        reward_sequence = deque(maxlen=self.sequnence_length)
-        done_sequence = deque(maxlen=self.sequnence_length)
+        sequence = deque(maxlen=self.sequence_length)
+        action_sequence = deque(maxlen=self.sequence_length)
+        new_sequence = deque(maxlen=self.sequence_length)
+        reward_sequence = deque(maxlen=self.sequence_length)
+        done_sequence = deque(maxlen=self.sequence_length)
 
         wandb.init(project="sunburst-maze", config=self)
 
@@ -386,10 +343,10 @@ class Model_TrainTest:
             print("Episode: ", episode)
             while not done and not truncation:
 
-                sequence = add_to_sequence(sequence, state)
+                sequence = add_to_sequence(sequence, state, device)
                 tensor_sequence = torch.stack(list(sequence))
                 tensor_sequence = padding_sequence(
-                    tensor_sequence, self.sequnence_length
+                    tensor_sequence, self.sequence_length, device
                 )
                 action = self.agent.select_action(tensor_sequence)
                 next_state, reward, done, truncation, _ = self.env.step(action)
@@ -402,32 +359,32 @@ class Model_TrainTest:
                     self.env.render()
 
                 # Action sequence
-                action_sequence = add_to_sequence(action_sequence, action)
+                action_sequence = add_to_sequence(action_sequence, action, device)
                 tensor_action_sequence = torch.stack(list(action_sequence))
                 tensor_action_sequence = padding_sequence_int(
-                    tensor_action_sequence, self.sequnence_length
+                    tensor_action_sequence, self.sequence_length, device
                 )
 
                 # New state sequence
                 next_state = state_preprocess(next_state, device)
-                new_sequence = add_to_sequence(new_sequence, next_state)
+                new_sequence = add_to_sequence(new_sequence, next_state, device)
                 tensor_new_sequence = torch.stack(list(new_sequence))
                 tensor_new_sequence = padding_sequence(
-                    tensor_new_sequence, self.sequnence_length
+                    tensor_new_sequence, self.sequence_length, device
                 )
 
                 # Reward sequence
-                reward_sequence = add_to_sequence(reward_sequence, reward)
+                reward_sequence = add_to_sequence(reward_sequence, reward, device)
                 tensor_reward_sequence = torch.stack(list(reward_sequence))
                 tensor_reward_sequence = padding_sequence(
-                    tensor_reward_sequence, self.sequnence_length
+                    tensor_reward_sequence, self.sequence_length, device
                 )
 
                 # Done sequence
-                done_sequence = add_to_sequence(done_sequence, done)
+                done_sequence = add_to_sequence(done_sequence, done, device)
                 tensor_done_sequence = torch.stack(list(done_sequence))
                 tensor_done_sequence = padding_sequence(
-                    tensor_done_sequence, self.sequnence_length
+                    tensor_done_sequence, self.sequence_length, device
                 )
 
                 self.agent.replay_memory.store(
@@ -499,7 +456,7 @@ class Model_TrainTest:
         )
         self.agent.model.eval()
 
-        sequence = deque(maxlen=self.sequnence_length)
+        sequence = deque(maxlen=self.sequence_length)
         # Testing loop over episodes
         for episode in range(1, max_episodes + 1):
             state, _ = self.env.reset(seed=seed)
@@ -511,10 +468,10 @@ class Model_TrainTest:
             while not done and not truncation:
                 state = state_preprocess(state, device)
 
-                sequence = add_to_sequence(sequence, state)
+                sequence = add_to_sequence(sequence, state, device)
                 tensor_sequence = torch.stack(list(sequence))
                 tensor_sequence = padding_sequence(
-                    tensor_sequence, self.sequnence_length
+                    tensor_sequence, self.sequence_length, device
                 )
                 print(tensor_sequence.shape)
                 # q_val_list = generate_q_values(env=self.env, model=self.agent.model)
