@@ -539,7 +539,7 @@ if __name__ == "__main__":
         "train_mode": train_mode,
         "render": render,
         "render_mode": render_mode,
-        "RL_load_path": f"./model/transformers/model_woven-glade-815/sunburst_maze_{map_version}_4700.pth",
+        "RL_load_path": f"./model/transformers/seq_len_45/model_eager-forest-778/sunburst_maze_{map_version}_5500.pth",
         "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 0.0001,
@@ -549,7 +549,7 @@ if __name__ == "__main__":
         "epsilon": 1 if train_mode else -1,
         "epsilon_decay": 0.997,
         "epsilon_min": 0.01,
-        "discount_factor": 0.80,
+        "discount_factor": 0.99,
         "alpha": 0.1,
         "map_path": map_path_train,
         "target_model_update": 10,  # hard update of the target model
