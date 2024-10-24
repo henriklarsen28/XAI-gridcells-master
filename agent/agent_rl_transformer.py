@@ -174,7 +174,7 @@ class Model_TrainTest:
         # Training loop over episodes
         for episode in range(1, self.max_episodes + 1):
             
-            train_env = get_random_map()
+            '''train_env = get_random_map()
             self.env = SunburstMazeDiscrete(
                 maze_file=train_env,
                 render_mode=render_mode,
@@ -185,7 +185,7 @@ class Model_TrainTest:
                 fov=self.fov,
                 ray_length=self.ray_length,
                 number_of_rays=self.number_of_rays,
-            )
+            )'''
 
             state, _ = self.env.reset()
 
@@ -562,8 +562,8 @@ if __name__ == "__main__":
             "has_not_moved": -1 / 200,
             "new_square": 0.4 / 200,
             "max_steps_reached": -0.5 / 200,
-            "penalty_per_step": -0.1 / 200,
-            "goal_in_sight": 0.5 / 200,
+            "penalty_per_step": -0.01 / 200,
+            "goal_in_sight": 50 / 200,
         },
         # TODO
         "observation_space": {
