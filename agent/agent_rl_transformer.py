@@ -592,7 +592,7 @@ if __name__ == "__main__":
         "epsilon": 1 if train_mode else -1,
         "epsilon_decay": 0.997,
         "epsilon_min": 0.01,
-        "discount_factor": 0.90,
+        "discount_factor": 0.80,
         "alpha": 0.1,
         "map_path": map_path_train,
         "target_model_update": 10,  # hard update of the target model
