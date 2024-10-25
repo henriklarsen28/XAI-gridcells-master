@@ -31,7 +31,7 @@ wandb.login()
 # Define the CSV file path relative to the project root
 map_path_train = os.path.join(project_root, "env/map_v0/map_open_doors_horizontal.csv")
 map_path_train_2 = os.path.join(project_root, "env/map_v0/map_open_doors_vertical.csv")
-map_path_test = os.path.join(project_root, "env/map_v0/map.csv")
+map_path_test = os.path.join(project_root, "env/map_v0/map_open_doors_horizontal.csv")
 
 
 device = torch.device("cpu")
@@ -484,6 +484,11 @@ class Model_TrainTest:
                 state = next_state
                 total_reward += reward
                 steps_done += 1
+                if self.env.has_not_moved(self.env.position):
+                    # record stuck behavior
+                    #stuck_behavior[episode] = self.env.position
+                    print("Agent has not moved for 10 steps. Breaking the episode.")
+                    break  # Skip the episode if the agent is stuck in a loop
 
             # Print log
             result = (
@@ -539,7 +544,7 @@ if __name__ == "__main__":
         "train_mode": train_mode,
         "render": render,
         "render_mode": render_mode,
-        "RL_load_path": f"./model/transformers/seq_len_45/model_eager-forest-778/sunburst_maze_{map_version}_5500.pth",
+        "RL_load_path": f"./model/transformers/seq_len_45/model_visionary-hill-816",
         "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 0.0001,
@@ -549,13 +554,13 @@ if __name__ == "__main__":
         "epsilon": 1 if train_mode else -1,
         "epsilon_decay": 0.998,
         "epsilon_min": 0.01,
-        "discount_factor": 0.85,
+        "discount_factor": 0.88,
         "alpha": 0.1,
         "map_path": map_path_train,
         "target_model_update": 10,  # hard update of the target model
         "max_steps_per_episode": 300,
         "random_start_position": True,
-        "random_goal_position": False,
+        "random_goal_position": True,
         "rewards": {
             "is_goal": 200 / 200,
             "hit_wall": -1 / 200,
