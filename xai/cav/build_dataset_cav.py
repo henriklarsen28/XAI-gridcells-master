@@ -100,7 +100,7 @@ def build_csv_dataset():
     # Load early agent data
 
     env_path = "../env/map_v0/map_colored_wall_closed_doors.csv"
-    model_load_path = "../agent/model/transformers/.../sunburst_maze_map_v0_5300.pth"
+    model_load_path = "../agent/model/transformers/model_woven-glade-815/sunburst_maze_map_v0_5500.pth"
 
     epsilon = 0.3
 
@@ -136,7 +136,7 @@ def run_agent(env: SunburstMazeDiscrete, agent: DTQN_Agent):
     sequence_length = config["transformer"]["sequence_length"]
     max_episodes = 100
     sequence = deque(maxlen=sequence_length)
-    
+
     # Testing loop over episodes
     for episode in range(1, max_episodes + 1):
         state, _ = env.reset(seed=42)

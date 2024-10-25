@@ -509,7 +509,7 @@ def get_num_states(map_path):
 if __name__ == "__main__":
     # Parameters:
 
-    train_mode = True
+    train_mode = False
 
     render = True
     render_mode = "human"
@@ -537,7 +537,7 @@ if __name__ == "__main__":
         "train_mode": train_mode,
         "render": render,
         "render_mode": render_mode,
-        "RL_load_path": f"./model/transformers/model_tough-haze-782/sunburst_maze_{map_version}_5500.pth",
+        "RL_load_path": f"./model/transformers/model_woven-glade-815/sunburst_maze_{map_version}_4700.pth",
         "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 0.0001,
