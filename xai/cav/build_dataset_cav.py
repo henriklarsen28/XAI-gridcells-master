@@ -2,17 +2,18 @@ import math
 import os
 import sys
 from collections import deque
+import copy
 
 import torch
 
 # get the path to the project root directory and add it to sys.path
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 
 sys.path.append(project_root)
 
-import torch
+from agent import DTQN_Agent
 
-from agent.dtqn_agent import DTQN_Agent
+from agent.replay_memory import ReplayMemory
 from env import SunburstMazeDiscrete
 from utils.calculate_fov import calculate_fov_matrix_size
 from utils.sequence_preprocessing import add_to_sequence, padding_sequence
@@ -28,7 +29,6 @@ fov_config = {
 half_fov = fov_config["fov"] / 2
 matrix_size = calculate_fov_matrix_size(fov_config["ray_length"], half_fov)
 num_states = matrix_size[0] * matrix_size[1]
-print(num_states)
 
 # Parameters
 config = {
@@ -68,36 +68,19 @@ config = {
 # CAV for stuck in wall -> Sees into wall and tries to move forward
 
 
-def negative_stuck_in_wall(sequence: deque, legal_actions: list):
-    # Look at the last 2 states, if the agents last states are the same and the agent is not allowed to move forward the agent is stuck in a wall
-    # The sequence should be added to the CAV negative dataset
-    last_state = sequence[-1]
-    second_last_state = sequence[-2]
-
-    if last_state != second_last_state and 0 in legal_actions:
-        return sequence
-    return None
-
-
-def positive_stuck_in_wall(sequence: deque, legal_actions: list):
+def positive_looking_at_wall(sequence: deque, legal_actions: list, action_sequence: deque):
     # Look at the last 2 states, if the agents last states are the same and the agent is not allowed to move forward the agent is stuck in a wall
     # The sequence should be added to the CAV positive dataset
 
-    last_state = sequence[-1]
-    second_last_state = sequence[-2]
+    last_action = action_sequence[-1]
 
-    if last_state == second_last_state and 0 not in legal_actions:
+    #print("Last action: ", last_action)
+    if len(legal_actions) == 2 and last_action == 0:
         # Save the observation sequence to the positive dataset
+        #print("Positive stuck in wall")
         return sequence
 
     return None
-
-
-def negative_rotating_stuck(
-    sequence: deque, action_sequence: deque, position_sequence: deque
-):
-
-    pass
 
 
 def positive_rotating_stuck(
@@ -107,7 +90,16 @@ def positive_rotating_stuck(
     # The position is the same over the last 12 states, and the agent is rotating in place
     # The sequence should be added to the CAV positive dataset
 
-    pass
+    position_sequence = list(position_sequence)
+    last_12_positions = position_sequence[-12:]
+    if len(set(last_12_positions)) == 1:
+        # Check if the agent is rotating in place
+        action_sequence = list(action_sequence)
+        last_12_actions = set(action_sequence[-12:])
+        if (1 in last_12_actions or 2 in last_12_actions) and 0 not in last_12_actions:
+            #print("Positive rotating stuck")
+            return sequence
+    return None
 
 
 def build_stuck_in_wall_dataset():
@@ -121,20 +113,24 @@ def build_stuck_in_wall_dataset():
 def build_csv_dataset():
     # Load early agent data
 
-    env_path = "../env/map_v0/map_colored_wall_closed_doors.csv"
-    model_load_path = "../agent/model/transformers/model_woven-glade-815/sunburst_maze_map_v0_5500.pth"
+    env_path = "../../env/map_v0/map_colored_wall_closed_doors.csv"
+    model_load_path = "../../agent/model/transformers/model_woven-glade-815/sunburst_maze_map_v0_100.pth"
 
-    epsilon = 0.3
+    epsilon = 0.0
 
     env = SunburstMazeDiscrete(
         maze_file=env_path,
         render_mode="human",
+        random_start_position=config["random_start_position"],
         rewards=config["rewards"],
         observation_space=config["observation_space"],
         fov=config["fov"],
         ray_length=config["ray_length"],
         number_of_rays=config["number_of_rays"],
+
     )
+
+    env.metadata["render_fps"] = 100
     agent = DTQN_Agent(
         env=env,
         epsilon=epsilon,
@@ -155,13 +151,35 @@ def build_csv_dataset():
 
     # Containing a tuple of observation sequence, legal_actions, position sequence, action sequence
     collected_sequences = run_agent(env, agent)
+    #print("Length of collected sequences: ", len(collected_sequences))
+    positive_dataset_wall = deque()
+    negative_dataset_wall = deque()
+
+    positive_dataset_rotating = deque()
+    negative_dataset_rotating = deque()
+    
 
     for sequence in collected_sequences:
         observation_sequence, legal_actions, position_sequence, action_sequence = sequence
-
+        #print(len(observation_sequence))
+        
         # Check if the agent is stuck in a wall
-       
+        positive_wall = positive_looking_at_wall(observation_sequence, legal_actions, action_sequence)
+        if positive_wall is not None:
+            positive_dataset_wall.append(positive_wall)
+        else:
+            negative_dataset_wall.append(observation_sequence)
 
+        positive_stuck = positive_rotating_stuck(observation_sequence, action_sequence, position_sequence)
+        if positive_stuck is not None:
+            positive_dataset_rotating.append(positive_stuck)
+        else:
+            negative_dataset_rotating.append(observation_sequence)
+
+
+
+    print("Wall: ", len(positive_dataset_wall))
+    print("Rotating: ", len(positive_dataset_rotating))
 
 
 def run_agent(env: SunburstMazeDiscrete, agent: DTQN_Agent):
@@ -169,43 +187,43 @@ def run_agent(env: SunburstMazeDiscrete, agent: DTQN_Agent):
     collected_sequences = deque()
 
     sequence_length = config["transformer"]["sequence_length"]
-    max_episodes = 100
+    max_episodes = 2
     observation_sequence = deque(maxlen=sequence_length)
     position_sequence = deque(maxlen=sequence_length)
     action_sequence = deque(maxlen=sequence_length)
     total_steps = 0
     # Testing loop over episodes
-    for episode in range(1, max_episodes + 1):
+    for episode in range(0, max_episodes):
         state, _ = env.reset(seed=42)
         done = False
         truncation = False
         steps_done = 0
         total_reward = 0
-
         while not done and not truncation:
             state = state_preprocess(state, device)
-
+            
             observation_sequence = add_to_sequence(observation_sequence, state, device)
-            position_sequence = add_to_sequence(position_sequence, env.position, device)
+            position_sequence.append(env.position)
             tensor_sequence = torch.stack(list(observation_sequence))
-            tensor_sequence = padding_sequence(tensor_sequence, sequence_length, device)
-            print(tensor_sequence.shape)
+            #tensor_sequence = padding_sequence(tensor_sequence, sequence_length, device)
+            #print(tensor_sequence.shape)
             # q_val_list = generate_q_values(env=self.env, model=self.agent.model)
             # self.env.q_values = q_val_list
 
             action = agent.select_action(tensor_sequence)
             action_sequence.append(action)
-            legal_actions = env.get_legal_actions()
+            legal_actions = env.legal_actions()
             next_state, reward, done, truncation, _ = env.step(action)
             state = next_state
             total_reward += reward
             steps_done += 1
             total_steps += 1
             # Make sure the sequence length is filled up
-            if total_steps > sequence_length:
+            if len(observation_sequence) >= sequence_length:
                 collected_sequences.append(
-                    (observation_sequence, legal_actions, position_sequence, action_sequence)
+                    (copy.deepcopy(observation_sequence), copy.deepcopy(legal_actions), copy.deepcopy(position_sequence), copy.deepcopy(action_sequence))
                 )
+
 
         # Print log
         result = (
@@ -215,4 +233,13 @@ def run_agent(env: SunburstMazeDiscrete, agent: DTQN_Agent):
         )
         print(result)
 
-    return collected_sequences
+    return copy.deepcopy(collected_sequences)
+
+
+
+def main():
+    build_csv_dataset()
+
+
+if __name__ == "__main__":
+    main()

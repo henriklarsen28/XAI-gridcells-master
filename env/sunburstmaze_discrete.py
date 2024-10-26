@@ -439,7 +439,7 @@ class SunburstMazeDiscrete(gym.Env):
 
         # Walking into a wall
         if action not in self.legal_actions():
-            # print("Hit a wall")
+            print("Hit a wall")
             return observation, self.rewards["hit_wall"], False, False, info
 
         # Perform the action
