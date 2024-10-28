@@ -3,6 +3,7 @@ import os
 import sys
 from collections import deque
 import copy
+import pandas as pd
 
 import torch
 
@@ -66,7 +67,12 @@ config = {
 
 
 # CAV for stuck in wall -> Sees into wall and tries to move forward
-
+def save_to_csv(dataset: deque, file_name: str):
+    dataset = [[state.tolist() for state in sequence] for sequence in dataset]
+    # Convert from list of tensors to list of numpy arrays
+    df = pd.DataFrame(dataset)
+    
+    df.to_csv(f"./dataset/{file_name}", index=False)
 
 def positive_looking_at_wall(sequence: deque, legal_actions: list, action_sequence: deque):
     # Look at the last 2 states, if the agents last states are the same and the agent is not allowed to move forward the agent is stuck in a wall
@@ -177,6 +183,11 @@ def build_csv_dataset():
             negative_dataset_rotating.append(observation_sequence)
 
 
+    # Save the datasets to csv files
+    save_to_csv(positive_dataset_wall, "positive_wall.csv")
+    save_to_csv(negative_dataset_wall, "negative_wall.csv")
+    save_to_csv(positive_dataset_rotating, "positive_rotating.csv")
+    save_to_csv(negative_dataset_rotating, "negative_rotating.csv")
 
     print("Wall: ", len(positive_dataset_wall))
     print("Rotating: ", len(positive_dataset_rotating))
@@ -187,7 +198,7 @@ def run_agent(env: SunburstMazeDiscrete, agent: DTQN_Agent):
     collected_sequences = deque()
 
     sequence_length = config["transformer"]["sequence_length"]
-    max_episodes = 2
+    max_episodes = 10
     observation_sequence = deque(maxlen=sequence_length)
     position_sequence = deque(maxlen=sequence_length)
     action_sequence = deque(maxlen=sequence_length)
