@@ -19,13 +19,13 @@ import torch
 import wandb
 from explain_network import grad_sam
 from torch.nn.utils.rnn import pad_sequence
+from tqdm import tqdm
 
 from agent.dtqn_agent import DTQN_Agent
 from env import SunburstMazeDiscrete
 from utils.calculate_fov import calculate_fov_matrix_size
 from utils.state_preprocess import state_preprocess
 from utils.sequence_preprocessing import padding_sequence, padding_sequence_int, add_to_sequence
-
 
 wandb.login()
 
@@ -36,10 +36,10 @@ map_path_test = os.path.join(project_root, "env/map_v0/map_open_doors_90_degrees
 
 
 device = torch.device("cpu")
-# device = torch.device(
-#   "mps" if torch.backends.mps.is_available() else "cpu"
-# )  # Was faster with cpu??? Loading between cpu and mps is slow maybe
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device(
+    "mps" if torch.backends.mps.is_available() else "cpu"
+)  # Was faster with cpu??? Loading between cpu and mps is slow maybe
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Seed everything for reproducible results
 seed = 2024
@@ -58,6 +58,7 @@ if torch.cuda.is_available():
 def get_random_map():
     map_list = [map_path_train, map_path_train_2]
     return rd.choice(map_list)
+
 
 def salt_and_pepper_noise(matrix, prob=0.1):
 
@@ -170,12 +171,13 @@ class Model_TrainTest:
         if not os.path.exists(model_path):
             os.makedirs(model_path)
 
+
         self.save_path = model_path + self.save_path
 
         # Training loop over episodes
         for episode in range(1, self.max_episodes + 1):
-            
-            '''train_env = get_random_map()
+
+            """train_env = get_random_map()
             self.env = SunburstMazeDiscrete(
                 maze_file=train_env,
                 render_mode=render_mode,
@@ -186,7 +188,7 @@ class Model_TrainTest:
                 fov=self.fov,
                 ray_length=self.ray_length,
                 number_of_rays=self.number_of_rays,
-            )'''
+            )"""
 
             state, _ = self.env.reset()
 
@@ -453,6 +455,12 @@ class Model_TrainTest:
         Reinforcement learning policy evaluation.
         """
 
+        map_path_without_ext = map_path_test.split("/")[-1].split(".")[0]
+        print(map_path_without_ext)
+        if not os.path.exists(f"./grad_sam/{map_path_without_ext}"):
+            os.makedirs(f"./grad_sam/{map_path_without_ext}")
+
+
         # Load the weights of the test_network
         self.agent.model.load_state_dict(
             torch.load(self.RL_load_path, map_location=device)
@@ -460,15 +468,15 @@ class Model_TrainTest:
         self.agent.model.eval()
 
         sequence = deque(maxlen=self.sequnence_length)
-        
+
         episode_data = []
         step_data = {
-                "step": 0,
-                "position": None,
-                "tensors": None,
-                "is_stuck": False,
-            }
-        
+            "step": 0,
+            "position": None,
+            "tensors": None,
+            "is_stuck": False,
+        }
+
         # Testing loop over episodes
         for episode in range(1, max_episodes + 1):
             state, _ = self.env.reset(seed=seed)
@@ -478,7 +486,7 @@ class Model_TrainTest:
             total_reward = 0
 
             while not done and not truncation:
-                
+
                 state = state_preprocess(state, device)
                 sequence = add_to_sequence(sequence, state)
                 tensor_sequence = torch.stack(list(sequence))
@@ -495,7 +503,7 @@ class Model_TrainTest:
                 # Render rgb_array
                 frame = self.env.render_rgb_array()
                 # print("Hello", frame)
-                
+
                 next_state_preprosessed = state_preprocess(next_state, device)
                 new_sequence = add_to_sequence(sequence, next_state_preprosessed)
                 tensor_new_sequence = torch.stack(list(new_sequence))
@@ -508,20 +516,30 @@ class Model_TrainTest:
                     tensor_sequence, tensor_new_sequence, reward, block=0
                 )
                 # print('gradients', gradients)
-                
-                step_data["step"]=steps_done
-                step_data["position"]=self.env.position
-                step_data["tensors"]=grad_sam(block_1, gradients, block=0, episode=episode, step=steps_done, rgb_array=frame, plot=False)
-                step_data["is_stuck"]=True if self.env.has_not_moved(self.env.position) else False
+
+                step_data["step"] = steps_done
+                step_data["position"] = self.env.position
+                step_data["tensors"] = grad_sam(
+                    block_1,
+                    gradients,
+                    block=0,
+                    episode=episode,
+                    step=steps_done,
+                    rgb_array=frame,
+                    plot=False,
+                )
+                step_data["is_stuck"] = (
+                    True if self.env.has_not_moved(self.env.position) else False
+                )
 
                 state = next_state
                 total_reward += reward
                 steps_done += 1
-                '''if self.env.has_not_moved(self.env.position):
+                """if self.env.has_not_moved(self.env.position):
                     # record stuck behavior
                     #stuck_behavior[episode] = self.env.position
                     print("Agent has not moved for 10 steps. Breaking the episode.")
-                    break  # Skip the episode if the agent is stuck in a loop'''
+                    break  # Skip the episode if the agent is stuck in a loop"""
 
             # Print log
             result = (
@@ -532,10 +550,16 @@ class Model_TrainTest:
             print(result)
 
             episode_data.append(step_data)
+            
+            # save grad sam data every 100 episodes
+            if episode % 10 == 0:
+                torch.save(
+                    episode_data,
+                    f"./grad_sam/{map_path_without_ext}/{config["model_name"]}_{episode}.pt",
+                )
+                print(f"Grad sam data saved up to episode {episode}.")
+                episode_data.clear()
 
-        if episode % 100 == 0:
-            torch.save(episode_data, f"./grad_sam/{map_path_test}/{config["model_name"]}_{episode}.pt")
-            episode_data.clear()
         pygame.quit()  # close the rendering window
 
 
@@ -644,4 +668,4 @@ if __name__ == "__main__":
     else:
         # Test
         # DRL.test(max_episodes=config["total_episodes"])
-        DRL.test(max_episodes=1000)
+        DRL.test(max_episodes=100)
