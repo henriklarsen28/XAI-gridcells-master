@@ -27,6 +27,8 @@ from utils.calculate_fov import calculate_fov_matrix_size
 from utils.state_preprocess import state_preprocess
 from utils.sequence_preprocessing import padding_sequence, padding_sequence_int, add_to_sequence
 
+import copy
+
 wandb.login()
 
 # Define the CSV file path relative to the project root
@@ -549,7 +551,8 @@ class Model_TrainTest:
             )
             print(result)
 
-            episode_data.append(step_data)
+            step_data_copy = copy.deepcopy(step_data)
+            episode_data.append(step_data_copy)
             
             # save grad sam data every 100 episodes
             if episode % 10 == 0:
