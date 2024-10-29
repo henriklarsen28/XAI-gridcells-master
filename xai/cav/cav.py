@@ -7,8 +7,8 @@ from collections import defaultdict
 import pandas as pd
 import torch
 from logistic_regression import LogisticRegression
-from sklearn.linear_model import LogisticRegression
 from torch.utils.data import DataLoader, random_split
+import random as rd
 
 # get the path to the project root directory and add it to sys.path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
@@ -39,9 +39,7 @@ def get_activations(model: TransformerDQN, input, layer: int):
     activation = model(input)
 
 
-def create_activation_dataset(self, dataset_path: str):
-
-    model_load_path = "../../agent/model/transformers/model_woven-glade-815/sunburst_maze_map_v0_100.pth"
+def create_activation_dataset(dataset_path: str, model_path: str, block: int = 0):
 
     fov_config = {
         "fov": math.pi / 1.5,
@@ -77,7 +75,7 @@ def create_activation_dataset(self, dataset_path: str):
     model = model.to(device)
 
     # Load the model
-    model.load_state_dict(torch.load(model_load_path, map_location=device))
+    model.load_state_dict(torch.load(model_path, map_location=device))
     model.eval()
     print(model.blocks)
 
@@ -174,20 +172,40 @@ class CAV:
 
             print(f"Accuracy: {100 * correct / total}%")
 
-        self.cav_coef = self.model.coef_
-        print(self.cav_coef)
+        self.cav_coef = self.model.linear.weight.detach().numpy()[0]
+        return correct / total
 
-    def calculate_cav(self):
-        pass
+    def calculate_cav(self, concept: str, model_dir: str):
+        
+        model_list = os.listdir(model_dir)
+        model_list = rd.sample(model_list, 4)
+        self.cav_list = defaultdict(float)
+
+        for model in model_list:
+            model_path = os.path.join(model_dir, model)
+            episode_number = model.split("_")[-1].split(".")[0]
+            for block in range(3):
+
+                print("Block: ", block, model_path, episode_number)
+                negative_file = create_activation_dataset(f"./dataset/negative_{concept}.csv",model_path, block)
+                positive_file = create_activation_dataset(f"./dataset/positive_{concept}.csv", model_path, block)
+                accuracy = self.cav_model(positive_file, negative_file)
+                # Add the CAV to the list of CAVs
+                self.cav_list[concept, block, episode_number] = accuracy
+
+        # Save the CAV list
+        torch.save(self.cav_list, f"./cav_list_{concept}.pt")
 
 
 def main():
     cav = CAV()
-    #negative_file = create_activation_dataset("./dataset/negative_wall.csv")
-    #positive_file = create_activation_dataset("./dataset/positive_wall.csv")
+    model_load_path = "../../agent/model/transformers/model_woven-glade-815"
+
+    # negative_file = create_activation_dataset("./dataset/negative_wall.csv")
+    # positive_file = create_activation_dataset("./dataset/positive_wall.csv")
     positive_file = "dataset/positive_wall_activations.pt"
     negative_file = "dataset/negative_wall_activations.pt"
-    cav.cav_model(positive_file, negative_file)
+    cav.calculate_cav("wall", model_load_path)
 
 
 if __name__ == "__main__":

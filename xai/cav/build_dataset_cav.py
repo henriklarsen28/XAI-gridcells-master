@@ -4,6 +4,7 @@ import sys
 from collections import deque
 import copy
 import pandas as pd
+import random as rd
 
 import torch
 
@@ -182,6 +183,17 @@ def build_csv_dataset():
         else:
             negative_dataset_rotating.append(observation_sequence)
 
+    # Shuffle the datasets
+    rd.shuffle(negative_dataset_wall)
+    rd.shuffle(negative_dataset_rotating)
+
+    # Trim the negative datasets
+    
+    negative_dataset_wall = list(negative_dataset_wall)
+    negative_dataset_rotating = list(negative_dataset_rotating)
+
+    negative_dataset_wall = negative_dataset_wall[:len(positive_dataset_wall)]
+    negative_dataset_rotating = negative_dataset_rotating[:len(positive_dataset_rotating)]
 
     # Save the datasets to csv files
     save_to_csv(positive_dataset_wall, "positive_wall.csv")
@@ -198,7 +210,7 @@ def run_agent(env: SunburstMazeDiscrete, agent: DTQN_Agent):
     collected_sequences = deque()
 
     sequence_length = config["transformer"]["sequence_length"]
-    max_episodes = 100
+    max_episodes = 50
     observation_sequence = deque(maxlen=sequence_length)
     position_sequence = deque(maxlen=sequence_length)
     action_sequence = deque(maxlen=sequence_length)
