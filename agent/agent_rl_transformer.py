@@ -16,11 +16,11 @@ import keras as keras
 import numpy as np
 import pygame
 import torch
-import wandb
 from explain_network import grad_sam
 from torch.nn.utils.rnn import pad_sequence
 from tqdm import tqdm
 
+import wandb
 from agent.dtqn_agent import DTQN_Agent
 from env import SunburstMazeDiscrete
 from utils.calculate_fov import calculate_fov_matrix_size
@@ -39,7 +39,7 @@ device = torch.device("cpu")
 device = torch.device(
     "mps" if torch.backends.mps.is_available() else "cpu"
 )  # Was faster with cpu??? Loading between cpu and mps is slow maybe
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Seed everything for reproducible results
 seed = 2024
