@@ -397,7 +397,7 @@ class Maze:
         self.marked_2 = set()
         self.win.fill(grey)  # fill screen before drawing
         self.draw_maze(env_map)
-        self.draw_action_tail(last_ten_actions)
+        #self.draw_action_tail(last_ten_actions)
         #self.draw_rays(position, orientation, wall_rays)
         self.draw_marked_blocks(observed_squares_map)
 

@@ -8,6 +8,7 @@ sys.path.append(project_root)
 
 
 import math
+import random as rd
 from collections import deque
 
 import gymnasium as gym
@@ -15,15 +16,16 @@ import keras as keras
 import numpy as np
 import pygame
 import torch
-import wandb
 from explain_network import grad_sam
 from torch.nn.utils.rnn import pad_sequence
 
+import wandb
 from agent.dtqn_agent import DTQN_Agent
 from env import SunburstMazeDiscrete
 from utils.calculate_fov import calculate_fov_matrix_size
 from utils.state_preprocess import state_preprocess
 
+from tqdm import tqdm
 
 wandb.login()
 
@@ -97,6 +99,21 @@ def add_to_sequence(sequence: deque, state):
     sequence.append(state)
     return sequence
 
+def get_random_map():
+    map_list = [map_path_train, map_path_train_2]
+    return rd.choice(map_list)
+
+def salt_and_pepper_noise(matrix, prob=0.1):
+
+    goal_index = torch.where(matrix == 2)
+
+    noisy_matrix = matrix.clone()
+    noise = torch.rand(*matrix.shape)
+    noisy_matrix[noise < prob / 2] = 1  # Add "salt"
+    noisy_matrix[noise > 1 - prob / 2] = 0  # Add "pepper"
+    noisy_matrix[goal_index] = 2  # Ensure the goal is not obscured
+    return noisy_matrix
+
 
 class Model_TrainTest:
     def __init__(self, config):
@@ -127,6 +144,7 @@ class Model_TrainTest:
 
         self.rewards = config["rewards"]
         self.random_start_position = config["random_start_position"]
+        self.random_goal_position = config["random_goal_position"]
         self.observation_space = config["observation_space"]
 
         self.fov = config["fov"]
@@ -145,6 +163,7 @@ class Model_TrainTest:
             render_mode=render_mode,
             max_steps_per_episode=self.max_steps,
             random_start_position=self.random_start_position,
+            random_goal_position=self.random_goal_position,
             rewards=self.rewards,
             observation_space=self.observation_space,
             fov=self.fov,
@@ -187,6 +206,7 @@ class Model_TrainTest:
         run = wandb.init(project="sunburst-maze", config=self)
 
         gif_path = f"./gifs/{run.name}"
+
         # Create the nessessary directories
         if not os.path.exists(gif_path):
             os.makedirs(gif_path)
@@ -199,6 +219,20 @@ class Model_TrainTest:
 
         # Training loop over episodes
         for episode in range(1, self.max_episodes + 1):
+            
+            '''train_env = get_random_map()
+            self.env = SunburstMazeDiscrete(
+                maze_file=train_env,
+                render_mode=render_mode,
+                max_steps_per_episode=self.max_steps,
+                random_start_position=self.random_start_position,
+                rewards=self.rewards,
+                observation_space=self.observation_space,
+                fov=self.fov,
+                ray_length=self.ray_length,
+                number_of_rays=self.number_of_rays,
+            )'''
+
             state, _ = self.env.reset()
 
             state = state_preprocess(state, device)
@@ -210,6 +244,9 @@ class Model_TrainTest:
 
             print("Episode: ", episode)
             while not done and not truncation:
+                # Add noise 80% of the time and to 10% of the pixels
+                if rd.random() < self.observation_space["salt_and_pepper_noise"]:
+                    state = salt_and_pepper_noise(state, prob=0.1)
 
                 sequence = add_to_sequence(sequence, state)
                 tensor_sequence = torch.stack(list(sequence))
@@ -478,7 +515,7 @@ class Model_TrainTest:
             }
         
         # Testing loop over episodes
-        for episode in range(1, max_episodes + 1):
+        for episode in tqdm(range(1, max_episodes + 1)):
             state, _ = self.env.reset(seed=seed)
             done = False
             truncation = False
@@ -493,7 +530,7 @@ class Model_TrainTest:
                 tensor_sequence = padding_sequence(
                     tensor_sequence, self.sequnence_length
                 )
-                print(tensor_sequence.shape)
+                # print(tensor_sequence.shape)
                 # q_val_list = generate_q_values(env=self.env, model=self.agent.model)
                 # self.env.q_values = q_val_list
 
@@ -541,9 +578,12 @@ class Model_TrainTest:
 
             episode_data.append(step_data)
 
-        if episode % 100 == 0:
-            torch.save(episode_data, f"./grad_sam/{map_path_test}/{config["model_name"]}_{episode}.pt")
-            episode_data.clear()
+            # save grad sam data every 100 episodes
+            if episode % 100 == 0:
+                torch.save(episode_data, f"./grad_sam/{map_path_test}/{config["model_name"]}_{episode}.pt")
+                print(f"Grad sam data saved up to episode {episode}.")
+                episode_data.clear()
+
         pygame.quit()  # close the rendering window
 
 
@@ -564,8 +604,8 @@ if __name__ == "__main__":
 
     train_mode = False
 
-    render = False
-    render_mode = "human"
+    render = True
+    render_mode = "rgb_array"
 
     if train_mode:
         render_mode = "rgb_array" if render else None
@@ -597,23 +637,25 @@ if __name__ == "__main__":
         "learning_rate": 0.0001,
         "batch_size": 128,
         "optimizer": "adam",
-        "total_episodes": 5000,
+        "total_episodes": 5500,
         "epsilon": 1 if train_mode else -1,
-        "epsilon_decay": 0.997,
+        "epsilon_decay": 0.998,
         "epsilon_min": 0.01,
-        "discount_factor": 0.90,
+        "discount_factor": 0.88,
         "alpha": 0.1,
         "map_path": map_path_train,
         "target_model_update": 10,  # hard update of the target model
-        "max_steps_per_episode": 250,
+        "max_steps_per_episode": 300,
         "random_start_position": True,
+        "random_goal_position": True,
         "rewards": {
             "is_goal": 200 / 200,
             "hit_wall": -1 / 200,
             "has_not_moved": -0.2 / 200,
-            "new_square": 0.2 / 200,
+            "new_square": 0.4 / 200,
             "max_steps_reached": -0.5 / 200,
             "penalty_per_step": -0.01 / 200,
+            "goal_in_sight": 0.5 / 200,
         },
         # TODO
         "observation_space": {
@@ -621,10 +663,11 @@ if __name__ == "__main__":
             "orientation": True,
             "steps_to_goal": False,
             "last_known_steps": 0,
+            "salt_and_pepper_noise": 0.5,
         },
         "save_interval": 100,
-        "memory_capacity": 100_000,
-        "render_fps": 5,
+        "memory_capacity": 200_000,
+        "render_fps": 100,
         "num_states": num_states,
         "clip_grad_normalization": 3,
         "fov": math.pi / 1.5,
@@ -632,6 +675,7 @@ if __name__ == "__main__":
         "number_of_rays": 100,
         "transformer": {
             "sequence_length": 45,
+            "n_embd": 128,
             "n_embd": 128,
             "n_head": 8,
             "n_layer": 3,

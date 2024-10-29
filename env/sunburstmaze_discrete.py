@@ -1,4 +1,5 @@
 import copy
+import copy
 import math
 import random as rd
 from collections import deque
@@ -6,11 +7,13 @@ from collections import deque
 import gymnasium as gym
 import numpy as np
 import pandas as pd
+import pandas as pd
 import pygame
 from gymnasium import spaces
 from PIL import Image
 
 from utils.calculate_fov import calculate_fov_matrix_size, step_angle
+
 
 from .file_manager import build_map
 from .maze_game import Maze
@@ -41,6 +44,7 @@ class SunburstMazeDiscrete(gym.Env):
         render_mode=None,
         max_steps_per_episode=200,
         random_start_position=None,
+        random_goal_position=None,
         rewards=None,
         observation_space=None,
         fov=math.pi / 2,
@@ -53,6 +57,7 @@ class SunburstMazeDiscrete(gym.Env):
         self.height = self.env_map.shape[0]
         self.width = self.env_map.shape[1]
         self.random_start_position = random_start_position
+        self.random_goal_position = random_goal_position
         self.rewards = rewards
         self.observation_space = observation_space
         self.render_mode = render_mode
@@ -123,8 +128,14 @@ class SunburstMazeDiscrete(gym.Env):
         for y in range(self.height):
             for x in range(self.width):
                 if self.env_map[y][x] == 2:
+                    if self.random_start_position is True:
+                        self.env_map[y][x] = 0
+                        position = self.random_position()
+                        self.env_map[position[0]][position[1]] = 2
+                        return position
                     return (y, x)
         return None
+                
 
     def select_start_position(self) -> tuple:
         """
@@ -135,18 +146,25 @@ class SunburstMazeDiscrete(gym.Env):
         """
 
         if self.random_start_position is True:
-            position = (rd.randint(0, self.height - 1), rd.randint(0, self.width - 1))
-            # Check if the position is not a wall
-            while int(self.env_map[position[0]][position[1]]) == 1:
-                position = (
-                    rd.randint(0, self.height - 1),
-                    rd.randint(0, self.width - 1),
-                )
+            position = self.random_position()
             self.orientation = rd.randint(0, 3)
         else:
             # position = (10, 13)
             position = (self.height - 2, 10)  # Bottom left for the small maze
         # print("Starting at random position: ", random_position)
+        return position
+    
+    def random_position(self):
+
+        # move the goal to a random position
+        position = (rd.randint(0, self.height - 1), rd.randint(0, self.width - 1))
+        # Check if the position is not a wall
+        while int(self.env_map[position[0]][position[1]]) == 1:
+            position = (
+                rd.randint(0, self.height - 1),
+                rd.randint(0, self.width - 1),
+            )
+
         return position
 
     def _get_info(self):
@@ -172,6 +190,7 @@ class SunburstMazeDiscrete(gym.Env):
         # Get the matrix of marked squares without rendering
         return np.array([*matrix, self.orientation])
 
+
     def reset(self, seed=None, options=None) -> tuple:
 
         super().reset(seed=seed)
@@ -181,6 +200,7 @@ class SunburstMazeDiscrete(gym.Env):
         # self.visited_squares = []
         self.env_map = copy.deepcopy(self.initial_map)
         self.position = self.select_start_position()
+        self.goal = self.goal_position()
 
         self.steps_current_episode = 0
 
@@ -204,7 +224,6 @@ class SunburstMazeDiscrete(gym.Env):
                 self.observed_squares_map,
                 self.wall_rays,
             )
-        self.goal = self.goal_position()
         return observation, self._get_info()
 
     def reset_checkpoints(self):
@@ -232,6 +251,7 @@ class SunburstMazeDiscrete(gym.Env):
                 self.observed_squares_map.add((x, y))
 
                 self.find_relative_position_in_matrix(x, y)
+                self.find_relative_position_in_matrix(x, y)
             start_angle += self.step_angle
 
         matrix = self.calculate_fov_matrix()
@@ -240,7 +260,11 @@ class SunburstMazeDiscrete(gym.Env):
     def find_relative_position_in_matrix(self, x2, y2):
         x, y = self.position
 
+    def find_relative_position_in_matrix(self, x2, y2):
+        x, y = self.position
+
         if self.orientation == 0:
+            marked_x = self.matrix_middle_index + y - y2
             marked_x = self.matrix_middle_index + y - y2
             marked_y = x - x2
         if self.orientation == 1:
@@ -507,10 +531,13 @@ class SunburstMazeDiscrete(gym.Env):
         #         return 20
         # if self.decreased_steps_to_goal():
         #    return 0.00 #+ self.distance_to_goal_reward()
+        if self.goal_in_sight:
+            return self.rewards["goal_in_sight"]
 
         if self.position not in self.visited_squares:
             self.visited_squares.append(self.position)
             return self.rewards["new_square"]  # + self.distance_to_goal_reward()
+
 
         return self.rewards["penalty_per_step"]
 
