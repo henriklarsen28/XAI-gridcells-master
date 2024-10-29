@@ -6,8 +6,9 @@ from collections import defaultdict
 
 import pandas as pd
 import torch
+from logistic_regression import LogisticRegression
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
+from torch.utils.data import DataLoader, random_split
 
 # get the path to the project root directory and add it to sys.path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
@@ -36,10 +37,9 @@ def get_activations(model: TransformerDQN, input, layer: int):
     block.register_forward_hook(get_activation(f"block_{layer}"))
 
     activation = model(input)
-    
 
 
-def create_activation_dataset(dataset_path: str):
+def create_activation_dataset(self, dataset_path: str):
 
     model_load_path = "../../agent/model/transformers/model_woven-glade-815/sunburst_maze_map_v0_100.pth"
 
@@ -82,7 +82,9 @@ def create_activation_dataset(dataset_path: str):
     print(model.blocks)
 
     # Activation file name
-    activation_file = "dataset/" + dataset_path.split("/")[-1].split(".")[0] + "_activations.pt"
+    activation_file = (
+        "dataset/" + dataset_path.split("/")[-1].split(".")[0] + "_activations.pt"
+    )
 
     # Read the dataset
     dataset = pd.read_csv(dataset_path)
@@ -100,38 +102,93 @@ def create_activation_dataset(dataset_path: str):
         state_tensor = state_tensor.unsqueeze(0)
         # Get the activations of the model
         activation = get_activations(model, state_tensor, 1)
-        #print(activations)
-        activation_list.append(activations)
+        # print(activations)
+        activation_list.append(activations["block_1"][0][-1])
 
-    
     torch.save(activation_list, activation_file)
 
     return activation_file
-        
+
+
+class CAV:
+
     # Get the activations of the model
     # activations = get_activations(model, _, model.blocks[0])
     # print(activations)
 
-def cav_model(positive_file: str, negative_file: str):
+    def cav_model(self, positive_file: str, negative_file: str):
 
-    positive_dataset = torch.load(positive_file)
-    negative_dataset = torch.load(negative_file)
-    print(len(positive_dataset))
-    # Label the datasets
-    positive_labels = [1] * len(positive_dataset)
-    negative_labels = [0] * len(negative_dataset)
-    positive = CAV_dataset(positive_dataset, positive_labels)
-    negative = CAV_dataset(negative_dataset, negative_labels)
+        positive_dataset = torch.load(positive_file)
+        negative_dataset = torch.load(negative_file)
+        print(len(positive_dataset))
+        # Label the datasets
+        positive_labels = [1] * len(positive_dataset)
+        negative_labels = [0] * len(negative_dataset)
+        dataset = CAV_dataset(positive_dataset, positive_labels)
+        negative = CAV_dataset(negative_dataset, negative_labels)
 
+        dataset.concat(negative)
+        print("Shape", dataset.data[0].shape)
+        # Split the dataset
 
+        train_dataset, test_dataset = random_split(
+            dataset, [int(0.8 * len(dataset)), int(0.2 * len(dataset))]
+        )
 
+        # Train the model
+        self.model = LogisticRegression(128)
+        criterion = torch.nn.BCELoss()
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=0.01)
+        print(self.model)
 
+        dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+
+        for epoch in range(500):
+            for batch_X, batch_y in dataloader:
+                optimizer.zero_grad()  # Clear the gradients
+                # print(batch_X)
+                batch_y = batch_y.float()
+                # Forward pass
+                outputs = self.model(batch_X).squeeze()  # Get predictions
+                loss = criterion(outputs, batch_y)  # Compute loss
+
+                # Backward pass
+                loss.backward()  # Compute gradients
+                optimizer.step()  # Update weights
+
+            if (epoch + 1) % 10 == 0:  # Print loss every 10 epochs
+                print(f"Epoch [{epoch + 1}/{500}], Loss: {loss.item():.4f}")
+
+        # Test the model
+        test_dataloader = DataLoader(test_dataset, batch_size=32, shuffle=True)
+
+        with torch.no_grad():
+            correct = 0
+            total = 0
+            for X, y in test_dataloader:
+                y = y.float()
+                outputs = self.model(X).squeeze()
+                predicted = torch.round(outputs)
+                total += y.size(0)
+                correct += (predicted == y).sum().item()
+
+            print(f"Accuracy: {100 * correct / total}%")
+
+        self.cav_coef = self.model.coef_
+        print(self.cav_coef)
+
+    def calculate_cav(self):
+        pass
 
 
 def main():
-    negative_file = create_activation_dataset("./dataset/negative_wall.csv")
+    cav = CAV()
+    #negative_file = create_activation_dataset("./dataset/negative_wall.csv")
+    #positive_file = create_activation_dataset("./dataset/positive_wall.csv")
+    positive_file = "dataset/positive_wall_activations.pt"
+    negative_file = "dataset/negative_wall_activations.pt"
+    cav.cav_model(positive_file, negative_file)
 
-    cav_model(negative_file, negative_file)
 
 if __name__ == "__main__":
     main()

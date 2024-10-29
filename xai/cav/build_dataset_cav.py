@@ -122,7 +122,7 @@ def build_csv_dataset():
     env_path = "../../env/map_v0/map_colored_wall_closed_doors.csv"
     model_load_path = "../../agent/model/transformers/model_woven-glade-815/sunburst_maze_map_v0_100.pth"
 
-    epsilon = 0.0
+    epsilon = 0.2
 
     env = SunburstMazeDiscrete(
         maze_file=env_path,
@@ -198,7 +198,7 @@ def run_agent(env: SunburstMazeDiscrete, agent: DTQN_Agent):
     collected_sequences = deque()
 
     sequence_length = config["transformer"]["sequence_length"]
-    max_episodes = 10
+    max_episodes = 100
     observation_sequence = deque(maxlen=sequence_length)
     position_sequence = deque(maxlen=sequence_length)
     action_sequence = deque(maxlen=sequence_length)

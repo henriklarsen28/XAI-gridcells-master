@@ -17,3 +17,7 @@ class CAV_dataset(Dataset):
     
     def __getitem__(self, idx):
         return self.data[idx], self.labels[idx]
+    
+    def concat(self, other):
+        self.data += other.data
+        self.labels += other.labels
