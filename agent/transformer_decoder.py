@@ -145,7 +145,10 @@ class TransformerDQN(nn.Module):
 
 #device = torch.device("mps" if torch.backends.mps.is_available() else "cpu") # Was faster with cpu??? Loading between cpu and mps is slow maybe
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device(
+    "mps" if torch.backends.mps.is_available() else "cpu"
+)  # Was faster with cpu??? Loading between cpu and mps is slow maybe
 print(f"Using device {device}")
 
 # ## Suggestion for hyperparameter values
