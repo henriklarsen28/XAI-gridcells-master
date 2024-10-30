@@ -137,7 +137,7 @@ class CAV:
         # Split the dataset
 
         train_dataset, test_dataset = random_split(
-            dataset, [int(0.8 * len(dataset)), int(0.2 * len(dataset))]
+            dataset, [math.floor(0.8 * len(dataset)), math.floor(0.2 * len(dataset))]
         )
 
         # Train the model
