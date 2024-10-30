@@ -9,6 +9,7 @@ import torch
 from logistic_regression import LogisticRegression
 from torch.utils.data import DataLoader, random_split
 import random as rd
+from matplotlib import pyplot as plt
 
 # get the path to the project root directory and add it to sys.path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
@@ -114,6 +115,12 @@ class CAV:
     # activations = get_activations(model, _, model.blocks[0])
     # print(activations)
 
+    def __init__(self):
+        self.model = None
+        self.cav_coef = None
+        self.cav_list = []
+
+
     def cav_model(self, positive_file: str, negative_file: str):
 
         positive_dataset = torch.load(positive_file)
@@ -178,8 +185,6 @@ class CAV:
     def calculate_cav(self, concept: str, model_dir: str):
         
         model_list = os.listdir(model_dir)
-        model_list = rd.sample(model_list, 4)
-        self.cav_list = defaultdict(float)
 
         for model in model_list:
             model_path = os.path.join(model_dir, model)
@@ -191,10 +196,51 @@ class CAV:
                 positive_file = create_activation_dataset(f"./dataset/positive_{concept}.csv", model_path, block)
                 accuracy = self.cav_model(positive_file, negative_file)
                 # Add the CAV to the list of CAVs
-                self.cav_list[concept, block, episode_number] = accuracy
+                self.cav_list.append((block, episode_number, accuracy))
 
         # Save the CAV list
         torch.save(self.cav_list, f"./cav_list_{concept}.pt")
+
+    def load_cav(self, concept: str):
+        self.cav_list = torch.load(f"./cav_list_{concept}.pt")
+
+    def plot_cav(self, concept: str):
+        import numpy as np
+        from scipy.interpolate import griddata
+        from mpl_toolkits.mplot3d import Axes3D
+        if len(self.cav_list) == 0:
+            self.load_cav(concept)
+        print(self.cav_list[0])
+
+        # Extract data
+        blocks = np.array([t[0] for t in self.cav_list])
+        episode_numbers = np.array([int(t[1]) for t in self.cav_list])
+        accuracies = np.array([t[2] for t in self.cav_list])
+
+        # Create a grid for interpolation
+        block_lin = np.linspace(blocks.min(), blocks.max(), 50)
+        episode_lin = np.linspace(episode_numbers.min(), episode_numbers.max(), 50)
+        block_grid, episode_grid = np.meshgrid(block_lin, episode_lin)
+
+        # Interpolate accuracy values onto the grid
+        accuracy_grid = griddata((blocks, episode_numbers), accuracies, (block_grid, episode_grid), method='cubic')
+
+        # Plotting
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+
+        # Surface plot
+        surf = ax.plot_surface(block_grid, episode_grid, accuracy_grid, cmap='viridis', edgecolor='k')
+
+        # Labels
+        ax.set_xlabel('Block')
+        ax.set_ylabel('Episode Number')
+        ax.set_zlabel('Accuracy')
+
+        # Colorbar for accuracy
+        fig.colorbar(surf, ax=ax, label='Accuracy')
+
+        plt.show()
 
 
 def main():
@@ -206,7 +252,7 @@ def main():
     positive_file = "dataset/positive_wall_activations.pt"
     negative_file = "dataset/negative_wall_activations.pt"
     cav.calculate_cav("wall", model_load_path)
-
+    cav.plot_cav("wall")
 
 if __name__ == "__main__":
     main()
