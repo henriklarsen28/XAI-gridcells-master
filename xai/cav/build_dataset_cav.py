@@ -119,9 +119,8 @@ def build_stuck_in_wall_dataset():
 
 def build_csv_dataset():
     # Load early agent data
-
-    env_path = "../../env/map_v0/map_colored_wall_closed_doors.csv"
-    model_load_path = "../../agent/model/transformers/model_woven-glade-815/sunburst_maze_map_v0_100.pth"
+    env_path = "../../env/map_v0/map_open_doors_90_degrees.csv"
+    model_load_path = "../../agent/model/transformers/model_visionary-hill-816/sunburst_maze_map_v0_400.pth"
 
     epsilon = 0.2
 
@@ -210,7 +209,7 @@ def run_agent(env: SunburstMazeDiscrete, agent: DTQN_Agent):
     collected_sequences = deque()
 
     sequence_length = config["transformer"]["sequence_length"]
-    max_episodes = 50
+    max_episodes = 60
     observation_sequence = deque(maxlen=sequence_length)
     position_sequence = deque(maxlen=sequence_length)
     action_sequence = deque(maxlen=sequence_length)
