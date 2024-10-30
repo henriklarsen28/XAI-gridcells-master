@@ -136,8 +136,11 @@ class CAV:
         print("Shape", dataset.data[0].shape)
         # Split the dataset
 
+        length_train = int(0.8 * len(dataset))
+        length_test = len(dataset) - length_train
+
         train_dataset, test_dataset = random_split(
-            dataset, [math.floor(0.8 * len(dataset)), math.floor(0.2 * len(dataset))]
+            dataset, [length_train, length_test]
         )
 
         # Train the model
