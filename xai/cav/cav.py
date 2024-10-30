@@ -246,7 +246,7 @@ class CAV:
 
 def main():
     cav = CAV()
-    model_load_path = "../../agent/model/transformers/model_woven-glade-815"
+    model_load_path = "../../agent/model/transformers/model_visionary-hill-816"
 
     # negative_file = create_activation_dataset("./dataset/negative_wall.csv")
     # positive_file = create_activation_dataset("./dataset/positive_wall.csv")
