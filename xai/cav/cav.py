@@ -241,6 +241,7 @@ class CAV:
         fig.colorbar(surf, ax=ax, label='Accuracy')
 
         plt.show()
+        plt.savefig(f"./cav_{concept}.png")
 
 
 def main():
