@@ -516,12 +516,13 @@ class Model_TrainTest:
 
         sequence = deque(maxlen=self.sequnence_length)
 
-        episode_data = []
-        step_data = {
+        episode_list = []
+        step_dicti = {
             "step": 0,
             "position": None,
             "tensors": None,
             "is_stuck": False,
+            "orientation": None,
         }
 
         # Testing loop over episodes
@@ -531,6 +532,8 @@ class Model_TrainTest:
             truncation = False
             steps_done = 0
             total_reward = 0
+
+            steps_list = []
 
             while not done and not truncation:
 
@@ -563,21 +566,21 @@ class Model_TrainTest:
                     tensor_sequence, tensor_new_sequence, reward, block=0
                 )
                 # print('gradients', gradients)
-
-                step_data["step"] = steps_done
-                step_data["position"] = self.env.position
-                step_data["tensors"] = grad_sam(
+                step_dicti["step"] = steps_done
+                step_dicti["position"] = self.env.position
+                step_dicti["tensors"] = grad_sam(
                     block_1,
                     gradients,
                     block=0,
                     episode=episode,
                     step=steps_done,
-                    rgb_array=frame,
+                    rgb_array=None,
                     plot=False,
                 )
-                step_data["is_stuck"] = (
+                step_dicti["is_stuck"] = (
                     True if self.env.has_not_moved(self.env.position) else False
                 )
+                step_dicti["orientation"] = self.env.orientation
 
                 state = next_state
                 total_reward += reward
@@ -588,6 +591,9 @@ class Model_TrainTest:
                     print("Agent has not moved for 10 steps. Breaking the episode.")
                     break  # Skip the episode if the agent is stuck in a loop"""
 
+                step_dicti_copy = copy.deepcopy(step_dicti)
+                steps_list.append(step_dicti_copy)
+
             # Print log
             result = (
                 f"Episode: {episode}, "
@@ -596,17 +602,19 @@ class Model_TrainTest:
             )
             print(result)
 
-            step_data_copy = copy.deepcopy(step_data)
-            episode_data.append(step_data_copy)
+            steps_list_copy = copy.deepcopy(steps_list)
+            episode_list.append(steps_list_copy)
+
+            
             
             # save grad sam data every 100 episodes
             if episode % 10 == 0:
                 torch.save(
-                    episode_data,
+                    episode_list,
                     f"./grad_sam/{map_path_without_ext}/{config["model_name"]}_{episode}.pt",
                 )
                 print(f"Grad sam data saved up to episode {episode}.")
-                episode_data.clear()
+                episode_list = []
 
         pygame.quit()  # close the rendering window
 
