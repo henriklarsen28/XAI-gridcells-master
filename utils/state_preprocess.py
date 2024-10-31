@@ -11,5 +11,5 @@ def state_preprocess(state: int, device):
         field_of_view = torch.tensor(field_of_view, dtype=torch.float32, device=device)
         
         onehot_vector_orientation = torch.zeros(4, dtype=torch.float32, device=device)
-        onehot_vector_orientation[orientation] = 4
+        onehot_vector_orientation[orientation] = -1
         return torch.concat((field_of_view, onehot_vector_orientation))
