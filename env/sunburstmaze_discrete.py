@@ -184,7 +184,7 @@ class SunburstMazeDiscrete(gym.Env):
 
         super().reset(seed=seed)
 
-        # self.visited_squares = []
+        self.visited_squares = []
         self.env_map = copy.deepcopy(self.initial_map)
         self.position = self.select_start_position()
         self.goal = self.goal_position()
