@@ -82,7 +82,7 @@ def create_activation_dataset(dataset_path: str, model_path: str, block: int = 0
 
     # Activation file name
     activation_file = (
-        "dataset/" + dataset_path.split("/")[-1].split(".")[0] + "_activations.pt"
+        f"dataset/{dataset_path.split("/")[-1].split(".")[0]}_activations_{block}.pt"
     )
 
     # Read the dataset
@@ -250,9 +250,6 @@ class CAV:
 def main():
     cav = CAV()
     model_load_path = "../../agent/model/transformers/model_visionary-hill-816"
-
-    negative_file = create_activation_dataset("./dataset/negative_wall.csv")
-    positive_file = create_activation_dataset("./dataset/positive_wall.csv")
     #positive_file = "dataset/positive_wall_activations.pt"
     #negative_file = "dataset/negative_wall_activations.pt"
     cav.calculate_cav("wall", model_load_path)
