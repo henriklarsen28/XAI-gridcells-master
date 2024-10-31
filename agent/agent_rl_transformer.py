@@ -564,9 +564,9 @@ class Model_TrainTest:
                 block_2 = att_weights_list[1]  # Block 2
                 block_3 = att_weights_list[2]  # Block 3
 
-                block = block_2  # Block 2
+                block = block_3  # Block 2
                 gradients = self.agent.calculate_gradients(
-                    tensor_sequence, tensor_new_sequence, reward, block=1
+                    tensor_sequence, tensor_new_sequence, reward, block=2
                 )
                 # print('gradients', gradients)
                 step_dicti["step"] = steps_done
@@ -574,7 +574,7 @@ class Model_TrainTest:
                 step_dicti["tensors"] = grad_sam(
                     block,
                     gradients,
-                    block=1,
+                    block=2,
                     episode=episode,
                     step=steps_done,
                     rgb_array=None,
@@ -614,7 +614,7 @@ class Model_TrainTest:
             if episode % 10 == 0:
                 torch.save(
                     episode_list,
-                    f"./grad_sam/{map_path_without_ext}/block_2/{config["model_name"]}_{episode}.pt",
+                    f"./grad_sam/{map_path_without_ext}/block_3/{config["model_name"]}_{episode}.pt",
                 )
                 print(f"Grad sam data saved up to episode {episode}.")
                 episode_list = []
