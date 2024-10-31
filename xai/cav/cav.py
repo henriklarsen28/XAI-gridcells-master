@@ -20,6 +20,8 @@ from agent import TransformerDQN
 from utils.calculate_fov import calculate_fov_matrix_size
 from utils.custom_dataset import CAV_dataset
 
+device = (torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu"))
+device = torch.device("mps")
 activations = {}
 
 
@@ -58,7 +60,6 @@ def create_activation_dataset(dataset_path: str, model_path: str, block: int = 0
     n_layer = 3
     dropout = 0.3
     state_dim = num_states
-    device = (torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu"))
 
     action_space = 3
 
@@ -100,7 +101,7 @@ def create_activation_dataset(dataset_path: str, model_path: str, block: int = 0
         # Get the activations of the model
         activation = get_activations(model, state_tensor, block)
         # print(activations)
-        activation_list.append(activations[f"block_{block}"][0][-1])
+        activation_list.append(activations[f"block_{block}"][0][-1].to("cpu"))
 
     torch.save(activation_list, activation_file)
 
@@ -120,7 +121,7 @@ class CAV:
 
 
     def cav_model(self, positive_file: str, negative_file: str):
-
+        
         positive_dataset = torch.load(positive_file)
         negative_dataset = torch.load(negative_file)
         print(len(positive_dataset))
@@ -131,7 +132,7 @@ class CAV:
         negative = CAV_dataset(negative_dataset, negative_labels)
 
         dataset.concat(negative)
-        print("Shape", dataset.data[0].shape)
+        print("Shape", dataset.data[0].device)
         # Split the dataset
 
         length_train = int(0.8 * len(dataset))
@@ -142,20 +143,21 @@ class CAV:
         )
 
         # Train the model
-        self.model = LogisticRegression(128)
+        self.model = LogisticRegression(128).to(torch.device("cpu"))
         criterion = torch.nn.BCELoss()
         optimizer = torch.optim.Adam(self.model.parameters(), lr=0.01)
         print(self.model)
+        
 
         dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-
+        
         for epoch in range(500):
             for batch_X, batch_y in dataloader:
                 optimizer.zero_grad()  # Clear the gradients
                 # print(batch_X)
                 batch_y = batch_y.float()
                 # Forward pass
-                outputs = self.model(batch_X).squeeze()  # Get predictions
+                outputs = self.model(batch_X).squeeze() # Get predictions
                 loss = criterion(outputs, batch_y)  # Compute loss
 
                 # Backward pass
