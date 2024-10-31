@@ -7,6 +7,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(project_root)
 
 
+import copy
 import math
 import random as rd
 from collections import deque
@@ -16,17 +17,15 @@ import keras as keras
 import numpy as np
 import pygame
 import torch
+import wandb
 from explain_network import grad_sam
 from torch.nn.utils.rnn import pad_sequence
 from tqdm import tqdm
 
-import wandb
 from agent.dtqn_agent import DTQN_Agent
 from env import SunburstMazeDiscrete
 from utils.calculate_fov import calculate_fov_matrix_size
 from utils.state_preprocess import state_preprocess
-
-import copy
 
 wandb.login()
 
@@ -561,17 +560,21 @@ class Model_TrainTest:
                     tensor_new_sequence, self.sequnence_length
                 )
 
-                block_1 = att_weights_list[0]  # Block 1, head 1
+                block_1 = att_weights_list[0]  # Block 1
+                block_2 = att_weights_list[1]  # Block 2
+                block_3 = att_weights_list[2]  # Block 3
+
+                block = block_2  # Block 2
                 gradients = self.agent.calculate_gradients(
-                    tensor_sequence, tensor_new_sequence, reward, block=0
+                    tensor_sequence, tensor_new_sequence, reward, block=1
                 )
                 # print('gradients', gradients)
                 step_dicti["step"] = steps_done
                 step_dicti["position"] = self.env.position
                 step_dicti["tensors"] = grad_sam(
-                    block_1,
+                    block,
                     gradients,
-                    block=0,
+                    block=1,
                     episode=episode,
                     step=steps_done,
                     rgb_array=None,
@@ -611,7 +614,7 @@ class Model_TrainTest:
             if episode % 10 == 0:
                 torch.save(
                     episode_list,
-                    f"./grad_sam/{map_path_without_ext}/{config["model_name"]}_{episode}.pt",
+                    f"./grad_sam/{map_path_without_ext}/block_2/{config["model_name"]}_{episode}.pt",
                 )
                 print(f"Grad sam data saved up to episode {episode}.")
                 episode_list = []
