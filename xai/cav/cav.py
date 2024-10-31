@@ -81,7 +81,7 @@ def create_activation_dataset(dataset_path: str, model_path: str, block: int = 0
     print(model.blocks)
 
     # Activation file name
-    activation_file = f"dataset/{dataset_path.split("/")[-1].split(".")[0]}_activations_{block}.pt"
+    activation_file = f"dataset/{dataset_path.split('/')[-1].split('.')[0]}_activations_{block}.pt"
 
     # Read the dataset
     dataset = pd.read_csv(dataset_path)
