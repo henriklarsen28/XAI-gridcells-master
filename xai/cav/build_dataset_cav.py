@@ -133,7 +133,6 @@ def build_csv_dataset():
         fov=config["fov"],
         ray_length=config["ray_length"],
         number_of_rays=config["number_of_rays"],
-
     )
 
     env.metadata["render_fps"] = 100
@@ -168,19 +167,19 @@ def build_csv_dataset():
     for sequence in collected_sequences:
         observation_sequence, legal_actions, position_sequence, action_sequence = sequence
         #print(len(observation_sequence))
-        
-        # Check if the agent is stuck in a wall
-        positive_wall = positive_looking_at_wall(observation_sequence, legal_actions, action_sequence)
-        if positive_wall is not None:
-            positive_dataset_wall.append(positive_wall)
-        else:
-            negative_dataset_wall.append(observation_sequence)
+        if rd.random() > 0.4:
+            # Check if the agent is stuck in a wall
+            positive_wall = positive_looking_at_wall(observation_sequence, legal_actions, action_sequence)
+            if positive_wall is not None:
+                positive_dataset_wall.append(positive_wall)
+            else:
+                negative_dataset_wall.append(observation_sequence)
 
-        positive_stuck = positive_rotating_stuck(observation_sequence, action_sequence, position_sequence)
-        if positive_stuck is not None:
-            positive_dataset_rotating.append(positive_stuck)
-        else:
-            negative_dataset_rotating.append(observation_sequence)
+            positive_stuck = positive_rotating_stuck(observation_sequence, action_sequence, position_sequence)
+            if positive_stuck is not None:
+                positive_dataset_rotating.append(positive_stuck)
+            else:
+                negative_dataset_rotating.append(observation_sequence)
 
     # Shuffle the datasets
     rd.shuffle(negative_dataset_wall)
@@ -209,13 +208,25 @@ def run_agent(env: SunburstMazeDiscrete, agent: DTQN_Agent):
     collected_sequences = deque()
 
     sequence_length = config["transformer"]["sequence_length"]
-    max_episodes = 60
+    max_episodes = 120
     observation_sequence = deque(maxlen=sequence_length)
     position_sequence = deque(maxlen=sequence_length)
     action_sequence = deque(maxlen=sequence_length)
     total_steps = 0
     # Testing loop over episodes
     for episode in range(0, max_episodes):
+
+        # Load new model when the episode is larger than 60
+        if episode == 60:
+            model_load_path = "../../agent/model/transformers/model_visionary-hill-816/sunburst_maze_map_v0_2500.pth"
+            agent.model.load_state_dict(torch.load(model_load_path, map_location=device))
+            agent.model.eval()
+
+        if episode == 90:
+            model_load_path = "../../agent/model/transformers/model_visionary-hill-816/sunburst_maze_map_v0_5500.pth"
+            agent.model.load_state_dict(torch.load(model_load_path, map_location=device))
+            agent.model.eval()
+
         state, _ = env.reset(seed=42)
         done = False
         truncation = False
