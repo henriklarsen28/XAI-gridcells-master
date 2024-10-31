@@ -58,7 +58,7 @@ def create_activation_dataset(dataset_path: str, model_path: str, block: int = 0
     n_layer = 3
     dropout = 0.3
     state_dim = num_states
-    device = torch.device("cpu")
+    device = (torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu"))
 
     action_space = 3
 
