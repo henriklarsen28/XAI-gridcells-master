@@ -251,12 +251,12 @@ def main():
     cav = CAV()
     model_load_path = "../../agent/model/transformers/model_visionary-hill-816"
 
-    negative_file = create_activation_dataset("./dataset/negative_rotating.csv")
-    positive_file = create_activation_dataset("./dataset/positive_rotating.csv")
+    negative_file = create_activation_dataset("./dataset/negative_wall.csv")
+    positive_file = create_activation_dataset("./dataset/positive_wall.csv")
     #positive_file = "dataset/positive_wall_activations.pt"
     #negative_file = "dataset/negative_wall_activations.pt"
-    cav.calculate_cav("rotating", model_load_path)
-    cav.plot_cav("rotating")
+    cav.calculate_cav("wall", model_load_path)
+    cav.plot_cav("wall")
 
 if __name__ == "__main__":
     main()
