@@ -81,9 +81,7 @@ def create_activation_dataset(dataset_path: str, model_path: str, block: int = 0
     print(model.blocks)
 
     # Activation file name
-    activation_file = (
-        f"dataset/{dataset_path.split("/")[-1].split(".")[0]}_activations_{block}.pt"
-    )
+    activation_file = f"dataset/{dataset_path.split("/")[-1].split(".")[0]}_activations_{block}.pt"
 
     # Read the dataset
     dataset = pd.read_csv(dataset_path)
@@ -100,9 +98,9 @@ def create_activation_dataset(dataset_path: str, model_path: str, block: int = 0
 
         state_tensor = state_tensor.unsqueeze(0)
         # Get the activations of the model
-        activation = get_activations(model, state_tensor, 1)
+        activation = get_activations(model, state_tensor, block)
         # print(activations)
-        activation_list.append(activations["block_1"][0][-1])
+        activation_list.append(activations[f"block_{block}"][0][-1])
 
     torch.save(activation_list, activation_file)
 
@@ -252,8 +250,8 @@ def main():
     model_load_path = "../../agent/model/transformers/model_visionary-hill-816"
     #positive_file = "dataset/positive_wall_activations.pt"
     #negative_file = "dataset/negative_wall_activations.pt"
-    cav.calculate_cav("wall", model_load_path)
-    cav.plot_cav("wall")
+    cav.calculate_cav("rotating", model_load_path)
+    cav.plot_cav("rotating")
 
 if __name__ == "__main__":
     main()
