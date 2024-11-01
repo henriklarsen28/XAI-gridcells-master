@@ -197,6 +197,8 @@ class CAV:
                 print("Block: ", block, model_path, episode_number)
                 negative_file = create_activation_dataset(f"./dataset/negative_{concept}.csv",model_path, block)
                 positive_file = create_activation_dataset(f"./dataset/positive_{concept}.csv", model_path, block)
+                #positive_file = f"dataset/activations/positive_{concept}_activations_{block}.pt"
+                #negative_file = f"dataset/activations/negative_{concept}_activations_{block}.pt"
                 accuracy = self.cav_model(positive_file, negative_file)
                 # Add the CAV to the list of CAVs
                 self.cav_list.append((block, episode_number, accuracy))
@@ -211,6 +213,7 @@ class CAV:
         import numpy as np
         from scipy.interpolate import griddata
         from mpl_toolkits.mplot3d import Axes3D
+        from matplotlib.ticker import MultipleLocator
         if len(self.cav_list) == 0:
             self.load_cav(concept)
         print(self.cav_list[0])
@@ -221,8 +224,8 @@ class CAV:
         accuracies = np.array([t[2] for t in self.cav_list])
 
         # Create a grid for interpolation
-        block_lin = np.linspace(blocks.min(), blocks.max(), 50)
-        episode_lin = np.linspace(episode_numbers.min(), episode_numbers.max(), 50)
+        block_lin = np.linspace(blocks.min(), blocks.max(), 3)
+        episode_lin = np.linspace(episode_numbers.min(), episode_numbers.max(), 55)
         block_grid, episode_grid = np.meshgrid(block_lin, episode_lin)
 
         # Interpolate accuracy values onto the grid
@@ -239,6 +242,13 @@ class CAV:
         ax.set_xlabel('Block')
         ax.set_ylabel('Episode Number')
         ax.set_zlabel('Accuracy')
+
+        # range
+        ax.set_xlim(blocks.min(), blocks.max())
+        ax.set_ylim(episode_numbers.min(), episode_numbers.max())
+        ax.set_zlim(0, 1)
+
+        ax.xaxis.set_major_locator(MultipleLocator(1))
 
         # Colorbar for accuracy
         fig.colorbar(surf, ax=ax, label='Accuracy')
