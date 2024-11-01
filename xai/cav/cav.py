@@ -226,7 +226,7 @@ class CAV:
 
         dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
         
-        for epoch in range(500):
+        for epoch in range(250):
             for batch_X, batch_y in dataloader:
                 optimizer.zero_grad()  # Clear the gradients
                 # print(batch_X)
@@ -240,7 +240,7 @@ class CAV:
                 optimizer.step()  # Update weights
 
             if (epoch + 1) % 10 == 0:  # Print loss every 10 epochs
-                print(f"Epoch [{epoch + 1}/{500}], Loss: {loss.item():.4f}")
+                print(f"Epoch [{epoch + 1}/{250}], Loss: {loss.item():.4f}")
 
         # Test the model
         test_dataloader = DataLoader(test_dataset, batch_size=32, shuffle=True)
@@ -267,24 +267,25 @@ class CAV:
             episode_number = model.split("_")[-1].split(".")[0] 
             for block in range(3):
                 print("Block: ", block)
-                negative_file = f"dataset/activations/negative_{concept}_activations_{block}_episode_{episode_number}.pt"
-                positive_file = f"dataset/activations/positive_{concept}_activations_{block}_episode_{episode_number}.pt"
+                negative_file = f"dataset/negative_{concept}_activations_{block}_episode_{episode_number}.pt"
+                positive_file = f"dataset/positive_{concept}_activations_{block}_episode_{episode_number}.pt"
                 
                 positive_dataset = torch.load(positive_file)
                 negative_dataset = torch.load(negative_file)
                 print(len(positive_dataset))
                 # Label the datasets
-                positive_labels = [rd.randint(0,1)] * len(positive_dataset)
-                print(positive_labels)
-                negative_labels = [rd.randint(0,1)] * len(negative_dataset)
+                positive_labels = [rd.randint(0,1) for _ in range(len(positive_dataset))]
+                #print(positive_labels)
+                negative_labels = [rd.randint(0,1) for _ in range(len(negative_dataset))]
                 dataset = CAV_dataset(positive_dataset, positive_labels)
                 negative = CAV_dataset(negative_dataset, negative_labels)
 
                 dataset.concat(negative)
                 # Save to pt file
-                torch.save(dataset, f"dataset/random_{concept}_dataset_{block}.pt")
+                random_file = f"dataset/random_{concept}_dataset_{block}.pt"
+                torch.save(dataset, random_file)
 
-                accuracy = self.cav_model(positive_file, negative_file)
+                accuracy = self.random_cav_model(random_file)
                 self.cav_list.append((block, episode_number, accuracy))
 
         # Save the CAV list
@@ -337,8 +338,9 @@ class CAV:
         # Colorbar for accuracy
         fig.colorbar(surf, ax=ax, label='Accuracy')
 
-        plt.show()
+        
         plt.savefig(f"./cav_{concept}.png")
+        plt.show()
 
 
 def main():
@@ -346,11 +348,11 @@ def main():
     model_load_path = "../../agent/model/transformers/model_visionary-hill-816"
     #positive_file = "dataset/positive_wall_activations.pt"
     #negative_file = "dataset/negative_wall_activations.pt"
-    cav.calculate_cav("wall", model_load_path)
-    cav.plot_cav("wall")
+    #cav.calculate_cav("rotating", model_load_path)
+    #cav.plot_cav("rotating")
     
-    #cav.calculate_random_cav("rotating", model_load_path)
-    #cav.plot_cav("random")
+    cav.calculate_random_cav("rotating", model_load_path)
+    cav.plot_cav("random")
 
 
 if __name__ == "__main__":
