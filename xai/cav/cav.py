@@ -80,9 +80,9 @@ def create_activation_dataset(dataset_path: str, model_path: str, block: int = 0
     model.load_state_dict(torch.load(model_path, map_location=device))
     model.eval()
     print(model.blocks)
-
+    episode_number = model_path.split("_")[-1].split(".")[0]
     # Activation file name
-    activation_file = f"dataset/{dataset_path.split('/')[-1].split('.')[0]}_activations_{block}.pt"
+    activation_file = f"dataset/{dataset_path.split('/')[-1].split('.')[0]}_activations_{block}_episode_{episode_number}.pt"
 
     # Read the dataset
     dataset = pd.read_csv(dataset_path)
@@ -206,6 +206,90 @@ class CAV:
         # Save the CAV list
         torch.save(self.cav_list, f"./cav_list_{concept}.pt")
 
+    def random_cav_model(self, random_file:str):
+
+        dataset = torch.load(random_file)
+
+        length_train = int(0.8 * len(dataset))
+        length_test = len(dataset) - length_train
+
+        train_dataset, test_dataset = random_split(
+            dataset, [length_train, length_test]
+        )
+
+        # Train the model
+        self.model = LogisticRegression(128).to(torch.device("cpu"))
+        criterion = torch.nn.BCELoss()
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=0.01)
+        print(self.model)
+        
+
+        dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+        
+        for epoch in range(500):
+            for batch_X, batch_y in dataloader:
+                optimizer.zero_grad()  # Clear the gradients
+                # print(batch_X)
+                batch_y = batch_y.float()
+                # Forward pass
+                outputs = self.model(batch_X).squeeze() # Get predictions
+                loss = criterion(outputs, batch_y)  # Compute loss
+
+                # Backward pass
+                loss.backward()  # Compute gradients
+                optimizer.step()  # Update weights
+
+            if (epoch + 1) % 10 == 0:  # Print loss every 10 epochs
+                print(f"Epoch [{epoch + 1}/{500}], Loss: {loss.item():.4f}")
+
+        # Test the model
+        test_dataloader = DataLoader(test_dataset, batch_size=32, shuffle=True)
+
+        with torch.no_grad():
+            correct = 0
+            total = 0
+            for X, y in test_dataloader:
+                y = y.float()
+                outputs = self.model(X).squeeze()
+                predicted = torch.round(outputs)
+                total += y.size(0)
+                correct += (predicted == y).sum().item()
+
+            print(f"Accuracy: {100 * correct / total}%")
+
+        self.cav_coef = self.model.linear.weight.detach().numpy()[0]
+        return correct / total
+
+    def calculate_random_cav(self, concept: str, model_dir: str):
+        
+        model_list = os.listdir(model_dir)
+        for model in model_list:
+            episode_number = model.split("_")[-1].split(".")[0] 
+            for block in range(3):
+                print("Block: ", block)
+                negative_file = f"dataset/activations/negative_{concept}_activations_{block}_episode_{episode_number}.pt"
+                positive_file = f"dataset/activations/positive_{concept}_activations_{block}_episode_{episode_number}.pt"
+                
+                positive_dataset = torch.load(positive_file)
+                negative_dataset = torch.load(negative_file)
+                print(len(positive_dataset))
+                # Label the datasets
+                positive_labels = [rd.randint(0,1)] * len(positive_dataset)
+                print(positive_labels)
+                negative_labels = [rd.randint(0,1)] * len(negative_dataset)
+                dataset = CAV_dataset(positive_dataset, positive_labels)
+                negative = CAV_dataset(negative_dataset, negative_labels)
+
+                dataset.concat(negative)
+                # Save to pt file
+                torch.save(dataset, f"dataset/random_{concept}_dataset_{block}.pt")
+
+                accuracy = self.cav_model(positive_file, negative_file)
+                self.cav_list.append((block, episode_number, accuracy))
+
+        # Save the CAV list
+        torch.save(self.cav_list, f"./cav_list_{concept}.pt")
+
     def load_cav(self, concept: str):
         self.cav_list = torch.load(f"./cav_list_{concept}.pt")
 
@@ -262,8 +346,12 @@ def main():
     model_load_path = "../../agent/model/transformers/model_visionary-hill-816"
     #positive_file = "dataset/positive_wall_activations.pt"
     #negative_file = "dataset/negative_wall_activations.pt"
-    cav.calculate_cav("wall", model_load_path)
-    cav.plot_cav("wall")
+    cav.calculate_cav("rotating", model_load_path)
+    cav.plot_cav("rotating")
+    
+    cav.calculate_random_cav("rotating", model_load_path)
+    cav.plot_cav("random")
+
 
 if __name__ == "__main__":
     main()

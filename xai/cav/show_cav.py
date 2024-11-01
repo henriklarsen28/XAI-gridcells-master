@@ -1,10 +1,7 @@
 
-
 import torch
 
-
-
-cavs = torch.load("cav_list_wall.pt")
+cavs = torch.load("./dataset/random_rotating_dataset_0.pt")
 
 
 print(cavs)
