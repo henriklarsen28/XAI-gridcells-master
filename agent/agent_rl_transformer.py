@@ -531,7 +531,7 @@ if __name__ == "__main__":
 
     fov_config = {
         "fov": math.pi / 1.5,
-        "ray_length": 20,
+        "ray_length": 10,
         "number_of_rays": 100,
     }
     half_fov = fov_config["fov"] / 2
@@ -548,7 +548,7 @@ if __name__ == "__main__":
         "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 0.0001,
-        "batch_size": 128,
+        "batch_size": 45,
         "optimizer": "adam",
         "total_episodes": 8000,
         "epsilon": 1 if train_mode else -1,
@@ -559,7 +559,7 @@ if __name__ == "__main__":
         "map_path": map_path_train,
         "target_model_update": 10,  # hard update of the target model
         "max_steps_per_episode": 300,
-        "random_start_position": True,
+        "random_start_position": False,
         "random_goal_position": True,
         "rewards": {
             "is_goal": 200 / 200,
@@ -576,7 +576,7 @@ if __name__ == "__main__":
             "orientation": True,
             "steps_to_goal": False,
             "last_known_steps": 0,
-            "salt_and_pepper_noise": 0.5,
+            "salt_and_pepper_noise": 0.6,
         },
         "save_interval": 100,
         "memory_capacity": 200_000,
@@ -584,11 +584,11 @@ if __name__ == "__main__":
         "num_states": num_states,
         "clip_grad_normalization": 3,
         "fov": math.pi / 1.5,
-        "ray_length": 20,
+        "ray_length": 10,
         "number_of_rays": 100,
         "transformer": {
             "sequence_length": 30,
-            "n_embd": 256,
+            "n_embd": 128,
             "n_head": 5,
             "n_layer": 3,
             "dropout": 0.3,
