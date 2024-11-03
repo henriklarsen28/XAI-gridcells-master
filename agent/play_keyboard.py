@@ -49,6 +49,8 @@ def play_with_keyboard():
             "hit_wall": -0.1,
             "has_not_moved": -0.1,
             "new_square": 0.2,
+            "penalty_per_step": -0.1,
+            "goal_in_sight": -0.1,
         },
         # TODO
         "observation_space": {
@@ -58,12 +60,12 @@ def play_with_keyboard():
             "last_known_steps": 5,
         },
         "fov": math.pi / 1.5,
-        "ray_length": 20,
+        "ray_length": 10,
         "number_of_rays": 100,
     }
 
     env = SunburstMazeDiscrete(
-        maze_file="../env/map_v0/map_closed_doors.csv",
+        maze_file="../env/map_v0/map_open_doors_vertical.csv",
         render_mode="human",
         rewards=config["rewards"],
         observation_space=config["observation_space"],
