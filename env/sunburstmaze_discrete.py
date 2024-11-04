@@ -220,6 +220,7 @@ class SunburstMazeDiscrete(gym.Env):
                 self.orientation,
                 self.observed_squares_map,
                 self.wall_rays,
+                
             )
         return observation, self._get_info()
 
