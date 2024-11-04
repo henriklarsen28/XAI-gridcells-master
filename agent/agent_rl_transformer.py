@@ -16,10 +16,10 @@ import keras as keras
 import numpy as np
 import pygame
 import torch
+import wandb
 from explain_network import generate_q_values
 from torch.nn.utils.rnn import pad_sequence
 
-import wandb
 from agent.dtqn_agent import DTQN_Agent
 from env import SunburstMazeDiscrete
 from utils.calculate_fov import calculate_fov_matrix_size
@@ -591,9 +591,9 @@ if __name__ == "__main__":
         "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 0.0001,
-        "batch_size": 45,
+        "batch_size": 128,
         "optimizer": "adam",
-        "total_episodes": 8000,
+        "total_episodes": 5500,
         "epsilon": 1 if train_mode else -1,
         "epsilon_decay": 0.998,
         "epsilon_min": 0.01,
@@ -607,9 +607,9 @@ if __name__ == "__main__":
         "rewards": {
             "is_goal": 200 / 200,
             "hit_wall": -1 / 200,
-            "has_not_moved": -0.5 / 200,
-            "new_square": 0.05 / 200,
-            "max_steps_reached": 0 / 200,
+            "has_not_moved": -0.2 / 200,
+            "new_square": 0.4 / 200,
+            "max_steps_reached": -0.5 / 200,
             "penalty_per_step": -0.01 / 200,
             "goal_in_sight": 0.5 / 200,
         },
@@ -619,15 +619,15 @@ if __name__ == "__main__":
             "orientation": True,
             "steps_to_goal": False,
             "last_known_steps": 0,
-            "salt_and_pepper_noise": 0.6,
+            "salt_and_pepper_noise": 0.8,
         },
         "save_interval": 100,
-        "memory_capacity": 150_000,
+        "memory_capacity": 200_000,
         "render_fps": 5,
         "num_states": num_states,
         "clip_grad_normalization": 3,
         "fov": math.pi / 1.5,
-        "ray_length": 15,
+        "ray_length": 10,
         "number_of_rays": 100,
         "transformer": {
             "sequence_length": 30,
