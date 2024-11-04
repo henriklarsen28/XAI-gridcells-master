@@ -4,7 +4,7 @@ from replay_memory import ReplayMemory
 from torch import nn, optim
 
 from agent.neural_network_ff_torch import DQN_Network
-from agent.transformer_decoder import TransformerDQN
+from agent.transformer_decoder_decoupled import TransformerDQN
 
 
 class DTQN_Agent:
@@ -111,7 +111,7 @@ class DTQN_Agent:
             # state = torch.stack(list(state))
             state = state.unsqueeze(0)
             # print(state.shape)
-            Q_values = self.model(state)
+            Q_values, att_weights_list = self.model(state)
             action = torch.argmax(Q_values[:, -1, :]).item()
             # print("Q_vals: ", Q_values)
             # print("Selected q_val: ", Q_values[:,-1,:], "Action: ", action)
@@ -129,14 +129,15 @@ class DTQN_Agent:
         rewards = rewards.unsqueeze(2)
         dones = dones.unsqueeze(2)
         # print(states.shape, actions.shape)
-        current_q_values = self.model(states)
+        current_q_values, _ = self.model(states)
         # print(current_q_values[:,0,:])
         # print(current_q_values.shape, actions.shape, rewards.shape, dones.shape)
         current_q_values = current_q_values.gather(2, actions).squeeze()
 
         # Compute the maximum Q-value for the next states using the target network
         with torch.no_grad():
-            future_q_values = self.target_model(next_states).max(dim=2, keepdim=True)[
+            future_q_values, _ = self.target_model(next_states)
+            future_q_values = future_q_values.max(dim=2, keepdim=True)[
                 0
             ]  # not argmax (cause we want the maxmimum q-value, not the action that maximize it)
 
