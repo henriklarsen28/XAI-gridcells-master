@@ -579,7 +579,7 @@ if __name__ == "__main__":
             "salt_and_pepper_noise": 0.6,
         },
         "save_interval": 100,
-        "memory_capacity": 200_000,
+        "memory_capacity": 150_000,
         "render_fps": 5,
         "num_states": num_states,
         "clip_grad_normalization": 3,
@@ -589,7 +589,7 @@ if __name__ == "__main__":
         "transformer": {
             "sequence_length": 30,
             "n_embd": 128,
-            "n_head": 5,
+            "n_head": 8,
             "n_layer": 3,
             "dropout": 0.3,
             "state_dim": num_states,
