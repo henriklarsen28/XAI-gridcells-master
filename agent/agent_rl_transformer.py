@@ -576,7 +576,7 @@ if __name__ == "__main__":
             "orientation": True,
             "steps_to_goal": False,
             "last_known_steps": 0,
-            "salt_and_pepper_noise": 0.8,
+            "salt_and_pepper_noise": 0.2,
         },
         "save_interval": 100,
         "memory_capacity": 200_000,
