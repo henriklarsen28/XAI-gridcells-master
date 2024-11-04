@@ -639,7 +639,7 @@ def get_num_states(map_path):
 if __name__ == "__main__":
     # Parameters:
 
-    train_mode = False
+    train_mode = True
 
     render = True
     render_mode = "human"
@@ -693,6 +693,7 @@ if __name__ == "__main__":
             "max_steps_reached": -0.5 / 200,
             "penalty_per_step": -0.01 / 200,
             "goal_in_sight": 0.5 / 200,
+            "number_of_squares_visible": 0.01 / 200
         },
         # TODO
         "observation_space": {

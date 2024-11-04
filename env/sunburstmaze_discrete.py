@@ -1,5 +1,4 @@
 import copy
-import copy
 import math
 import random as rd
 from collections import deque
@@ -7,13 +6,11 @@ from collections import deque
 import gymnasium as gym
 import numpy as np
 import pandas as pd
-import pandas as pd
 import pygame
 from gymnasium import spaces
 from PIL import Image
 
 from utils.calculate_fov import calculate_fov_matrix_size, step_angle
-
 
 from .file_manager import build_map
 from .maze_game import Maze
@@ -135,7 +132,6 @@ class SunburstMazeDiscrete(gym.Env):
                         return position
                     return (y, x)
         return None
-                
 
     def select_start_position(self) -> tuple:
         """
@@ -153,7 +149,7 @@ class SunburstMazeDiscrete(gym.Env):
             position = (self.height - 2, 10)  # Bottom left for the small maze
         # print("Starting at random position: ", random_position)
         return position
-    
+
     def random_position(self):
 
         # move the goal to a random position
@@ -190,7 +186,6 @@ class SunburstMazeDiscrete(gym.Env):
         # Get the matrix of marked squares without rendering
         return np.array([*matrix, self.orientation])
 
-
     def reset(self, seed=None, options=None) -> tuple:
 
         super().reset(seed=seed)
@@ -223,7 +218,6 @@ class SunburstMazeDiscrete(gym.Env):
                 self.orientation,
                 self.observed_squares_map,
                 self.wall_rays,
-                
             )
         return observation, self._get_info()
 
@@ -507,6 +501,11 @@ class SunburstMazeDiscrete(gym.Env):
             return True
         return False
 
+    def number_of_squares_visible(self):
+        # Return the number of squares that are 1 in the observation
+        observation = self._get_observation()
+        return len([square for square in observation if square == 1])
+
     # TODO: Gets stuck at wall, q-values for other actions are negative
     def reward(self):
         """
@@ -520,6 +519,7 @@ class SunburstMazeDiscrete(gym.Env):
             return self.rewards["is_goal"]
         # Penalize for just rotating in place without moving
         current_pos = self.position
+        
         if self.has_not_moved(self.position):
             return self.rewards["has_not_moved"]
         # Update the last position
@@ -532,15 +532,17 @@ class SunburstMazeDiscrete(gym.Env):
         #         return 20
         # if self.decreased_steps_to_goal():
         #    return 0.00 #+ self.distance_to_goal_reward()
+        reward = (
+            self.rewards["number_of_squares_visible"] * self.number_of_squares_visible
+        )
         if self.goal_in_sight:
-            return self.rewards["goal_in_sight"]
+            return self.rewards["goal_in_sight"] + reward
 
         if self.position not in self.visited_squares:
             self.visited_squares.append(self.position)
-            return self.rewards["new_square"]  # + self.distance_to_goal_reward()
+            return self.rewards["new_square"] + reward # + self.distance_to_goal_reward()
 
-
-        return self.rewards["penalty_per_step"]
+        return reward + self.rewards["penalty_per_step"]
 
     def render_q_value_overlay(self, q_values):
         """
@@ -560,7 +562,7 @@ class SunburstMazeDiscrete(gym.Env):
     def _render_frame(self):
         if self.render_mode == "rgb_array":
             return self.render_rgb_array()
-        
+
         elif self.render_mode == "human":
             self.render_maze.draw_frame(
                 self.env_map,
@@ -569,22 +571,22 @@ class SunburstMazeDiscrete(gym.Env):
                 self.observed_squares_map,
                 self.wall_rays,
                 self.q_values,
-                self.past_actions
+                self.past_actions,
             )
 
     def render_rgb_array(self):
-        
+
         self.render_maze.render_mode = "rgb_array"
         frame = np.asarray(
-                self.render_maze.draw_frame(
-                    self.env_map,
-                    self.position,
-                    self.orientation,
-                    self.observed_squares_map,
-                    self.wall_rays,
-                    [],
-                )
+            self.render_maze.draw_frame(
+                self.env_map,
+                self.position,
+                self.orientation,
+                self.observed_squares_map,
+                self.wall_rays,
+                [],
             )
+        )
         self.render_maze.render_mode = self.render_mode
         return frame
 
