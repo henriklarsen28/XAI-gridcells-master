@@ -18,7 +18,7 @@ import numpy as np
 import pygame
 import torch
 import wandb
-from explain_network import grad_sam
+from explain_network import grad_sam, ExplainNetwork
 from torch.nn.utils.rnn import pad_sequence
 from tqdm import tqdm
 
@@ -523,7 +523,9 @@ class Model_TrainTest:
             "is_stuck": False,
             "orientation": None,
         }
-
+        ex_network = ExplainNetwork()
+        q_val_list = ex_network.generate_q_values(env=self.env, model=self.agent.model)
+        self.env.q_values = q_val_list
         # Testing loop over episodes
         for episode in tqdm(range(1, max_episodes + 1)):
             state, _ = self.env.reset(seed=seed)
@@ -560,30 +562,30 @@ class Model_TrainTest:
                     tensor_new_sequence, self.sequnence_length
                 )
 
-                block_1 = att_weights_list[0]  # Block 1
-                block_2 = att_weights_list[1]  # Block 2
-                block_3 = att_weights_list[2]  # Block 3
+                # block_1 = att_weights_list[0]  # Block 1
+                # block_2 = att_weights_list[1]  # Block 2
+                # block_3 = att_weights_list[2]  # Block 3
 
-                block = block_3  # Block 2
-                gradients = self.agent.calculate_gradients(
-                    tensor_sequence, tensor_new_sequence, reward, block=2
-                )
-                # print('gradients', gradients)
-                step_dicti["step"] = steps_done
-                step_dicti["position"] = self.env.position
-                step_dicti["tensors"] = grad_sam(
-                    block,
-                    gradients,
-                    block=2,
-                    episode=episode,
-                    step=steps_done,
-                    rgb_array=None,
-                    plot=False,
-                )
-                step_dicti["is_stuck"] = (
-                    True if self.env.has_not_moved(self.env.position) else False
-                )
-                step_dicti["orientation"] = self.env.orientation
+                # block = block_3  # Block 2
+                # #gradients = self.agent.calculate_gradients(
+                # #    tensor_sequence, tensor_new_sequence, reward, block=2
+                # #)
+                # # print('gradients', gradients)
+                # step_dicti["step"] = steps_done
+                # step_dicti["position"] = self.env.position
+                # step_dicti["tensors"] = grad_sam(
+                #     block,
+                #     gradients,
+                #     block=2,
+                #     episode=episode,
+                #     step=steps_done,
+                #     rgb_array=None,
+                #     plot=False,
+                # )
+                # step_dicti["is_stuck"] = (
+                #     True if self.env.has_not_moved(self.env.position) else False
+                # )
+                # step_dicti["orientation"] = self.env.orientation
 
                 state = next_state
                 total_reward += reward
@@ -611,13 +613,13 @@ class Model_TrainTest:
             
             
             # save grad sam data every 100 episodes
-            if episode % 10 == 0:
-                torch.save(
-                    episode_list,
-                    f"./grad_sam/{map_path_without_ext}/block_3/{config["model_name"]}_{episode}.pt",
-                )
-                print(f"Grad sam data saved up to episode {episode}.")
-                episode_list = []
+            # if episode % 10 == 0:
+            #     torch.save(
+            #         episode_list,
+            #         f"./grad_sam/{map_path_without_ext}/block_3/{config["model_name"]}_{episode}.pt",
+            #     )
+            #     print(f"Grad sam data saved up to episode {episode}.")
+            #     episode_list = []
 
         pygame.quit()  # close the rendering window
 
@@ -640,7 +642,7 @@ if __name__ == "__main__":
     train_mode = False
 
     render = True
-    render_mode = "rgb_array"
+    render_mode = "human"
 
     if train_mode:
         render_mode = "rgb_array" if render else None

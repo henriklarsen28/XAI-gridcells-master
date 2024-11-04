@@ -10,17 +10,16 @@ from scipy.special import softmax
 
 from env.sunburstmaze_discrete import SunburstMazeDiscrete
 from utils.state_preprocess import state_preprocess
-import matplotlib.pyplot as plt
-import seaborn as sns
-import math
-
 
 device = torch.device("cpu")
 # device = torch.device("mps" if torch.backends.mps.is_available() else "cpu") # Was faster with cpu??? Loading between cpu and mps is slow maybe
 
 RL_load_path = "./model/transformers/seq_len_45/visionary-hill-816"
 
-def grad_sam(attention_weights, gradients, block=0, episode=0, step=0, rgb_array=None, plot=False):
+
+def grad_sam(
+    attention_weights, gradients, block=0, episode=0, step=0, rgb_array=None, plot=False
+):
     count = 0
     grad_sams = []
     for i in range(len(attention_weights)):
@@ -28,40 +27,46 @@ def grad_sam(attention_weights, gradients, block=0, episode=0, step=0, rgb_array
         grad = torch.relu(gradients[i])
         att_w = attention_weights[i].squeeze(0)
         grad = grad.squeeze(0)
-        #print("Att_w:", att_w.shape, type(att_w))
-        #print(grad.shape, type(grad))
+        # print("Att_w:", att_w.shape, type(att_w))
+        # print(grad.shape, type(grad))
 
         # Multiply the gradients with the attention weights
         grad_sam = att_w @ grad
         grad_sams.append(grad_sam)
-        #print(f'grad_sam_{count}:', grad_sam.shape, grad_sam)
+        # print(f'grad_sam_{count}:', grad_sam.shape, grad_sam)
 
     if plot:
-        plot(grad_sams, block, att_heads=len(attention_weights), episode=episode, step=step, rgb_array=rgb_array)
-        
+        plot(
+            grad_sams,
+            block,
+            att_heads=len(attention_weights),
+            episode=episode,
+            step=step,
+            rgb_array=rgb_array,
+        )
+
     return grad_sams
+
 
 def plot(grad_sams, block, att_heads, episode=0, step=0, rgb_array=None):
     fig, axes = plt.subplots(3, math.ceil(att_heads / 3), figsize=(30, 10))
     fig.suptitle(f"Grad-SAM for block {block}")
     for idx, grad_sam in enumerate(grad_sams):
         # Show the grad-sam as a heatmap
-        sns.heatmap(grad_sam, ax=axes[math.floor(idx/3), idx%3])
-        #sns.heatmap(att_w, ax=axes[math.floor(i / 3), i % 3])
+        sns.heatmap(grad_sam, ax=axes[math.floor(idx / 3), idx % 3])
+        # sns.heatmap(att_w, ax=axes[math.floor(i / 3), i % 3])
         axes[math.floor(idx / 3), idx % 3].set_title(f"Attention head {idx}")
     axes[2, 2].imshow(rgb_array)
-    #Nplt.show()
-    plt.savefig(f"./attention_plot/grad_sam_block_{block}_episode_{episode}_step_{step}.png")
+    # Nplt.show()
+    plt.savefig(
+        f"./attention_plot/grad_sam_block_{block}_episode_{episode}_step_{step}.png"
+    )
     plt.close()
 
 
 class ExplainNetwork:
-    def __init__(
-            self,
-            RL_load_path,
-    ):
+    def __init__(self, RL_load_path=""):
         self.RL_load_path = RL_load_path
-
 
     def generate_q_values(self, env: SunburstMazeDiscrete, model):
 
@@ -83,8 +88,12 @@ class ExplainNetwork:
                     env.orientation = orientation
                     state = env._get_observation()
                     state = state_preprocess(state, device=device)
-                    q_values = model(state).detach().numpy()
-                    q_list.append(q_values)
+                    tensor_state = torch.stack(list(state)).to(device)
+                    tensor_state = tensor_state.unsqueeze(0)
+                    
+                    tensor_state = tensor_state.unsqueeze(0)
+                    q_values = model(tensor_state)[0].detach().numpy()
+                    q_list.append(q_values[0,0])
                 for orientation in orientation_range:
                     forward = q_list[orientation][0]
                     left = q_list[(orientation + 1) % 4][1] / 2
@@ -98,10 +107,7 @@ class ExplainNetwork:
 
         return q_val_list_to_position
 
-
     # Grad-SAM
-    
-
 
     # concepts
 
