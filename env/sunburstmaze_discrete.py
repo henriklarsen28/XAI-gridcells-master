@@ -533,7 +533,7 @@ class SunburstMazeDiscrete(gym.Env):
         # if self.decreased_steps_to_goal():
         #    return 0.00 #+ self.distance_to_goal_reward()
         reward = (
-            self.rewards["number_of_squares_visible"] * self.number_of_squares_visible
+            self.rewards["number_of_squares_visible"] * self.number_of_squares_visible()
         )
         if self.goal_in_sight:
             return self.rewards["goal_in_sight"] + reward

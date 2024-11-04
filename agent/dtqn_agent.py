@@ -129,7 +129,7 @@ class DTQN_Agent:
 
         # Exploration: epsilon-greedy
         if np.random.random() < self.epsilon:
-            return self.action_space.sample()
+            return self.action_space.sample(), None
 
         # Exploitation: the action is selected based on the Q-values.
         with torch.no_grad():
@@ -155,15 +155,16 @@ class DTQN_Agent:
         actions = actions.unsqueeze(2)
         rewards = rewards.unsqueeze(2)
         dones = dones.unsqueeze(2)
+        #print(states.shape, actions.shape, next_states.shape, rewards.shape, dones.shape)
         # print(states.shape, actions.shape)
-        current_q_values = self.model(states)
+        current_q_values, _ = self.model(states)
         # print(current_q_values[:,0,:])
         # print(current_q_values.shape, actions.shape, rewards.shape, dones.shape)
         current_q_values = current_q_values.gather(2, actions).squeeze()
 
         # Compute the maximum Q-value for the next states using the target network
         with torch.no_grad():
-            future_q_values = self.target_model(next_states).max(dim=2, keepdim=True)[
+            future_q_values = self.target_model(next_states)[0].max(dim=2, keepdim=True)[
                 0
             ]  # not argmax (cause we want the maxmimum q-value, not the action that maximize it)
 
