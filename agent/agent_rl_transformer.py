@@ -211,7 +211,7 @@ class Model_TrainTest:
                 tensor_sequence = padding_sequence(
                     tensor_sequence, self.sequence_length, device
                 )
-                action = self.agent.select_action(tensor_sequence)
+                action, _ = self.agent.select_action(tensor_sequence)
                 next_state, reward, done, truncation, _ = self.env.step(action)
                 if render_mode == "rgb_array":
                     if episode % 100 == 0:
@@ -354,7 +354,7 @@ class Model_TrainTest:
                 tensor_sequence = padding_sequence(
                     tensor_sequence, self.sequence_length, device
                 )
-                action = self.agent.select_action(tensor_sequence)
+                action, _ = self.agent.select_action(tensor_sequence)
                 next_state, reward, done, truncation, _ = self.env.step(action)
                 if render_mode == "rgb_array":
                     if episode % 100 == 0:
