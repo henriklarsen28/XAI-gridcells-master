@@ -1,11 +1,12 @@
-import torch
-import pprint
 import json
-from torch.utils.data import random_split
-import random as rd
 import os
+import pprint
+import random as rd
+
 import numpy as np
+import torch
 from sklearn.metrics.pairwise import cosine_similarity
+from torch.utils.data import random_split
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -22,7 +23,7 @@ def combine_pt_files(root, ids):
         except:
             FileNotFoundError
 
-    torch.save(combined_data, f'{root}combined.pt')
+    torch.save(combined_data, f'{root}_combined.pt')
 
 def read_pt_file(data_path):
     data = torch.load(data_path, map_location=device)
@@ -100,22 +101,25 @@ def cosine_similarity(tensor_list):
     avg_sim = {head : sum(sim[head])/len(sim[head]) for head in sim.keys()}
     print('average similarity:', avg_sim)
     # compute the overall average cosine similarity
-    avg_sim = sum([avg_sim[head] for head in avg_sim.keys()])/len(avg_sim.keys())
-    print('average overall similarity:', avg_sim)
+    # avg_sim = sum([avg_sim[head] for head in avg_sim.keys()])/len(avg_sim.keys())
+    # print('average overall similarity:', avg_sim)
 
     return avg_sim
 
 
 def main():
 
-    root = './grad_sam/map_open_doors_90_degrees/visionary-hill-816_'
-    ids = ['10', '20', '30', '40', '50', '60', '70', '80', '90', '100']
-    data_path = f'{root}combined.pt'
+    block = "block_3"
+    root = f'./grad_sam/map_open_doors_90_degrees/{block}/visionary-hill-816'
+    ids = ['_10', '_20', '_30', '_40', '_50', '_60', '_70', '_80', '_90', '_100']
+    data_path = f'{root}_combined.pt'
+
+    # agent/grad_sam/map_open_doors_90_degrees/block_2
 
     if not os.path.exists(data_path):
         data_path = combine_pt_files(root, ids)
-        
-    data = read_pt_file('./grad_sam/map_open_doors_90_degrees/visionary-hill-816_combined.pt')
+
+    data = read_pt_file(f'./grad_sam/map_open_doors_90_degrees/{block}/visionary-hill-816_combined.pt')
     
     # divide the data into stuck and not stuck
     pos_label, neg_label = split_on_label(data, label='is_stuck')
@@ -150,6 +154,10 @@ def main():
     print('average negative similarity:', avg_neg_sim)
     print('average all similarity:', avg_all_sim)
 
+    # write to csv file
+    with open(f'{root}_cosine_similarity.csv', 'w') as f:
+        f.write('average positive similarity, average negative similarity, average all similarity\n')
+        f.write(f'{avg_pos_sim}, {avg_neg_sim}, {avg_all_sim}')
 
 if __name__ == '__main__':
     main()
