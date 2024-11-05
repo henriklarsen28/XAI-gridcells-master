@@ -27,6 +27,7 @@ class Maze:
         orientation: int,
         observed_squares_map: set,
         wall_rays: set,
+        q_values: list = [],
     ):
         self.render_mode = render_mode
         self.map_file = map_file
@@ -64,7 +65,6 @@ class Maze:
         self.sprite_left = pygame.transform.flip(sprite, True, False)
         self.sprite_down = pygame.transform.rotate(self.sprite_left, 90)
         self.sprite_up = pygame.transform.rotate(sprite, 90)
-        
         
         self.clock = pygame.time.Clock()
         self.framerate = framerate
