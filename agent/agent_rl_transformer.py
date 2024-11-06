@@ -681,7 +681,7 @@ if __name__ == "__main__":
         "epsilon_min": 0.01,
         "discount_factor": 0.90,
         "alpha": 0.1,
-        "map_path": map_path_train,
+        "map_path": map_path_train_3,
         "target_model_update": 10,  # hard update of the target model
         "max_steps_per_episode": 300,
         "random_start_position": True,
@@ -710,7 +710,7 @@ if __name__ == "__main__":
         "num_states": num_states,
         "clip_grad_normalization": 3,
         "fov": math.pi / 1.5,
-        "ray_length": 10,
+        "ray_length": 8,
         "number_of_rays": 100,
         "transformer": {
             "sequence_length": 45,
