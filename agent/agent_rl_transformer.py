@@ -687,7 +687,7 @@ if __name__ == "__main__":
         "random_goal_position": True,
         "rewards": {
             "is_goal": 200 / 200,
-            "hit_wall": -1 / 200,
+            "hit_wall": -0.01 / 200,
             "has_not_moved": -0.2 / 200,
             "new_square": 2 / 200,
             "max_steps_reached": -0.5 / 200,
