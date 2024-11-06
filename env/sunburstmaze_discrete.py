@@ -536,13 +536,13 @@ class SunburstMazeDiscrete(gym.Env):
             self.rewards["number_of_squares_visible"] * self.number_of_squares_visible()
         )
         if self.goal_in_sight:
-            return self.rewards["goal_in_sight"] + reward
+            return self.rewards["goal_in_sight"]# + reward
 
         if self.position not in self.visited_squares:
             self.visited_squares.append(self.position)
-            return self.rewards["new_square"] + reward # + self.distance_to_goal_reward()
+            return self.rewards["new_square"]# + reward # + self.distance_to_goal_reward()
 
-        return reward + self.rewards["penalty_per_step"]
+        return self.rewards["penalty_per_step"]# + reward
 
     def render_q_value_overlay(self, q_values):
         """
