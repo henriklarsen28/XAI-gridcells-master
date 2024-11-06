@@ -7,6 +7,13 @@ from agent.neural_network_ff_torch import DQN_Network
 from agent.transformer_decoder_decoupled import TransformerDQN
 
 
+def get_attention_gradients(module, grad_input, grad_output):
+    global attention_gradients
+    # print("Grad_input: ", len(grad_input))
+    attention_gradients = grad_output[0]
+
+
+
 class DTQN_Agent:
     """
     DTQN Agent Class. This class defines some key elements of the DQN algorithm,
@@ -67,7 +74,7 @@ class DTQN_Agent:
             n_head,
             n_layer,
             dropout,
-            self.device,
+            self.device
         )
         self.model = self.model.to(self.device)
 
@@ -90,6 +97,25 @@ class DTQN_Agent:
         self.critertion = nn.MSELoss()
         self.optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
 
+    def calculate_gradients(self, state, next_state, reward, block=0):
+        state = state.unsqueeze(0)
+        next_state = next_state.unsqueeze(0)
+        gradient_list = []
+        for i in range(8):
+            attention_layer = self.model.blocks[block].sa.heads[i]
+            hook = attention_layer.register_backward_hook(get_attention_gradients)
+            Q_values, att_weights_list = self.model(state)
+            action = torch.argmax(Q_values[:, -1, :]).item()
+            
+            future_q, _ = self.model(next_state)
+
+            target = reward + self.discount * torch.max(future_q[:, -1, :])
+            loss = self.critertion(Q_values, target)
+            loss.backward(retain_graph=True)
+            gradient_list.append(attention_gradients)
+        #print("Gradient_list: ", gradient_list)
+        return gradient_list
+
     def select_action(self, state):
         """
         Selects an action using epsilon-greedy strategy OR based on the Q-values.
@@ -103,7 +129,7 @@ class DTQN_Agent:
 
         # Exploration: epsilon-greedy
         if np.random.random() < self.epsilon:
-            return self.action_space.sample()
+            return self.action_space.sample(), None
 
         # Exploitation: the action is selected based on the Q-values.
         with torch.no_grad():
@@ -112,10 +138,12 @@ class DTQN_Agent:
             state = state.unsqueeze(0)
             # print(state.shape)
             Q_values, att_weights_list = self.model(state)
+            Q_values, att_weights_list = self.model(state)
             action = torch.argmax(Q_values[:, -1, :]).item()
             # print("Q_vals: ", Q_values)
             # print("Selected q_val: ", Q_values[:,-1,:], "Action: ", action)
-            return action
+            # print("att_weights_list: ", att_weights_list)
+            return action, att_weights_list
 
     def learn(self, batch_size, done):
 
@@ -128,6 +156,7 @@ class DTQN_Agent:
         actions = actions.unsqueeze(2)
         rewards = rewards.unsqueeze(2)
         dones = dones.unsqueeze(2)
+        #print(states.shape, actions.shape, next_states.shape, rewards.shape, dones.shape)
         # print(states.shape, actions.shape)
         current_q_values, _ = self.model(states)
         # print(current_q_values[:,0,:])
@@ -136,7 +165,7 @@ class DTQN_Agent:
 
         # Compute the maximum Q-value for the next states using the target network
         with torch.no_grad():
-            future_q_values, _ = self.target_model(next_states)
+            future_q_values, _ = self.target_model(next_states)[0]
             future_q_values = future_q_values.max(dim=2, keepdim=True)[
                 0
             ]  # not argmax (cause we want the maxmimum q-value, not the action that maximize it)
