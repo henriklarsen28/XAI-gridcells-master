@@ -18,7 +18,7 @@ import numpy as np
 import pygame
 import torch
 import wandb
-from explain_network import grad_sam, ExplainNetwork
+from explain_network import ExplainNetwork, grad_sam
 from torch.nn.utils.rnn import pad_sequence
 from tqdm import tqdm
 
@@ -639,7 +639,7 @@ def get_num_states(map_path):
 if __name__ == "__main__":
     # Parameters:
 
-    train_mode = True
+    train_mode = False
 
     render = True
     render_mode = "human"
@@ -668,7 +668,7 @@ if __name__ == "__main__":
         "render": render,
         "render_mode": render_mode,
         "model_name": "visionary-hill-816",
-        "RL_load_path": f"./model/transformers/seq_len_45/visionary-hill-816/5500.pth",
+        "RL_load_path": f"./model/transformers/seq_len_45/youthful-firebrand-839/sunburst_maze_map_v0_5400.pth",
         "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 0.0001,
