@@ -32,6 +32,7 @@ wandb.login()
 # Define the CSV file path relative to the project root
 map_path_train = os.path.join(project_root, "env/map_v0/map_open_doors_horizontal.csv")
 map_path_train_2 = os.path.join(project_root, "env/map_v0/map_open_doors_vertical.csv")
+map_path_train_3 = os.path.join(project_root, "env/map_v0/map_no_doors.csv")
 map_path_test = os.path.join(project_root, "env/map_v0/map_open_doors_90_degrees.csv")
 
 
@@ -680,7 +681,7 @@ if __name__ == "__main__":
         "epsilon_min": 0.01,
         "discount_factor": 0.90,
         "alpha": 0.1,
-        "map_path": map_path_train,
+        "map_path": map_path_train_3,
         "target_model_update": 10,  # hard update of the target model
         "max_steps_per_episode": 300,
         "random_start_position": True,
@@ -689,7 +690,7 @@ if __name__ == "__main__":
             "is_goal": 200 / 200,
             "hit_wall": -0.01 / 200,
             "has_not_moved": -0.2 / 200,
-            "new_square": 2 / 200,
+            "new_square": 0.4 / 200,
             "max_steps_reached": -0.5 / 200,
             "penalty_per_step": -0.01 / 200,
             "goal_in_sight": 0.5 / 200,
@@ -701,7 +702,7 @@ if __name__ == "__main__":
             "orientation": True,
             "steps_to_goal": False,
             "last_known_steps": 0,
-            "salt_and_pepper_noise": 0.2,
+            "salt_and_pepper_noise": 0.8,
         },
         "save_interval": 100,
         "memory_capacity": 200_000,
@@ -709,7 +710,7 @@ if __name__ == "__main__":
         "num_states": num_states,
         "clip_grad_normalization": 3,
         "fov": math.pi / 1.5,
-        "ray_length": 10,
+        "ray_length": 8,
         "number_of_rays": 100,
         "transformer": {
             "sequence_length": 45,
