@@ -164,7 +164,8 @@ class DTQN_Agent:
 
         # Compute the maximum Q-value for the next states using the target network
         with torch.no_grad():
-            future_q_values = self.target_model(next_states)[0].max(dim=2, keepdim=True)[
+            future_q_values, _ = self.target_model(next_states)
+            future_q_values = future_q_values.max(dim=2, keepdim=True)[
                 0
             ]  # not argmax (cause we want the maxmimum q-value, not the action that maximize it)
 

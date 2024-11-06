@@ -18,7 +18,7 @@ import numpy as np
 import pygame
 import torch
 import wandb
-from explain_network import ExplainNetwork, grad_sam
+from explain_network import ExplainNetwork
 from torch.nn.utils.rnn import pad_sequence
 from tqdm import tqdm
 
@@ -594,7 +594,7 @@ def get_num_states(map_path):
 if __name__ == "__main__":
     # Parameters:
 
-    train_mode = False
+    train_mode = True
 
     render = False
     render_mode = "human"
