@@ -192,7 +192,7 @@ class SunburstMazeDiscrete(gym.Env):
 
         self.past_actions.clear()
 
-        # self.visited_squares = []
+        self.visited_squares = []
         self.env_map = copy.deepcopy(self.initial_map)
         self.position = self.select_start_position()
         self.goal = self.goal_position()
@@ -532,17 +532,19 @@ class SunburstMazeDiscrete(gym.Env):
         #         return 20
         # if self.decreased_steps_to_goal():
         #    return 0.00 #+ self.distance_to_goal_reward()
-        reward = (
+        """reward = (
             self.rewards["number_of_squares_visible"] * self.number_of_squares_visible()
-        )
+        )"""
+        reward = 0
         if self.goal_in_sight:
-            return self.rewards["goal_in_sight"] + reward
+            reward += self.rewards["goal_in_sight"]# + reward
 
         if self.position not in self.visited_squares:
             self.visited_squares.append(self.position)
-            return self.rewards["new_square"] + reward # + self.distance_to_goal_reward()
+            reward +=  self.rewards["new_square"]# + reward # + self.distance_to_goal_reward()
 
-        return reward + self.rewards["penalty_per_step"]
+        reward += self.rewards["penalty_per_step"]# + reward
+        return reward
 
     def render_q_value_overlay(self, q_values):
         """
