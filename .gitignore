@@ -7,3 +7,6 @@ agent/wandb*
 agent/losses_rewards.csv
 agent/gifs*
 agent/matrix.csv
+agent/attention_plot*
+xai/cav/dataset/*
+agent/grad_sam/*
