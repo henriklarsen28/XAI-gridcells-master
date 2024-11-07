@@ -32,6 +32,7 @@ wandb.login()
 # Define the CSV file path relative to the project root
 map_path_train = os.path.join(project_root, "env/map_v0/map_open_doors_horizontal.csv")
 map_path_train_2 = os.path.join(project_root, "env/map_v0/map_open_doors_vertical.csv")
+
 map_path_test = os.path.join(project_root, "env/map_v0/map_open_doors_90_degrees.csv")
 
 
@@ -702,7 +703,7 @@ if __name__ == "__main__":
         "render": render,
         "render_mode": render_mode,
         "model_name": "visionary-hill-816",
-        "RL_load_path": f"./model/transformers/seq_len_45/visionary-hill-816/5500.pth",
+        "RL_load_path": f"./model/transformers/seq_len_45/model_visionary-hill-816/sunburst_maze_map_v0_5500.pth",
         "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 0.0001,
@@ -712,7 +713,7 @@ if __name__ == "__main__":
         "epsilon": 1 if train_mode else -1,
         "epsilon_decay": 0.998,
         "epsilon_min": 0.01,
-        "discount_factor": 0.88,
+        "discount_factor": 0.90,
         "alpha": 0.1,
         "map_path": map_path_train,
         "target_model_update": 10,  # hard update of the target model
@@ -721,13 +722,13 @@ if __name__ == "__main__":
         "random_goal_position": True,
         "rewards": {
             "is_goal": 200 / 200,
-            "hit_wall": -1 / 200,
+            "hit_wall": -0.01 / 200,
             "has_not_moved": -0.2 / 200,
-            "new_square": 2 / 200,
+            "new_square": 0.4 / 200,
             "max_steps_reached": -0.5 / 200,
             "penalty_per_step": -0.01 / 200,
             "goal_in_sight": 0.5 / 200,
-            "number_of_squares_visible": 0.001 / 200,
+            "number_of_squares_visible": 0.001 / 200
         },
         # TODO
         "observation_space": {
@@ -735,7 +736,7 @@ if __name__ == "__main__":
             "orientation": True,
             "steps_to_goal": False,
             "last_known_steps": 0,
-            "salt_and_pepper_noise": 0.5,
+            "salt_and_pepper_noise": 0.2,
         },
         "save_interval": 100,
         "memory_capacity": 200_000,
@@ -747,7 +748,6 @@ if __name__ == "__main__":
         "number_of_rays": 100,
         "transformer": {
             "sequence_length": 45,
-            "n_embd": 128,
             "n_embd": 128,
             "n_head": 8,
             "n_layer": 3,
