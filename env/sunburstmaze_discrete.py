@@ -126,7 +126,7 @@ class SunburstMazeDiscrete(gym.Env):
         for y in range(self.height):
             for x in range(self.width):
                 if self.env_map[y][x] == 2:
-                    if self.random_start_position is True:
+                    if self.random_goal_position is True:
                         self.env_map[y][x] = 0
                         position = self.random_position()
                         self.env_map[position[0]][position[1]] = 2
