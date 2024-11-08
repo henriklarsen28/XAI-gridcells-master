@@ -631,7 +631,7 @@ if __name__ == "__main__":
     if train_mode:
         render_mode = "rgb_array" if render else None
 
-    map_version = map_path_test_2.split("/")[-2]
+    map_version = map_path_test.split("/")[-2]
 
     # Read the map file to find the number of states
     # num_states = get_num_states(map_path_train)
