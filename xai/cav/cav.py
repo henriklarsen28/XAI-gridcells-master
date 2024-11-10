@@ -299,8 +299,8 @@ def main():
     cav.calculate_cav("rotating", model_load_path)
     cav.plot_cav("rotating")
     
-    #cav.calculate_random_cav("rotating", model_load_path)
-    #cav.plot_cav("random")
+    cav.calculate_random_cav("rotating", model_load_path)
+    cav.plot_cav("random")
 
 
 if __name__ == "__main__":

@@ -24,7 +24,7 @@ from utils.state_preprocess import state_preprocess
 device = torch.device("cpu")
 fov_config = {
     "fov": math.pi / 1.5,
-    "ray_length": 20,
+    "ray_length": 8,
     "number_of_rays": 100,
 }
 
@@ -38,31 +38,38 @@ config = {
     "random_start_position": True,
     "rewards": {
         "is_goal": 200 / 200,
-        "hit_wall": -1 / 200,
-        "has_not_moved": -1 / 200,
+        "hit_wall": -0.01 / 200,
+        "has_not_moved": -0.2 / 200,
         "new_square": 0.4 / 200,
         "max_steps_reached": -0.5 / 200,
-        "penalty_per_step": -0.1 / 200,
+        "penalty_per_step": -0.01 / 200,
         "goal_in_sight": 0.5 / 200,
-    },
+        "number_of_squares_visible": 0.001 / 200
+        },
     # TODO
     "observation_space": {
         "position": True,
         "orientation": True,
         "steps_to_goal": False,
         "last_known_steps": 0,
-    },
-    "render_fps": 5,
-    "fov": math.pi / 1.5,
-    "ray_length": 10,
-    "number_of_rays": 100,
-    "transformer": {
-        "sequence_length": 45,
-        "n_embd": 128,
-        "n_head": 8,
-        "n_layer": 3,
-        "dropout": 0.3,
-        "state_dim": num_states,
+        "salt_and_pepper_noise": 0.2,
+        },
+    "save_interval": 100,
+        "memory_capacity": 200_000,
+        "render_fps": 100,
+        "num_states": num_states,
+        "clip_grad_normalization": 3,
+        "fov": math.pi / 1.5,
+        "ray_length": 8,
+        "number_of_rays": 100,
+        "transformer": {
+            "sequence_length": 45,
+            "n_embd": 128,
+            "n_head": 8,
+            "n_layer": 3,
+            "dropout": 0.3,
+            "state_dim": num_states,
+        "decouple_positional_embedding": False,
     },
 }
 
@@ -120,7 +127,7 @@ def build_stuck_in_wall_dataset():
 def build_csv_dataset():
     # Load early agent data
     env_path = "../../env/map_v0/map_open_doors_90_degrees.csv"
-    model_load_path = "../../agent/model/transformers/model_visionary-hill-816/sunburst_maze_map_v0_400.pth"
+    model_load_path = "../../agent/model/transformers/model_vivid-firebrand-872/sunburst_maze_map_v0_400.pth"
 
     epsilon = 0.2
 
@@ -208,7 +215,7 @@ def run_agent(env: SunburstMazeDiscrete, agent: DTQN_Agent):
     collected_sequences = deque()
 
     sequence_length = config["transformer"]["sequence_length"]
-    max_episodes = 120
+    max_episodes = 130
     observation_sequence = deque(maxlen=sequence_length)
     position_sequence = deque(maxlen=sequence_length)
     action_sequence = deque(maxlen=sequence_length)
@@ -218,12 +225,12 @@ def run_agent(env: SunburstMazeDiscrete, agent: DTQN_Agent):
 
         # Load new model when the episode is larger than 60
         if episode == 60:
-            model_load_path = "../../agent/model/transformers/model_visionary-hill-816/sunburst_maze_map_v0_2500.pth"
+            model_load_path = "../../agent/model/transformers/model_vivid-firebrand-872/sunburst_maze_map_v0_2500.pth"
             agent.model.load_state_dict(torch.load(model_load_path, map_location=device))
             agent.model.eval()
 
         if episode == 90:
-            model_load_path = "../../agent/model/transformers/model_visionary-hill-816/sunburst_maze_map_v0_5500.pth"
+            model_load_path = "../../agent/model/transformers/model_vivid-firebrand-872/sunburst_maze_map_v0_5200.pth"
             agent.model.load_state_dict(torch.load(model_load_path, map_location=device))
             agent.model.eval()
 
@@ -243,7 +250,7 @@ def run_agent(env: SunburstMazeDiscrete, agent: DTQN_Agent):
             # q_val_list = generate_q_values(env=self.env, model=self.agent.model)
             # self.env.q_values = q_val_list
 
-            action = agent.select_action(tensor_sequence)
+            action, _ = agent.select_action(tensor_sequence)
             action_sequence.append(action)
             legal_actions = env.legal_actions()
             next_state, reward, done, truncation, _ = env.step(action)
