@@ -17,7 +17,7 @@ import pygame
 import torch
 import wandb
 from dqn_agent import DQN_Agent
-from explain_network import generate_q_values
+#from explain_network import generate_q_values
 from scipy.special import softmax
 
 from env import SunburstMazeDiscrete
@@ -78,6 +78,7 @@ class Model_TrainTest:
 
         self.rewards = config["rewards"]
         self.random_start_position = config["random_start_position"]
+        self.random_goal_position = config["random_goal_position"]
         self.observation_space = config["observation_space"]
 
         self.fov = config["fov"]
@@ -95,6 +96,7 @@ class Model_TrainTest:
             render_mode=render_mode,
             max_steps_per_episode=self.max_steps,
             random_start_position=self.random_start_position,
+            random_goal_position=self.random_goal_position,
             rewards=self.rewards,
             observation_space=self.observation_space,
             fov=self.fov,
@@ -129,7 +131,7 @@ class Model_TrainTest:
         total_steps = 0
         self.reward_history = []
         frames = []
-        wandb.init(project="sunburst-maze", config=self)
+        run = wandb.init(project="sunburst-maze", config=self)
 
         # Create the nessessary directories
         if not os.path.exists("./gifs"):
@@ -137,6 +139,12 @@ class Model_TrainTest:
         
         if not os.path.exists("./model"):
                     os.makedirs("./model")
+
+        model_path = f"./model_{run.name}"
+        if not os.path.exists(model_path):
+            os.makedirs(model_path)
+
+        self.save_path = model_path + self.save_path
 
         # Training loop over episodes
         for episode in range(1, self.max_episodes + 1):
@@ -282,7 +290,7 @@ def get_num_states(map_path):
 if __name__ == "__main__":
     # Parameters:
 
-    train_mode = False
+    train_mode = True
 
     render = True
     render_mode = "human"
@@ -297,7 +305,7 @@ if __name__ == "__main__":
 
     fov_config = {
         "fov": math.pi / 1.5,
-        "ray_length": 20,
+        "ray_length": 10,
         "number_of_rays": 100,
     }
     half_fov = fov_config["fov"] / 2
@@ -311,7 +319,7 @@ if __name__ == "__main__":
         "render": render,
         "render_mode": render_mode,
         "RL_load_path": f"./model/feed_forward/sunburst_maze_{map_version}_8900.pth",
-        "save_path": f"./model/sunburst_maze_{map_version}",
+        "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 0.0005,
         "batch_size": 100,
@@ -326,6 +334,7 @@ if __name__ == "__main__":
         "target_model_update": 10,  # hard update of the target model
         "max_steps_per_episode": 250,
         "random_start_position": True,
+        "random_goal_position": False,
         "rewards": {
             "is_goal": 1,
             "hit_wall": -0.001,
@@ -333,6 +342,7 @@ if __name__ == "__main__":
             "new_square": 0.001,
             "max_steps_reached": -0.001,
             "penalty_per_step": -0.0001,
+            "goal_in_sight": 0,
         },
         # TODO
         "observation_space": {
@@ -347,7 +357,7 @@ if __name__ == "__main__":
         "num_states": num_states,
         "clip_grad_normalization": 3,
         "fov": math.pi / 1.5,
-        "ray_length": 20,
+        "ray_length": 10,
         "number_of_rays": 100,
     }
 

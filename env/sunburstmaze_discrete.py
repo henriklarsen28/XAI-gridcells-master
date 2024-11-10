@@ -40,8 +40,8 @@ class SunburstMazeDiscrete(gym.Env):
         maze_file=None,
         render_mode=None,
         max_steps_per_episode=200,
-        random_start_position=None,
-        random_goal_position=None,
+        random_start_position=False,
+        random_goal_position=False,
         rewards=None,
         observation_space=None,
         fov=math.pi / 2,
@@ -125,7 +125,7 @@ class SunburstMazeDiscrete(gym.Env):
         for y in range(self.height):
             for x in range(self.width):
                 if self.env_map[y][x] == 2:
-                    if self.random_start_position is True:
+                    if self.random_goal_position is True:
                         self.env_map[y][x] = 0
                         position = self.random_position()
                         self.env_map[position[0]][position[1]] = 2
