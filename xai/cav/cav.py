@@ -6,7 +6,8 @@ from collections import defaultdict
 
 import pandas as pd
 import torch
-from logistic_regression import LogisticRegression
+#from logistic_regression import LogisticRegression
+from sklearn.linear_model import LogisticRegression
 from torch.utils.data import DataLoader, random_split
 import random as rd
 from matplotlib import pyplot as plt
@@ -16,7 +17,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 
 sys.path.append(project_root)
 
-from agent import TransformerDQN
+from agent.transformer_decoder_decoupled import TransformerDQN
 from utils.calculate_fov import calculate_fov_matrix_size
 from utils.custom_dataset import CAV_dataset
 
@@ -122,8 +123,8 @@ class CAV:
 
     def cav_model(self, positive_file: str, negative_file: str):
         
-        positive_dataset = torch.load(positive_file)
-        negative_dataset = torch.load(negative_file)
+        positive_dataset = torch.load(positive_file, weights_only=False)
+        negative_dataset = torch.load(negative_file, weights_only=False)
         print(len(positive_dataset))
         # Label the datasets
         positive_labels = [1] * len(positive_dataset)
@@ -142,48 +143,24 @@ class CAV:
             dataset, [length_train, length_test]
         )
 
+        train_data = [dataset[i][0].numpy() for i in train_dataset.indices]
+        train_labels = [dataset[i][1] for i in train_dataset.indices]
+        test_data = [dataset[i][0].numpy() for i in test_dataset.indices]
+        test_labels = [dataset[i][1] for i in test_dataset.indices]
+
         # Train the model
-        self.model = LogisticRegression(128).to(torch.device("cpu"))
-        criterion = torch.nn.BCELoss()
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=0.01)
+        self.model = LogisticRegression()
+
         print(self.model)
         
-
-        dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
         
-        for epoch in range(500):
-            for batch_X, batch_y in dataloader:
-                optimizer.zero_grad()  # Clear the gradients
-                # print(batch_X)
-                batch_y = batch_y.float()
-                # Forward pass
-                outputs = self.model(batch_X).squeeze() # Get predictions
-                loss = criterion(outputs, batch_y)  # Compute loss
-
-                # Backward pass
-                loss.backward()  # Compute gradients
-                optimizer.step()  # Update weights
-
-            if (epoch + 1) % 10 == 0:  # Print loss every 10 epochs
-                print(f"Epoch [{epoch + 1}/{500}], Loss: {loss.item():.4f}")
+        self.model.fit(train_data, train_labels)
 
         # Test the model
-        test_dataloader = DataLoader(test_dataset, batch_size=32, shuffle=True)
+        score = self.model.score(test_data, test_labels)
 
-        with torch.no_grad():
-            correct = 0
-            total = 0
-            for X, y in test_dataloader:
-                y = y.float()
-                outputs = self.model(X).squeeze()
-                predicted = torch.round(outputs)
-                total += y.size(0)
-                correct += (predicted == y).sum().item()
-
-            print(f"Accuracy: {100 * correct / total}%")
-
-        self.cav_coef = self.model.linear.weight.detach().numpy()[0]
-        return correct / total
+        self.cav_coef = self.model.coef_
+        return score
 
     def calculate_cav(self, concept: str, model_dir: str):
         
@@ -208,7 +185,7 @@ class CAV:
 
     def random_cav_model(self, random_file:str):
 
-        dataset = torch.load(random_file)
+        dataset = torch.load(random_file, weights_only=False)
 
         length_train = int(0.8 * len(dataset))
         length_test = len(dataset) - length_train
@@ -216,49 +193,20 @@ class CAV:
         train_dataset, test_dataset = random_split(
             dataset, [length_train, length_test]
         )
+        train_data = [dataset[i][0].numpy() for i in train_dataset.indices]
+        train_labels = [dataset[i][1] for i in train_dataset.indices]
+        test_data = [dataset[i][0].numpy() for i in test_dataset.indices]
+        test_labels = [dataset[i][1] for i in test_dataset.indices]
 
         # Train the model
-        self.model = LogisticRegression(128).to(torch.device("cpu"))
-        criterion = torch.nn.BCELoss()
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=0.01)
-        print(self.model)
+        self.model = LogisticRegression()
+        self.model.fit(train_data, train_labels)
         
-
-        dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-        
-        for epoch in range(250):
-            for batch_X, batch_y in dataloader:
-                optimizer.zero_grad()  # Clear the gradients
-                # print(batch_X)
-                batch_y = batch_y.float()
-                # Forward pass
-                outputs = self.model(batch_X).squeeze() # Get predictions
-                loss = criterion(outputs, batch_y)  # Compute loss
-
-                # Backward pass
-                loss.backward()  # Compute gradients
-                optimizer.step()  # Update weights
-
-            if (epoch + 1) % 10 == 0:  # Print loss every 10 epochs
-                print(f"Epoch [{epoch + 1}/{250}], Loss: {loss.item():.4f}")
-
         # Test the model
-        test_dataloader = DataLoader(test_dataset, batch_size=32, shuffle=True)
-
-        with torch.no_grad():
-            correct = 0
-            total = 0
-            for X, y in test_dataloader:
-                y = y.float()
-                outputs = self.model(X).squeeze()
-                predicted = torch.round(outputs)
-                total += y.size(0)
-                correct += (predicted == y).sum().item()
-
-            print(f"Accuracy: {100 * correct / total}%")
-
-        self.cav_coef = self.model.linear.weight.detach().numpy()[0]
-        return correct / total
+        score = self.model.score(test_data, test_labels)
+        print("Score: ", score)
+        self.cav_coef = self.model.coef_
+        return score
 
     def calculate_random_cav(self, concept: str, model_dir: str):
         
@@ -345,14 +293,14 @@ class CAV:
 
 def main():
     cav = CAV()
-    model_load_path = "../../agent/model/transformers/model_visionary-hill-816"
+    model_load_path = "../../agent/model/transformers/model_vivid-firebrand-872"
     #positive_file = "dataset/positive_wall_activations.pt"
     #negative_file = "dataset/negative_wall_activations.pt"
-    #cav.calculate_cav("rotating", model_load_path)
-    #cav.plot_cav("rotating")
+    cav.calculate_cav("rotating", model_load_path)
+    cav.plot_cav("rotating")
     
-    cav.calculate_random_cav("rotating", model_load_path)
-    cav.plot_cav("random")
+    #cav.calculate_random_cav("rotating", model_load_path)
+    #cav.plot_cav("random")
 
 
 if __name__ == "__main__":
