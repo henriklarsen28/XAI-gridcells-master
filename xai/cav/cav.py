@@ -47,7 +47,7 @@ def create_activation_dataset(dataset_path: str, model_path: str, block: int = 0
 
     fov_config = {
         "fov": math.pi / 1.5,
-        "ray_length": 10,
+        "ray_length": 8,
         "number_of_rays": 100,
     }
     half_fov = fov_config["fov"] / 2
