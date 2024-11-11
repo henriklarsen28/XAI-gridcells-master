@@ -15,9 +15,8 @@ from torch.utils.data import random_split
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def combine_pt_files(root, ids):
-    
-    filenames = [root + i + '.pt' for i in ids]
+def combine_pt_files(path, ids):
+    filenames = [path + i + '.pt' for i in ids]
 
     combined_data = []
 
@@ -28,7 +27,7 @@ def combine_pt_files(root, ids):
         except:
             FileNotFoundError
 
-    torch.save(combined_data, f'{root}_combined.pt')
+    torch.save(combined_data, f'{path.split('/')[-2]}_combined.pt')
 
 def get_combined_files(path):
     combined_files = []
@@ -38,6 +37,7 @@ def get_combined_files(path):
             if file.endswith('_combined.pt'):
                 # print(os.path.join(subdir, file))
                 combined_files.append(os.path.join(subdir, file))
+            
     
     # sort the files by name
     combined_files.sort()
