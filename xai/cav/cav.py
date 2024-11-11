@@ -40,7 +40,7 @@ def get_activations(model: TransformerDQN, input, layer: int):
     block = model.blocks[layer]
     block.register_forward_hook(get_activation(f"block_{layer}"))
 
-    activation = model(input)
+    activation, _ = model(input)
 
 
 def create_activation_dataset(dataset_path: str, model_path: str, block: int = 0):
