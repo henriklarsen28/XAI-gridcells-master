@@ -28,7 +28,7 @@ activations = {}
 
 def get_activation(name):
     def hook(module, input, output):
-        activations[name] = output.detach()
+        activations[name] = output[0].detach()
 
     return hook
 
