@@ -27,6 +27,7 @@ class Maze:
         orientation: int,
         observed_squares_map: set,
         wall_rays: set,
+        q_values: list = [],
     ):
         self.render_mode = render_mode
         self.map_file = map_file
@@ -64,7 +65,6 @@ class Maze:
         self.sprite_left = pygame.transform.flip(sprite, True, False)
         self.sprite_down = pygame.transform.rotate(self.sprite_left, 90)
         self.sprite_up = pygame.transform.rotate(sprite, 90)
-        
         
         self.clock = pygame.time.Clock()
         self.framerate = framerate
@@ -370,7 +370,6 @@ class Maze:
                 arrow_orientation = (orientation + 4 - 1) % 4
             elif action == 2:
                 arrow_orientation = (orientation + 1) % 4
-
             self.draw_triangle((position[0], position[1]), arrow_orientation, (255*(1-q_variance), 0, 0))
 
     def draw_frame(
@@ -398,7 +397,7 @@ class Maze:
         self.marked_2 = set()
         self.win.fill(grey)  # fill screen before drawing
         self.draw_maze(env_map)
-        self.draw_action_tail(last_ten_actions)
+        #self.draw_action_tail(last_ten_actions)
         #self.draw_rays(position, orientation, wall_rays)
         self.draw_marked_blocks(observed_squares_map)
 

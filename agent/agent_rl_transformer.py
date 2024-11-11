@@ -7,6 +7,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(project_root)
 
 
+import copy
 import math
 import random as rd
 from collections import deque
@@ -17,8 +18,9 @@ import numpy as np
 import pygame
 import torch
 import wandb
-from explain_network import generate_q_values
+from explain_network import ExplainNetwork, grad_sam
 from torch.nn.utils.rnn import pad_sequence
+from tqdm import tqdm
 
 from agent.dtqn_agent import DTQN_Agent
 from env import SunburstMazeDiscrete
@@ -30,13 +32,13 @@ wandb.login()
 # Define the CSV file path relative to the project root
 map_path_train = os.path.join(project_root, "env/map_v0/map_open_doors_horizontal.csv")
 map_path_train_2 = os.path.join(project_root, "env/map_v0/map_open_doors_vertical.csv")
-map_path_test = os.path.join(project_root, "env/map_v0/map_open_doors_horizontal.csv")
+map_path_test = os.path.join(project_root, "env/map_v0/map_open_doors_90_degrees.csv")
 
 
 device = torch.device("cpu")
-# device = torch.device(
-#   "mps" if torch.backends.mps.is_available() else "cpu"
-# )  # Was faster with cpu??? Loading between cpu and mps is slow maybe
+device = torch.device(
+    "mps" if torch.backends.mps.is_available() else "cpu"
+)  # Was faster with cpu??? Loading between cpu and mps is slow maybe
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Seed everything for reproducible results
@@ -97,9 +99,11 @@ def add_to_sequence(sequence: deque, state):
     sequence.append(state)
     return sequence
 
+
 def get_random_map():
     map_list = [map_path_train, map_path_train_2]
     return rd.choice(map_list)
+
 
 def salt_and_pepper_noise(matrix, prob=0.1):
 
@@ -204,6 +208,7 @@ class Model_TrainTest:
         run = wandb.init(project="sunburst-maze", config=self)
 
         gif_path = f"./gifs/{run.name}"
+
         # Create the nessessary directories
         if not os.path.exists(gif_path):
             os.makedirs(gif_path)
@@ -212,12 +217,13 @@ class Model_TrainTest:
         if not os.path.exists(model_path):
             os.makedirs(model_path)
 
+
         self.save_path = model_path + self.save_path
 
         # Training loop over episodes
         for episode in range(1, self.max_episodes + 1):
-            
-            '''train_env = get_random_map()
+
+            """train_env = get_random_map()
             self.env = SunburstMazeDiscrete(
                 maze_file=train_env,
                 render_mode=render_mode,
@@ -228,7 +234,7 @@ class Model_TrainTest:
                 fov=self.fov,
                 ray_length=self.ray_length,
                 number_of_rays=self.number_of_rays,
-            )'''
+            )"""
 
             state, _ = self.env.reset()
 
@@ -250,7 +256,7 @@ class Model_TrainTest:
                 tensor_sequence = padding_sequence(
                     tensor_sequence, self.sequnence_length
                 )
-                action = self.agent.select_action(tensor_sequence)
+                action, _ = self.agent.select_action(tensor_sequence)
                 next_state, reward, done, truncation, _ = self.env.step(action)
                 if render_mode == "rgb_array":
                     if episode % 100 == 0:
@@ -393,7 +399,7 @@ class Model_TrainTest:
                 tensor_sequence = padding_sequence(
                     tensor_sequence, self.sequnence_length
                 )
-                action = self.agent.select_action(tensor_sequence)
+                action, _ = self.agent.select_action(tensor_sequence)
                 next_state, reward, done, truncation, _ = self.env.step(action)
                 if render_mode == "rgb_array":
                     if episode % 100 == 0:
@@ -495,6 +501,12 @@ class Model_TrainTest:
         Reinforcement learning policy evaluation.
         """
 
+        map_path_without_ext = map_path_test.split("/")[-1].split(".")[0]
+        print(map_path_without_ext)
+        if not os.path.exists(f"./grad_sam/{map_path_without_ext}"):
+            os.makedirs(f"./grad_sam/{map_path_without_ext}")
+
+
         # Load the weights of the test_network
         self.agent.model.load_state_dict(
             torch.load(self.RL_load_path, map_location=device)
@@ -502,17 +514,31 @@ class Model_TrainTest:
         self.agent.model.eval()
 
         sequence = deque(maxlen=self.sequnence_length)
+
+        episode_list = []
+        step_dicti = {
+            "step": 0,
+            "position": None,
+            "tensors": None,
+            "is_stuck": False,
+            "orientation": None,
+        }
+        ex_network = ExplainNetwork()
+        q_val_list = ex_network.generate_q_values(env=self.env, model=self.agent.model)
+        self.env.q_values = q_val_list
         # Testing loop over episodes
-        for episode in range(1, max_episodes + 1):
+        for episode in tqdm(range(1, max_episodes + 1)):
             state, _ = self.env.reset(seed=seed)
             done = False
             truncation = False
             steps_done = 0
             total_reward = 0
 
-            while not done and not truncation:
-                state = state_preprocess(state, device)
+            steps_list = []
 
+            while not done and not truncation:
+
+                state = state_preprocess(state, device)
                 sequence = add_to_sequence(sequence, state)
                 tensor_sequence = torch.stack(list(sequence))
                 tensor_sequence = padding_sequence(
@@ -522,16 +548,56 @@ class Model_TrainTest:
                 # q_val_list = generate_q_values(env=self.env, model=self.agent.model)
                 # self.env.q_values = q_val_list
 
-                action = self.agent.select_action(tensor_sequence)
+                action, att_weights_list = self.agent.select_action(tensor_sequence)
                 next_state, reward, done, truncation, _ = self.env.step(action)
+
+                # Render rgb_array
+                frame = self.env.render_rgb_array()
+                # print("Hello", frame)
+
+                next_state_preprosessed = state_preprocess(next_state, device)
+                new_sequence = add_to_sequence(sequence, next_state_preprosessed)
+                tensor_new_sequence = torch.stack(list(new_sequence))
+                tensor_new_sequence = padding_sequence(
+                    tensor_new_sequence, self.sequnence_length
+                )
+
+                # block_1 = att_weights_list[0]  # Block 1
+                # block_2 = att_weights_list[1]  # Block 2
+                # block_3 = att_weights_list[2]  # Block 3
+
+                # block = block_3  # Block 2
+                # #gradients = self.agent.calculate_gradients(
+                # #    tensor_sequence, tensor_new_sequence, reward, block=2
+                # #)
+                # # print('gradients', gradients)
+                # step_dicti["step"] = steps_done
+                # step_dicti["position"] = self.env.position
+                # step_dicti["tensors"] = grad_sam(
+                #     block,
+                #     gradients,
+                #     block=2,
+                #     episode=episode,
+                #     step=steps_done,
+                #     rgb_array=None,
+                #     plot=False,
+                # )
+                # step_dicti["is_stuck"] = (
+                #     True if self.env.has_not_moved(self.env.position) else False
+                # )
+                # step_dicti["orientation"] = self.env.orientation
+
                 state = next_state
                 total_reward += reward
                 steps_done += 1
-                if self.env.has_not_moved(self.env.position):
+                """if self.env.has_not_moved(self.env.position):
                     # record stuck behavior
                     #stuck_behavior[episode] = self.env.position
                     print("Agent has not moved for 10 steps. Breaking the episode.")
-                    break  # Skip the episode if the agent is stuck in a loop
+                    break  # Skip the episode if the agent is stuck in a loop"""
+
+                step_dicti_copy = copy.deepcopy(step_dicti)
+                steps_list.append(step_dicti_copy)
 
             # Print log
             result = (
@@ -540,6 +606,20 @@ class Model_TrainTest:
                 f"Reward: {total_reward:.2f}, "
             )
             print(result)
+
+            steps_list_copy = copy.deepcopy(steps_list)
+            episode_list.append(steps_list_copy)
+
+            
+            
+            # save grad sam data every 100 episodes
+            # if episode % 10 == 0:
+            #     torch.save(
+            #         episode_list,
+            #         f"./grad_sam/{map_path_without_ext}/block_3/{config["model_name"]}_{episode}.pt",
+            #     )
+            #     print(f"Grad sam data saved up to episode {episode}.")
+            #     episode_list = []
 
         pygame.quit()  # close the rendering window
 
@@ -559,7 +639,7 @@ def get_num_states(map_path):
 if __name__ == "__main__":
     # Parameters:
 
-    train_mode = True
+    train_mode = False
 
     render = True
     render_mode = "human"
@@ -587,7 +667,8 @@ if __name__ == "__main__":
         "train_mode": train_mode,
         "render": render,
         "render_mode": render_mode,
-        "RL_load_path": f"./model/transformers/seq_len_45/model_visionary-hill-816",
+        "model_name": "visionary-hill-816",
+        "RL_load_path": f"./model/transformers/seq_len_45/youthful-firebrand-839/sunburst_maze_map_v0_5400.pth",
         "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 0.0001,
@@ -608,10 +689,11 @@ if __name__ == "__main__":
             "is_goal": 200 / 200,
             "hit_wall": -1 / 200,
             "has_not_moved": -0.2 / 200,
-            "new_square": 0.4 / 200,
+            "new_square": 2 / 200,
             "max_steps_reached": -0.5 / 200,
             "penalty_per_step": -0.01 / 200,
             "goal_in_sight": 0.5 / 200,
+            "number_of_squares_visible": 0.001 / 200
         },
         # TODO
         "observation_space": {
@@ -623,14 +705,14 @@ if __name__ == "__main__":
         },
         "save_interval": 100,
         "memory_capacity": 200_000,
-        "render_fps": 5,
+        "render_fps": 100,
         "num_states": num_states,
         "clip_grad_normalization": 3,
         "fov": math.pi / 1.5,
         "ray_length": 10,
         "number_of_rays": 100,
         "transformer": {
-            "sequence_length": 30,
+            "sequence_length": 45,
             "n_embd": 128,
             "n_head": 8,
             "n_layer": 3,
@@ -647,4 +729,5 @@ if __name__ == "__main__":
         # DRL.train_from_model()
     else:
         # Test
-        DRL.test(max_episodes=config["total_episodes"])
+        # DRL.test(max_episodes=config["total_episodes"])
+        DRL.test(max_episodes=100)

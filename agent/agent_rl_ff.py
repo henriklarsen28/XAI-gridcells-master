@@ -282,7 +282,7 @@ def get_num_states(map_path):
 if __name__ == "__main__":
     # Parameters:
 
-    train_mode = True
+    train_mode = False
 
     render = True
     render_mode = "human"
@@ -310,7 +310,7 @@ if __name__ == "__main__":
         "train_mode": train_mode,
         "render": render,
         "render_mode": render_mode,
-        "RL_load_path": f"./model/feed_forward/faithful-violet-691/sunburst_maze_{map_version}_4000.pth",
+        "RL_load_path": f"./model/feed_forward/sunburst_maze_{map_version}_8900.pth",
         "save_path": f"./model/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 0.0005,
@@ -332,7 +332,7 @@ if __name__ == "__main__":
             "has_not_moved": -0.001,
             "new_square": 0.001,
             "max_steps_reached": -0.001,
-            "penalty_step": -0.0001,
+            "penalty_per_step": -0.0001,
         },
         # TODO
         "observation_space": {

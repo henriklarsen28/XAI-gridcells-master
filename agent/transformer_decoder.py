@@ -27,7 +27,7 @@ class Head(nn.Module):
         v = self.value(x)
         out = wei @ v
 
-        return out
+        return out, wei
 
 
 class MultiHeadAttention(nn.Module):
@@ -40,9 +40,18 @@ class MultiHeadAttention(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
-        out = torch.cat([h(x) for h in self.heads], dim=-1)
+        head_output = []
+        att_weights = []
+
+        for h in self.heads:
+            out, wei = h(x)
+            head_output.append(out)
+            att_weights.append(wei)
+
+        out = torch.cat(head_output, dim=-1)
         out = self.dropout(self.proj(out))
-        return out
+
+        return out, att_weights
 
 
 class FeedFoward(nn.Module):
@@ -71,9 +80,10 @@ class Block(nn.Module):
         self.ln2 = nn.LayerNorm(n_embd)
 
     def forward(self, x):
-        x = x + self.sa(self.ln1(x))
+        sa_out, att_weights = self.sa(self.ln1(x))
+        x = x + sa_out
         x = x + self.ffwd(self.ln2(x))
-        return x
+        return x, att_weights
 
 
 class TransformerDQN(nn.Module):
@@ -119,16 +129,26 @@ class TransformerDQN(nn.Module):
         )
         x = tok_emb + pos_emb
         x = self.dropout(x)
-        x = self.blocks(x)
+
+        att_weights_list = []
+
+        for block in self.blocks:
+            x, att_weights = block(x)
+            att_weights_list.append(att_weights)
+
+        # x = self.blocks(x)
         x = self.ln_f(x)
 
         x = self.output(x.to(torch.float32))
 
-        return x
+        return x, att_weights_list
 
 #device = torch.device("mps" if torch.backends.mps.is_available() else "cpu") # Was faster with cpu??? Loading between cpu and mps is slow maybe
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#device = torch.device(
+#    "mps" if torch.backends.mps.is_available() else "cpu"
+#)  # Was faster with cpu??? Loading between cpu and mps is slow maybe
 print(f"Using device {device}")
 
 # ## Suggestion for hyperparameter values
