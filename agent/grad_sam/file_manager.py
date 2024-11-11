@@ -92,6 +92,36 @@ def cosine_similarity(tensor_list):
 
     return avg_sim
 
+def cosine_similarity_for_both_classes(pos_data, neg_data):
+    num_heads = len(pos_data[0])
+    sim = {head : [] for head in range(num_heads)}
+    # print(sim.keys())
+
+    cosi = torch.nn.CosineSimilarity(dim=0) 
+
+    for head, idx in enumerate(range(num_heads)):
+        pos_head_tensors = [tensor[head].flatten() for tensor in pos_data]
+        neg_head_tensors = [tensor[head].flatten() for tensor in neg_data]
+        # print(f'Head {head}, shape after flattening:', head_tensors[0].shape)  # Debugging shape
+    
+        #print(f'length of head tensor {idx}', len(head_tensors))
+        for i in range(len(pos_head_tensors)):
+            for j in range(len(neg_head_tensors)):
+                sim[head].append(cosi(pos_head_tensors[i], neg_head_tensors[j]))
+    
+    # print('head_tensor:', head_tensors[0])
+    # print(len(head_tensors))
+    # print(len(sim[0]))
+
+    # compute the average cosine similarity for each head
+    avg_sim = {head : sum(sim[head])/len(sim[head]) for head in sim.keys()}
+    # print('average similarity:', avg_sim)
+    # compute the overall average cosine similarity
+    # avg_sim = sum([avg_sim[head] for head in avg_sim.keys()])/len(avg_sim.keys())
+    # print('average overall similarity:', avg_sim)
+
+    return avg_sim
+
 def pre_process(data):
     pos_label, neg_label = split_on_label(data, label='is_stuck')
 
