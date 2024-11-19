@@ -17,7 +17,8 @@ import pygame
 import torch
 import wandb
 from dqn_agent import DQN_Agent
-from explain_network import generate_q_values
+import random as rd
+#from explain_network import generate_q_values
 from scipy.special import softmax
 
 from env import SunburstMazeDiscrete
@@ -48,6 +49,17 @@ torch.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False"""
 
+
+def salt_and_pepper_noise(matrix, prob=0.1):
+
+    goal_index = torch.where(matrix == 2)
+
+    noisy_matrix = matrix.clone()
+    noise = torch.rand(*matrix.shape)
+    noisy_matrix[noise < prob / 2] = 1  # Add "salt"
+    noisy_matrix[noise > 1 - prob / 2] = 0  # Add "pepper"
+    noisy_matrix[goal_index] = 2  # Ensure the goal is not obscured
+    return noisy_matrix
 
 class Model_TrainTest:
     def __init__(self, config):
@@ -129,14 +141,17 @@ class Model_TrainTest:
         total_steps = 0
         self.reward_history = []
         frames = []
-        wandb.init(project="sunburst-maze", config=self)
+        run = wandb.init(project="sunburst-maze", config=self)
 
         # Create the nessessary directories
         if not os.path.exists("./gifs"):
                     os.makedirs("./gifs")
+        model_path = f"./model/{run.name}"
+
+        if not os.path.exists(model_path):
+                    os.makedirs(model_path)
         
-        if not os.path.exists("./model"):
-                    os.makedirs("./model")
+        self.save_path = model_path + self.save_path
 
         # Training loop over episodes
         for episode in range(1, self.max_episodes + 1):
@@ -150,6 +165,9 @@ class Model_TrainTest:
 
 
             while not done and not truncation:
+
+                if rd.random() < self.observation_space["salt_and_pepper_noise"]:
+                    state = salt_and_pepper_noise(state, prob=0.1)
                 action, _= self.agent.select_action(state)
                 
                 next_state, reward, done, truncation, _ = self.env.step(action)
@@ -199,6 +217,13 @@ class Model_TrainTest:
                     gif_path=f"./gifs/{episode}.gif", frames=frames
                 )
                 frames.clear()
+
+            if episode < 100 and episode % 10 == 0:
+                 # -- based on interval
+                self.agent.save(self.save_path + "_" + f"{episode}" + ".pth")
+
+                print("\n~~~~~~Interval Save: Model saved.\n")
+                 
 
 
             # -- based on interval
@@ -282,7 +307,7 @@ def get_num_states(map_path):
 if __name__ == "__main__":
     # Parameters:
 
-    train_mode = False
+    train_mode = True
 
     render = True
     render_mode = "human"
@@ -311,12 +336,12 @@ if __name__ == "__main__":
         "render": render,
         "render_mode": render_mode,
         "RL_load_path": f"./model/feed_forward/sunburst_maze_{map_version}_8900.pth",
-        "save_path": f"./model/sunburst_maze_{map_version}",
+        "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 0.0005,
         "batch_size": 100,
         "optimizer": "adam",
-        "total_episodes": 100_000,
+        "total_episodes": 5_000,
         "epsilon": 1 if train_mode else -1,
         "epsilon_decay": 0.998,
         "epsilon_min": 0.1,
@@ -326,6 +351,7 @@ if __name__ == "__main__":
         "target_model_update": 10,  # hard update of the target model
         "max_steps_per_episode": 250,
         "random_start_position": True,
+        "random_goal_position": False,
         "rewards": {
             "is_goal": 1,
             "hit_wall": -0.001,
@@ -333,6 +359,7 @@ if __name__ == "__main__":
             "new_square": 0.001,
             "max_steps_reached": -0.001,
             "penalty_per_step": -0.0001,
+            "goal_in_sight": 0,
         },
         # TODO
         "observation_space": {
@@ -340,6 +367,7 @@ if __name__ == "__main__":
             "orientation": True,
             "steps_to_goal": False,
             "last_known_steps": 0,
+            "salt_and_pepper_noise": 0.2,
         },
         "save_interval": 100,
         "memory_capacity": 50_000,

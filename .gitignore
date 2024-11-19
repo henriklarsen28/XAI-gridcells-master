@@ -9,4 +9,5 @@ agent/gifs*
 agent/matrix.csv
 agent/attention_plot*
 xai/cav/dataset/*
+xai/cav/cav_ff/dataset/*
 agent/grad_sam/*

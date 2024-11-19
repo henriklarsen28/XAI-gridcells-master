@@ -251,6 +251,8 @@ class SunburstMazeDiscrete(gym.Env):
                     break
 
                 self.find_relative_position_in_matrix(x, y)
+
+                self.observed_squares_map.add((x,y))
             start_angle += self.step_angle
 
         matrix = self.calculate_fov_matrix()
@@ -274,7 +276,11 @@ class SunburstMazeDiscrete(gym.Env):
             marked_x = self.matrix_middle_index + x2 - x
             marked_y = y - y2
 
-        return marked_x, marked_y
+        # Add the goal square
+        if self.env_map[x2, y2] == 2:
+            self.goal_observed_square.add((marked_x, marked_y))
+
+        self.observed_squares.add((marked_x, marked_y))
 
     def calculate_fov_matrix(self):
         matrix = np.zeros(calculate_fov_matrix_size(self.ray_length, self.half_fov))
@@ -587,6 +593,7 @@ class SunburstMazeDiscrete(gym.Env):
                 self.observed_squares_map,
                 self.wall_rays,
                 [],
+                []
             )
         )
         self.render_maze.render_mode = self.render_mode

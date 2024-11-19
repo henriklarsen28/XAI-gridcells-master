@@ -9,7 +9,7 @@ class DQN_Network(nn.Module):
     This network consists of Fully Connected (FC) layers with ReLU activation functions.
     """
 
-    def __init__(self, num_actions, input_dim, device="cpu"):
+    def __init__(self, num_actions, input_dim, device):
         """
         Initialize the DQN network.
 

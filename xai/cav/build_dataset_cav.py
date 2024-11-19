@@ -20,6 +20,7 @@ from env import SunburstMazeDiscrete
 from utils.calculate_fov import calculate_fov_matrix_size
 from utils.sequence_preprocessing import add_to_sequence, padding_sequence
 from utils.state_preprocess import state_preprocess
+from utils.coordinates import larger_than_less_than
 
 device = torch.device("cpu")
 fov_config = {
@@ -36,6 +37,7 @@ num_states = matrix_size[0] * matrix_size[1]
 config = {
     "max_steps_per_episode": 250,
     "random_start_position": True,
+    "random_goal_position": True,
     "rewards": {
         "is_goal": 200 / 200,
         "hit_wall": -0.01 / 200,
@@ -92,9 +94,9 @@ def positive_looking_at_wall(sequence: deque, legal_actions: list, action_sequen
     if len(legal_actions) == 2 and last_action == 0:
         # Save the observation sequence to the positive dataset
         #print("Positive stuck in wall")
-        return sequence
+        return True
 
-    return None
+    return False
 
 
 def positive_rotating_stuck(
@@ -112,8 +114,33 @@ def positive_rotating_stuck(
         last_12_actions = set(action_sequence[-12:])
         if (1 in last_12_actions or 2 in last_12_actions) and 0 not in last_12_actions:
             #print("Positive rotating stuck")
-            return sequence
-    return None
+            return True
+    return False
+
+def positive_goal_in_sight(observation_sequence: deque):
+    # Check if there is a goal in sight
+    # contains a value of 2
+    observation = observation_sequence[-1]
+
+    if 2 in observation:
+        return True
+    
+    return False
+
+def positive_inside_box(observation_sequence: deque, position: tuple):
+    # Coordinates of the box
+    coordinates = [(4,5), (4,15), (10,5), (10,15)]
+
+    # Check if the agent is inside the box
+    if larger_than_less_than(position[0], coordinates[0][0], coordinates[2][0]) and larger_than_less_than(position[1], coordinates[0][1], coordinates[1][1]):
+        print("Positive inside box")
+        print(position)
+        return True
+    
+    return False
+
+
+
 
 
 def build_stuck_in_wall_dataset():
@@ -135,6 +162,7 @@ def build_csv_dataset():
         maze_file=env_path,
         render_mode="human",
         random_start_position=config["random_start_position"],
+        random_goal_position=config["random_goal_position"],
         rewards=config["rewards"],
         observation_space=config["observation_space"],
         fov=config["fov"],
@@ -169,7 +197,13 @@ def build_csv_dataset():
 
     positive_dataset_rotating = deque()
     negative_dataset_rotating = deque()
-    
+
+    positive_dataset_goal = deque()
+    negative_dataset_goal = deque()
+
+    positive_dataset_inside_box = deque()
+    negative_dataset_inside_box = deque()
+
 
     for sequence in collected_sequences:
         observation_sequence, legal_actions, position_sequence, action_sequence = sequence
@@ -177,37 +211,69 @@ def build_csv_dataset():
         if rd.random() > 0.4:
             # Check if the agent is stuck in a wall
             positive_wall = positive_looking_at_wall(observation_sequence, legal_actions, action_sequence)
-            if positive_wall is not None:
-                positive_dataset_wall.append(positive_wall)
+            if positive_wall:
+                positive_dataset_wall.append(observation_sequence)
             else:
                 negative_dataset_wall.append(observation_sequence)
 
             positive_stuck = positive_rotating_stuck(observation_sequence, action_sequence, position_sequence)
-            if positive_stuck is not None:
-                positive_dataset_rotating.append(positive_stuck)
+            if positive_stuck:
+                positive_dataset_rotating.append(observation_sequence)
             else:
                 negative_dataset_rotating.append(observation_sequence)
+            positive_goal = positive_goal_in_sight(observation_sequence)
+            if positive_goal:
+                positive_dataset_goal.append(observation_sequence)
+            else:
+                negative_dataset_goal.append(observation_sequence)
+
+            positive_box = positive_inside_box(observation_sequence, position_sequence[-1])
+            if positive_box:
+                positive_dataset_inside_box.append(observation_sequence)
+            else:
+                negative_dataset_inside_box.append(observation_sequence)
+
+            
+
 
     # Shuffle the datasets
     rd.shuffle(negative_dataset_wall)
     rd.shuffle(negative_dataset_rotating)
+    rd.shuffle(negative_dataset_goal)
+    rd.shuffle(positive_dataset_inside_box)
 
     # Trim the negative datasets
     
     negative_dataset_wall = list(negative_dataset_wall)
     negative_dataset_rotating = list(negative_dataset_rotating)
+    negative_dataset_goal = list(negative_dataset_goal)
+    negative_dataset_inside_box = list(negative_dataset_inside_box)
 
-    negative_dataset_wall = negative_dataset_wall[:len(positive_dataset_wall)]
-    negative_dataset_rotating = negative_dataset_rotating[:len(positive_dataset_rotating)]
+
+    dataset_length = max(min(len(positive_dataset_goal), 1500),1500)
+
+    negative_dataset_wall = negative_dataset_wall[:dataset_length]
+    negative_dataset_rotating = negative_dataset_rotating[:dataset_length]
+    negative_dataset_goal = negative_dataset_goal[:dataset_length]
+    negative_dataset_inside_box = negative_dataset_inside_box[:dataset_length]
 
     # Save the datasets to csv files
     save_to_csv(positive_dataset_wall, "positive_wall.csv")
     save_to_csv(negative_dataset_wall, "negative_wall.csv")
+
     save_to_csv(positive_dataset_rotating, "positive_rotating.csv")
     save_to_csv(negative_dataset_rotating, "negative_rotating.csv")
 
+    save_to_csv(positive_dataset_goal, "positive_goal.csv")
+    save_to_csv(negative_dataset_goal, "negative_goal.csv")
+
+    save_to_csv(positive_dataset_inside_box, "positive_inside_box.csv")
+    save_to_csv(negative_dataset_inside_box, "negative_inside_box.csv")
+
     print("Wall: ", len(positive_dataset_wall))
     print("Rotating: ", len(positive_dataset_rotating))
+    print("Goal: ", len(positive_dataset_goal))
+    print("Inside box: ", len(positive_dataset_inside_box))
 
 
 def run_agent(env: SunburstMazeDiscrete, agent: DTQN_Agent):
