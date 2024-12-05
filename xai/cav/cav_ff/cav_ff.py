@@ -43,6 +43,7 @@ episode_numbers = [
     "4000",
     "4500",
     "5000",
+    "5200"
 ]
 
 
@@ -335,7 +336,7 @@ class CAV:
 
 def main():
     cav = CAV()
-    model_load_path = "../../../agent/model/feed_forward/swept-darkness-969"
+    model_load_path = "../../../agent/model/feed_forward/frosty-pine-972"
     # positive_file = "dataset/positive_wall_activations.pt"
     # negative_file = "dataset/negative_wall_activations.pt"
     cav.calculate_cav("goal", model_load_path)

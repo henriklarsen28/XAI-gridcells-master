@@ -1,7 +1,7 @@
 
 import torch
 
-cavs = torch.load("./dataset/activations/negative_inside_box_embedding_episode_3500.pt")
+cavs = torch.load("./dataset/activations/positive_rotating_activations_1_episode_2500.pt")
 
 
-print(cavs)
+print(cavs[0].shape)

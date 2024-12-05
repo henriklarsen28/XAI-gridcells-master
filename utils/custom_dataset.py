@@ -18,6 +18,13 @@ class CAV_dataset(Dataset):
     def __getitem__(self, idx):
         return self.data[idx], self.labels[idx]
     
+    def get_tensors(self):
+        return self.data
+    
     def concat(self, other):
-        self.data += other.data
+        self.data = torch.cat((self.data, other.data), 0)
+
         self.labels += other.labels
+
+        #self.data += other.data
+        #self.labels += other.labels

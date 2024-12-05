@@ -690,7 +690,7 @@ if __name__ == "__main__":
         },
         "save_interval": 100,
         "memory_capacity": 100_000,
-        "render_fps": 100,
+        "render_fps": 5,
         "num_states": num_states,
         "clip_grad_normalization": 3,
         "fov": math.pi / 1.5,

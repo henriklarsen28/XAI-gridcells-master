@@ -106,6 +106,47 @@ class ExplainNetwork:
                 q_val_list_to_position.append(dicti)
 
         return q_val_list_to_position
+    
+
+class ExplainNetworkFF:
+    def __init__(self, RL_load_path=""):
+        self.RL_load_path = RL_load_path
+
+    def generate_q_values(self, env: SunburstMazeDiscrete, model):
+
+        orientation_range = [0, 1, 2, 3]  # north, east, south, west
+
+        x_range = env.initial_map.shape[1]
+        y_range = env.initial_map.shape[0]
+
+        q_val_list_to_position = []
+
+        for x in range(x_range):
+            for y in range(y_range):
+                if env.env_map[y, x] == 1:
+                    continue
+                env.position = (y, x)
+                q_list = []
+                q_value_list = np.zeros(4)
+                for orientation in orientation_range:
+                    env.orientation = orientation
+                    state = env._get_observation()
+                    tensor_state = state_preprocess(state, device=device)
+
+                    q_values = model(tensor_state)
+                    q_list.append(q_values)
+                for orientation in orientation_range:
+                    forward = q_list[orientation][0]
+                    left = q_list[(orientation + 1) % 4][1] / 2
+                    right = q_list[orientation - 1][2] / 2
+                    q_value_sum = forward + left + right
+                    q_value_list[orientation] = q_value_sum
+
+                q_value_list = softmax(q_value_list)
+                dicti = {(y, x): q_value_list}
+                q_val_list_to_position.append(dicti)
+
+        return q_val_list_to_position
 
     # Grad-SAM
 
