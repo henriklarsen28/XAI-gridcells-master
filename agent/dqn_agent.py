@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from replay_memory import ReplayMemory
+from .replay_memory import ReplayMemory
 from torch import nn, optim
 
 from agent.neural_network_ff_torch import DQN_Network

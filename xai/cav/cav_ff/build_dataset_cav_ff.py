@@ -23,7 +23,7 @@ from utils.state_preprocess import state_preprocess
 device = torch.device("cpu")
 fov_config = {
     "fov": math.pi / 1.5,
-    "ray_length": 20,
+    "ray_length": 8,
     "number_of_rays": 100,
 }
 
@@ -62,7 +62,7 @@ config = {
         "num_states": num_states,
         "clip_grad_normalization": 3,
         "fov": math.pi / 1.5,
-        "ray_length": 20,
+        "ray_length": 8,
         "number_of_rays": 100,
         "transformer": {
             "sequence_length": 45,
@@ -179,8 +179,8 @@ def positive_goal_in_sight(observation):
 
 def build_next_to_wall_dataset():
     # Load early agent data
-    env_path = "../../../env/map_v0/map_closed_doors.csv"
-    model_load_path = "../../../agent/model/feed_forward/swept-darkness-969/sunburst_maze_map_v0_100.pth"
+    env_path = "../../../env/map_v0/map_open_doors_horizontal.csv"
+    model_load_path = "../../../agent/model/feed_forward/serene-voice-977/sunburst_maze_map_v0_100.pth"
 
     epsilon = 0.2
 
@@ -249,8 +249,8 @@ def build_next_to_wall_dataset():
 
 def build_goal_dataset():
     # Load early agent data
-    env_path = "../../../env/map_v0/map_closed_doors.csv"
-    model_load_path = "../../../agent/model/feed_forward/swept-darkness-969/sunburst_maze_map_v0_100.pth"
+    env_path = "../../../env/map_v0/map_open_doors_horizontal.csv"
+    model_load_path = "../../../agent/model/feed_forward/serene-voice-977/sunburst_maze_map_v0_100.pth"
 
     epsilon = 0.2
 
@@ -321,8 +321,8 @@ def build_goal_dataset():
 
 def build_csv_dataset():
     # Load early agent data
-    env_path = "../../../env/map_v0/map_closed_doors.csv"
-    model_load_path = "../../../agent/model/feed_forward/swept-darkness-969/sunburst_maze_map_v0_100.pth"
+    env_path = "../../../env/map_v0/map_open_doors_horizontal.csv"
+    model_load_path = "../../../agent/model/feed_forward/serene-voice-977/sunburst_maze_map_v0_100.pth"
 
     epsilon = 0.2
 
@@ -417,12 +417,12 @@ def run_agent(env: SunburstMazeDiscrete, agent: DQN_Agent):
 
         # Load new model when the episode is larger than 60
         if episode == 60:
-            model_load_path = "../../../agent/model/feed_forward/swept-darkness-969/sunburst_maze_map_v0_1000.pth"
+            model_load_path = "../../../agent/model/feed_forward/serene-voice-977/sunburst_maze_map_v0_1000.pth"
             agent.model.load_state_dict(torch.load(model_load_path, map_location=device))
             agent.model.eval()
 
         if episode == 90:
-            model_load_path = "../../../agent/model/feed_forward/swept-darkness-969/sunburst_maze_map_v0_3900.pth"
+            model_load_path = "../../../agent/model/feed_forward/serene-voice-977/sunburst_maze_map_v0_3900.pth"
             agent.model.load_state_dict(torch.load(model_load_path, map_location=device))
             agent.model.eval()
 
@@ -463,8 +463,8 @@ def run_agent(env: SunburstMazeDiscrete, agent: DQN_Agent):
 
 
 def main():
-    # build_csv_dataset()
-    #build_next_to_wall_dataset()
+    #build_csv_dataset()
+    build_next_to_wall_dataset()
     build_goal_dataset()
 
 

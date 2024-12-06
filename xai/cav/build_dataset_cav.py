@@ -1,12 +1,12 @@
+import ast
+import copy
 import math
 import os
+import random as rd
 import sys
 from collections import deque
-import copy
-import pandas as pd
-import random as rd
-import ast
 
+import pandas as pd
 import torch
 
 # get the path to the project root directory and add it to sys.path
@@ -15,13 +15,12 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.append(project_root)
 
 from agent import DTQN_Agent
-
 from agent.replay_memory import ReplayMemory
 from env import SunburstMazeDiscrete
 from utils.calculate_fov import calculate_fov_matrix_size
+from utils.coordinates import larger_than_less_than
 from utils.sequence_preprocessing import add_to_sequence, padding_sequence
 from utils.state_preprocess import state_preprocess
-from utils.coordinates import larger_than_less_than
 
 device = torch.device("cpu")
 fov_config = {
@@ -47,8 +46,8 @@ config = {
         "max_steps_reached": -0.5 / 200,
         "penalty_per_step": -0.01 / 200,
         "goal_in_sight": 0.5 / 200,
-        "number_of_squares_visible": 0.001 / 200
-        },
+        "number_of_squares_visible": 0.001 / 200,
+    },
     # TODO
     "observation_space": {
         "position": True,
@@ -56,22 +55,22 @@ config = {
         "steps_to_goal": False,
         "last_known_steps": 0,
         "salt_and_pepper_noise": 0.2,
-        },
+    },
     "save_interval": 100,
-        "memory_capacity": 200_000,
-        "render_fps": 100,
-        "num_states": num_states,
-        "clip_grad_normalization": 3,
-        "fov": math.pi / 1.5,
-        "ray_length": 8,
-        "number_of_rays": 100,
-        "transformer": {
-            "sequence_length": 45,
-            "n_embd": 128,
-            "n_head": 8,
-            "n_layer": 3,
-            "dropout": 0.3,
-            "state_dim": num_states,
+    "memory_capacity": 200_000,
+    "render_fps": 100,
+    "num_states": num_states,
+    "clip_grad_normalization": 3,
+    "fov": math.pi / 1.5,
+    "ray_length": 8,
+    "number_of_rays": 100,
+    "transformer": {
+        "sequence_length": 45,
+        "n_embd": 128,
+        "n_head": 8,
+        "n_layer": 3,
+        "dropout": 0.3,
+        "state_dim": num_states,
         "decouple_positional_embedding": False,
     },
 }
@@ -82,19 +81,22 @@ def save_to_csv(dataset: deque, file_name: str):
     dataset = [[state.tolist() for state in sequence] for sequence in dataset]
     # Convert from list of tensors to list of numpy arrays
     df = pd.DataFrame(dataset)
-    
+
     df.to_csv(f"./dataset/{file_name}", index=False)
 
-def positive_looking_at_wall(sequence: deque, legal_actions: list, action_sequence: deque):
+
+def positive_looking_at_wall(
+    sequence: deque, legal_actions: list, action_sequence: deque
+):
     # Look at the last 2 states, if the agents last states are the same and the agent is not allowed to move forward the agent is stuck in a wall
     # The sequence should be added to the CAV positive dataset
 
     last_action = action_sequence[-1]
 
-    #print("Last action: ", last_action)
+    # print("Last action: ", last_action)
     if len(legal_actions) == 2 and last_action == 0:
         # Save the observation sequence to the positive dataset
-        #print("Positive stuck in wall")
+        # print("Positive stuck in wall")
         return True
 
     return False
@@ -114,9 +116,10 @@ def positive_rotating_stuck(
         action_sequence = list(action_sequence)
         last_12_actions = set(action_sequence[-12:])
         if (1 in last_12_actions or 2 in last_12_actions) and 0 not in last_12_actions:
-            #print("Positive rotating stuck")
+            # print("Positive rotating stuck")
             return True
     return False
+
 
 def positive_goal_in_sight(observation_sequence: deque):
     # Check if there is a goal in sight
@@ -125,23 +128,23 @@ def positive_goal_in_sight(observation_sequence: deque):
 
     if 2 in observation:
         return True
-    
+
     return False
+
 
 def positive_inside_box(observation_sequence: deque, position: tuple):
     # Coordinates of the box
-    coordinates = [(4,5), (4,15), (10,5), (10,15)]
+    coordinates = [(4, 5), (4, 15), (10, 5), (10, 15)]
 
     # Check if the agent is inside the box
-    if larger_than_less_than(position[0], coordinates[0][0], coordinates[2][0]) and larger_than_less_than(position[1], coordinates[0][1], coordinates[1][1]):
+    if larger_than_less_than(
+        position[0], coordinates[0][0], coordinates[2][0]
+    ) and larger_than_less_than(position[1], coordinates[0][1], coordinates[1][1]):
         print("Positive inside box")
         print(position)
         return True
-    
+
     return False
-
-
-
 
 
 def build_stuck_in_wall_dataset():
@@ -192,7 +195,7 @@ def build_csv_dataset():
 
     # Containing a tuple of observation sequence, legal_actions, position sequence, action sequence
     collected_sequences = run_agent(env, agent)
-    #print("Length of collected sequences: ", len(collected_sequences))
+    # print("Length of collected sequences: ", len(collected_sequences))
     positive_dataset_wall = deque()
     negative_dataset_wall = deque()
 
@@ -205,19 +208,24 @@ def build_csv_dataset():
     positive_dataset_inside_box = deque()
     negative_dataset_inside_box = deque()
 
-
     for sequence in collected_sequences:
-        observation_sequence, legal_actions, position_sequence, action_sequence = sequence
-        #print(len(observation_sequence))
+        observation_sequence, legal_actions, position_sequence, action_sequence = (
+            sequence
+        )
+        # print(len(observation_sequence))
         if rd.random() > 0.4:
             # Check if the agent is stuck in a wall
-            positive_wall = positive_looking_at_wall(observation_sequence, legal_actions, action_sequence)
+            positive_wall = positive_looking_at_wall(
+                observation_sequence, legal_actions, action_sequence
+            )
             if positive_wall:
                 positive_dataset_wall.append(observation_sequence)
             else:
                 negative_dataset_wall.append(observation_sequence)
 
-            positive_stuck = positive_rotating_stuck(observation_sequence, action_sequence, position_sequence)
+            positive_stuck = positive_rotating_stuck(
+                observation_sequence, action_sequence, position_sequence
+            )
             if positive_stuck:
                 positive_dataset_rotating.append(observation_sequence)
             else:
@@ -228,14 +236,13 @@ def build_csv_dataset():
             else:
                 negative_dataset_goal.append(observation_sequence)
 
-            positive_box = positive_inside_box(observation_sequence, position_sequence[-1])
+            positive_box = positive_inside_box(
+                observation_sequence, position_sequence[-1]
+            )
             if positive_box:
                 positive_dataset_inside_box.append(observation_sequence)
             else:
                 negative_dataset_inside_box.append(observation_sequence)
-
-            
-
 
     # Shuffle the datasets
     rd.shuffle(negative_dataset_wall)
@@ -244,14 +251,13 @@ def build_csv_dataset():
     rd.shuffle(positive_dataset_inside_box)
 
     # Trim the negative datasets
-    
+
     negative_dataset_wall = list(negative_dataset_wall)
     negative_dataset_rotating = list(negative_dataset_rotating)
     negative_dataset_goal = list(negative_dataset_goal)
     negative_dataset_inside_box = list(negative_dataset_inside_box)
 
-
-    dataset_length = max(min(len(positive_dataset_goal), 1500),1500)
+    dataset_length = max(min(len(positive_dataset_goal), 1500), 1500)
 
     negative_dataset_wall = negative_dataset_wall[:dataset_length]
     negative_dataset_rotating = negative_dataset_rotating[:dataset_length]
@@ -276,12 +282,14 @@ def build_csv_dataset():
     print("Goal: ", len(positive_dataset_goal))
     print("Inside box: ", len(positive_dataset_inside_box))
 
-def split_dataset_into_train_test(dataset: deque, ratio: float = 0.8, concept: str = ""):
+
+def split_dataset_into_train_test(
+    dataset: deque, ratio: float = 0.8, concept: str = ""
+):
     # Split the dataset into a training and test set
     train_size = int(len(dataset) * ratio)
     train_dataset = dataset[:train_size]
     test_dataset = dataset[train_size:]
-
 
     train = [
         [torch.tensor(ast.literal_eval(state)) for state in states]
@@ -296,6 +304,7 @@ def split_dataset_into_train_test(dataset: deque, ratio: float = 0.8, concept: s
     save_to_csv(test, f"{concept}_test.csv")
 
     return train_dataset, test_dataset
+
 
 def run_agent(env: SunburstMazeDiscrete, agent: DTQN_Agent):
 
@@ -313,12 +322,16 @@ def run_agent(env: SunburstMazeDiscrete, agent: DTQN_Agent):
         # Load new model when the episode is larger than 60
         if episode == 60:
             model_load_path = "../../agent/model/transformers/model_vivid-firebrand-872/sunburst_maze_map_v0_2500.pth"
-            agent.model.load_state_dict(torch.load(model_load_path, map_location=device))
+            agent.model.load_state_dict(
+                torch.load(model_load_path, map_location=device)
+            )
             agent.model.eval()
 
         if episode == 90:
             model_load_path = "../../agent/model/transformers/model_vivid-firebrand-872/sunburst_maze_map_v0_5200.pth"
-            agent.model.load_state_dict(torch.load(model_load_path, map_location=device))
+            agent.model.load_state_dict(
+                torch.load(model_load_path, map_location=device)
+            )
             agent.model.eval()
 
         state, _ = env.reset(seed=42)
@@ -328,12 +341,12 @@ def run_agent(env: SunburstMazeDiscrete, agent: DTQN_Agent):
         total_reward = 0
         while not done and not truncation:
             state = state_preprocess(state, device)
-            
+
             observation_sequence = add_to_sequence(observation_sequence, state, device)
             position_sequence.append(env.position)
             tensor_sequence = torch.stack(list(observation_sequence))
-            #tensor_sequence = padding_sequence(tensor_sequence, sequence_length, device)
-            #print(tensor_sequence.shape)
+            # tensor_sequence = padding_sequence(tensor_sequence, sequence_length, device)
+            # print(tensor_sequence.shape)
             # q_val_list = generate_q_values(env=self.env, model=self.agent.model)
             # self.env.q_values = q_val_list
 
@@ -348,9 +361,13 @@ def run_agent(env: SunburstMazeDiscrete, agent: DTQN_Agent):
             # Make sure the sequence length is filled up
             if len(observation_sequence) >= sequence_length:
                 collected_sequences.append(
-                    (copy.deepcopy(observation_sequence), copy.deepcopy(legal_actions), copy.deepcopy(position_sequence), copy.deepcopy(action_sequence))
+                    (
+                        copy.deepcopy(observation_sequence),
+                        copy.deepcopy(legal_actions),
+                        copy.deepcopy(position_sequence),
+                        copy.deepcopy(action_sequence),
+                    )
                 )
-
 
         # Print log
         result = (
@@ -363,9 +380,8 @@ def run_agent(env: SunburstMazeDiscrete, agent: DTQN_Agent):
     return copy.deepcopy(collected_sequences)
 
 
-
 def main():
-    #build_csv_dataset()
+    # build_csv_dataset()
 
     # Load the datasets
     positive_wall = pd.read_csv("./dataset/positive_wall.csv")
@@ -376,20 +392,29 @@ def main():
 
     positive_goal = pd.read_csv("./dataset/positive_goal.csv")
     negative_goal = pd.read_csv("./dataset/negative_goal.csv")
+
+    random = pd.concat([negative_goal, positive_goal, negative_rotating, positive_rotating, negative_wall, positive_wall])
+    random = random.sample(frac=1, random_state=42).reset_index(drop=True)
+
+    random = random.sample(4000, random_state=42)
+    # Split into positive and negative
+    half = int(len(random) / 2)
+    positive_random = random.iloc[:half]
+    negative_random = random.iloc[half:]
+
+    split_dataset_into_train_test(positive_random, ratio=0.8, concept="random_positive")
+    split_dataset_into_train_test(negative_random, ratio=0.8, concept="random_negative")
+
     # Split the datasets into training and test sets
 
-    split_dataset_into_train_test(positive_wall, ratio=0.8, concept="wall_positive")
-    split_dataset_into_train_test(negative_wall, ratio=0.8, concept="wall_negative")
+    # split_dataset_into_train_test(positive_wall, ratio=0.8, concept="wall_positive")
+    # split_dataset_into_train_test(negative_wall, ratio=0.8, concept="wall_negative")
 
-    split_dataset_into_train_test(positive_rotating, ratio=0.8, concept="rotating_positive")
-    split_dataset_into_train_test(negative_rotating, ratio=0.8, concept="rotating_negative")
+    # split_dataset_into_train_test(positive_rotating, ratio=0.8, concept="rotating_positive")
+    # split_dataset_into_train_test(negative_rotating, ratio=0.8, concept="rotating_negative")
 
-    split_dataset_into_train_test(positive_goal, ratio=0.8, concept="goal_positive")
-    split_dataset_into_train_test(negative_goal, ratio=0.8, concept="goal_negative")
-    
-
-
-
+    # split_dataset_into_train_test(positive_goal, ratio=0.8, concept="goal_positive")
+    # split_dataset_into_train_test(negative_goal, ratio=0.8, concept="goal_negative")
 
 
 if __name__ == "__main__":

@@ -72,7 +72,7 @@ def create_activation_dataset(dataset_path: str, model_path: str, layer: int = 0
 
     fov_config = {
         "fov": math.pi / 1.5,
-        "ray_length": 20,
+        "ray_length": 8,
         "number_of_rays": 100,
     }
     half_fov = fov_config["fov"] / 2
@@ -339,8 +339,8 @@ def main():
     model_load_path = "../../../agent/model/feed_forward/serene-voice-977"
     # positive_file = "dataset/positive_wall_activations.pt"
     # negative_file = "dataset/negative_wall_activations.pt"
-    cav.calculate_cav("goal", model_load_path)
-    cav.plot_cav("goal")
+    cav.calculate_cav("next_wall", model_load_path)
+    cav.plot_cav("next_wall")
 
     # cav.calculate_random_cav("rotating", model_load_path)
     # cav.plot_cav("random")

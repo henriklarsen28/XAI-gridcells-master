@@ -22,9 +22,5 @@ class CAV_dataset(Dataset):
         return self.data
     
     def concat(self, other):
-        self.data = torch.cat((self.data, other.data), 0)
-
+        self.data += other.data
         self.labels += other.labels
-
-        #self.data += other.data
-        #self.labels += other.labels

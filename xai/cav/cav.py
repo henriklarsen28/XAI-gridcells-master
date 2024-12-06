@@ -68,6 +68,7 @@ def get_activation(name):
             "input": input[0],
             "output": output,
         }
+
     return hook
 
 
@@ -160,14 +161,15 @@ def create_activation_dataset(
     ]
 
     state_tensors = torch.stack(
-        [torch.stack(sequence).float().to(device).requires_grad_(requires_grad) for sequence in sequences]
+        [
+            torch.stack(sequence).float().to(device).requires_grad_(requires_grad)
+            for sequence in sequences
+        ]
     ).requires_grad_(requires_grad)
     print(state_tensors.shape)
     if embedding:
         q_val = get_activations(model, state_tensors, embedding=True)
-        activation = (
-            activations["embedding"]["output"]
-        )
+        activation = activations["embedding"]["output"]
         # print("Hello", activation.shape)
         # activation_list.append(activation.clone().requires_grad_(requires_grad))
         # q_val_list.append(q_val.clone().detach())
@@ -178,16 +180,13 @@ def create_activation_dataset(
         activation = activations[block_name]["output"][0]
         print(activation.shape)
 
-
-        
-        
         # print("Hello", activation.shape)
         # activation_list.append(activation.requires_grad_(requires_grad))
         # q_val_list.append(q_val.clone())
 
     # torch.save(activation_list, activation_file)
-    #q_val_list_file = f"dataset/q_val_{dataset_path.split('/')[-1].split('.')[0]}_episode_{episode_number}.pt"
-    #if not os.path.exists(q_val_list_file):
+    # q_val_list_file = f"dataset/q_val_{dataset_path.split('/')[-1].split('.')[0]}_episode_{episode_number}.pt"
+    # if not os.path.exists(q_val_list_file):
     #    pass
     #    # torch.save(q_val_list, q_val_list_file)
 
@@ -208,30 +207,54 @@ class CAV:
         self.cav_list = []
         self.tcav_list = []
 
-    def load_dataset(self, positive_file: str, negative_file: str):
-        positive_dataset = torch.load(positive_file)
-        negative_dataset = torch.load(negative_file)
+    def read_dataset(self, concept, model_path, block, embedding, sensitivity):
 
-        print(len(positive_dataset))
-        # Label the datasets
-        positive_labels = [1] * len(positive_dataset)
-        negative_labels = [0] * len(negative_dataset)
-        dataset = CAV_dataset(positive_dataset, positive_labels)
-        negative = CAV_dataset(negative_dataset, negative_labels)
+        positive, q_values_positive = create_activation_dataset(
+            f"./dataset/{concept}_positive_train.csv",
+            model_path,
+            block,
+            embedding=embedding,
+            requires_grad=sensitivity,
+        )
+        assert isinstance(positive, torch.Tensor), "Positive must be a tensor"
 
-        dataset.concat(negative)
+        negative, q_values_negative = create_activation_dataset(
+            f"./dataset/{concept}_negative_train.csv",
+            model_path,
+            block,
+            embedding=embedding,
+            requires_grad=sensitivity,
+        )
+        assert isinstance(negative, torch.Tensor), "Negative must be a tensor"
 
-        return dataset
+        positive_test, q_values_positive_test = create_activation_dataset(
+            f"./dataset/{concept}_positive_test.csv",
+            model_path,
+            block,
+            embedding=embedding,
+            requires_grad=sensitivity,
+        )
+        assert isinstance(positive_test, torch.Tensor), "Positive_test must be a tensor"
 
-    def create_dataset(self, positive: torch.tensor, negative: torch.tensor):
-        positive_labels = [1] * len(positive)
-        negative_labels = [0] * len(negative)
-        dataset = CAV_dataset(positive, positive_labels)
-        negative = CAV_dataset(negative, negative_labels)
+        negative_test, q_values_negative_test = create_activation_dataset(
+            f"./dataset/{concept}_negative_test.csv",
+            model_path,
+            block,
+            embedding=embedding,
+            requires_grad=sensitivity,
+        )
+        assert isinstance(negative, torch.Tensor), "Negative_test must be a tensor"
 
-        dataset.concat(negative)
-
-        return dataset
+        return (
+            positive,
+            negative,
+            positive_test,
+            negative_test,
+            q_values_positive,
+            q_values_negative,
+            q_values_positive_test,
+            q_values_negative_test,
+        )
 
     def cav_model(self, positive_train, negative_train, positive_test, negative_test):
 
@@ -247,24 +270,27 @@ class CAV:
         positive_test_clone = positive_test.clone()
         negative_test_clone = negative_test.clone()
 
-
+        # TODO: Refactor this shit
         positive_train_np = [
-            positive_train_clone[i].detach().flatten().numpy() for i in range(len(positive_train))
+            positive_train_clone[i].detach().flatten().numpy()
+            for i in range(len(positive_train))
         ]
         negative_train_np = [
-            negative_train_clone[i].detach().flatten().numpy() for i in range(len(negative_train))
+            negative_train_clone[i].detach().flatten().numpy()
+            for i in range(len(negative_train))
         ]
         train_data = np.concatenate((positive_train_np, negative_train_np), axis=0)
         train_labels = np.concatenate(
             (positive_train_labels, negative_train_labels), axis=0
         )
 
-
         positive_test_np = [
-            positive_test_clone[i].detach().numpy().flatten() for i in range(len(positive_test))
+            positive_test_clone[i].detach().numpy().flatten()
+            for i in range(len(positive_test))
         ]
         negative_test_np = [
-            negative_test_clone[i].detach().numpy().flatten() for i in range(len(negative_test))
+            negative_test_clone[i].detach().numpy().flatten()
+            for i in range(len(negative_test))
         ]
         test_data = np.concatenate((positive_test_np, negative_test_np), axis=0)
         test_labels = np.concatenate(
@@ -273,8 +299,6 @@ class CAV:
         # Train the model
         self.model = LogisticRegression()
 
-        print(negative_train_np[0].shape, positive_train_np[0].shape)
-        print(train_data.shape)
         self.model.fit(train_data, train_labels)
 
         # Test the model
@@ -285,7 +309,6 @@ class CAV:
 
     def calculate_single_cav(
         self,
-        concept: str,
         block: int,
         episode_number: str,
         positive_train,
@@ -313,81 +336,18 @@ class CAV:
             if episode_number not in episode_numbers:
                 continue
 
-            # Embedding activations before the blocks
-            negative, q_values_negative = create_activation_dataset(
-                f"./dataset/{concept}_negative_train.csv",
-                model_path,
-                0,
-                embedding=True,
-                requires_grad=sensitivity,
-            )
-            negative_test, q_values_negative_test = create_activation_dataset(
-                f"./dataset/{concept}_negative_test.csv",
-                model_path,
-                0,
-                embedding=True,
-                requires_grad=sensitivity,
-            )
+            (
+                positive,
+                negative,
+                positive_test,
+                negative_test,
+                _,
+                _,
+                q_values_positive_test,
+                _,
+            ) = self.read_dataset(concept, model_path, 0, False, sensitivity)
 
-            assert isinstance(negative, torch.Tensor), "Negative must be a tensor"
-
-            positive, q_values_positive = create_activation_dataset(
-                f"./dataset/{concept}_positive_train.csv",
-                model_path,
-                0,
-                embedding=True,
-                requires_grad=sensitivity,
-            )
-
-            positive_test, q_values_positive_test = create_activation_dataset(
-                f"./dataset/{concept}_positive_test.csv",
-                model_path,
-                0,
-                embedding=True,
-                requires_grad=sensitivity,
-            )
-
-            assert isinstance(positive, torch.Tensor), "Positive must be a tensor"
-
-            # dataset = self.load_dataset(positive_file, negative_file)
-            #dataset = self.create_dataset(positive, negative)
-
-            # # Randomly shuffle indices
-            # indices_positive = torch.randperm(len(positive))  # This operation is gradient-safe
-
-            # # Define split sizes
-            # positive_train_size = int(0.8 * len(positive))
-            # positive_train_indices = indices_positive[:positive_train_size]
-            # positive_test_indices = indices_positive[positive_train_size:]
-
-            # # Split the data and labels
-            # positive_train_data, positive_test_data = positive[positive_train_indices], positive[positive_test_indices]
-
-            # q_values_positive = q_values_positive[positive_test_indices]
-
-            
-            # # Randomly shuffle indices
-            # indices_negative = torch.randperm(len(negative))  # This operation is gradient-safe
-
-            # # Define split sizes
-            # negative_train_size = int(0.8 * len(negative))
-            # negative_train_indices = indices_negative[:negative_train_size]
-            # negative_test_indices = indices_negative[negative_train_size:]
-
-            # # Split the data and labels
-            # negative_train_data, negative_test_data = negative[negative_train_indices], negative[negative_test_indices]
-            
-            # #test_dataset = torch.cat((positive_test_data, negative_test_data), 0)
-            # q_values_negative = q_values_negative[negative_test_indices]
-
-            #q_values = torch.cat((q_values_positive, q_values_negative), 0)
-            # only select the q_values for the test dataset
-
-            # q_values_positive = torch.load(positive_q_val_file)
-            # q_values_negative = torch.load(negative_q_val_file)
-            print(type(q_values_positive), type(q_values_negative))
             cav = self.calculate_single_cav(
-                concept,
                 0,
                 episode_number,
                 positive,
@@ -395,62 +355,38 @@ class CAV:
                 positive_test,
                 negative_test,
             )
-            #test_dataset_tensor = [test_dataset[i][0] for i in range(len(test_dataset))]
             # Calculate the tcav
             if sensitivity:
-                self.calculate_tcav(cav, positive, negative, q_values_positive, q_values_negative, 0, episode_number)
+                self.calculate_tcav(
+                    cav, positive, q_values_positive_test, 0, episode_number
+                )
 
             for block in range(1, 4):
                 # load dataset
-                negative, q_values_negative = create_activation_dataset(
-                    f"./dataset/{concept}_negative_train.csv",
-                    model_path,
-                    block - 1,
-                    embedding=False,
-                    requires_grad=sensitivity,
-                )
-                negative_test, q_values_negative_test = create_activation_dataset(
-                f"./dataset/{concept}_negative_test.csv",
-                model_path,
-                0,
-                embedding=False,
-                requires_grad=sensitivity,
-                )
+                (
+                    positive,
+                    negative,
+                    positive_test,
+                    negative_test,
+                    _,
+                    _,
+                    q_values_positive_test,
+                    _,
+                ) = self.read_dataset(concept, model_path, 0, False, sensitivity)
 
-                positive, q_values_positive = create_activation_dataset(
-                    f"./dataset/{concept}_positive_train.csv",
-                    model_path,
-                    block - 1,
-                    embedding=False,
-                    requires_grad=sensitivity,
-                )
-
-                positive_test, q_values_positive_test = create_activation_dataset(
-                f"./dataset/{concept}_positive_test.csv",
-                model_path,
-                0,
-                embedding=True,
-                requires_grad=sensitivity,
-                )
-                # Load dataset and q_values
-                """dataset = self.create_dataset(positive, negative)
-                train_dataset, test_dataset = random_split(
-                    dataset, [length_train, length_test]
-                )"""
-
-                # dataset = self.load_dataset(positive_file, negative_file)
-                # q_values_positive = torch.load(positive_q_val_file)
-                # q_values_negative = torch.load(negative_q_val_file)
-                # q_values = q_values_positive + q_values_negative
                 print("Block: ", block, model_path, episode_number)
-                print(positive, type(positive))
                 cav = self.calculate_single_cav(
-                    concept, block, episode_number, positive, negative, positive, negative
+                    block, episode_number, positive, negative, positive, negative
                 )
-
 
                 if sensitivity:
-                    self.calculate_tcav(cav, positive_test, negative_test, q_values_positive_test, q_values_negative_test, block, episode_number)
+                    self.calculate_tcav(
+                        cav,
+                        positive_test,
+                        q_values_positive_test,
+                        block,
+                        episode_number,
+                    )
         # Save the CAV list
         torch.save(self.cav_list, f"./cav_list_{concept}.pt")
         torch.save(self.tcav_list, f"./tcav_list_{concept}.pt")
@@ -459,15 +395,6 @@ class CAV:
         self, activations: torch.Tensor, network_output: torch.Tensor, cav: np.ndarray
     ):
 
-        print("Activation shape: ", activations.shape, activations, type(activations))
-        # Convert network_output to tensors
-        # network_output = torch.stack([output for output in network_output])
-        print(
-            "Network output shape: ",
-            network_output.shape,
-            network_output,
-            type(network_output[0]),
-        )
         assert isinstance(
             activations, torch.Tensor
         ), f"Activations must be a tensor{type(activations)}"
@@ -489,7 +416,12 @@ class CAV:
         return np.dot(grad_flattened, cav.T)
 
     def calculate_tcav(
-        self, cav: np.ndarray, positive_test_data, negative_test_data, q_values_positive: torch.Tensor, q_values_negative: torch.Tensor, block, episode_number
+        self,
+        cav: np.ndarray,
+        positive_test_data,
+        q_values_positive: torch.Tensor,
+        block,
+        episode_number,
     ):
 
         # Get the activations
@@ -500,75 +432,11 @@ class CAV:
 
         self.tcav_list.append((block, episode_number, tcav))
 
-    def random_cav_model(self, random_file: str):
-
-        dataset = torch.load(random_file, weights_only=False)
-
-        length_train = int(0.8 * len(dataset))
-        length_test = len(dataset) - length_train
-
-        train_dataset, test_dataset = random_split(dataset, [length_train, length_test])
-        train_data = [dataset[i][0].detach().numpy() for i in train_dataset.indices]
-        train_labels = [dataset[i][1] for i in train_dataset.indices]
-        test_data = [dataset[i][0].detach().numpy() for i in test_dataset.indices]
-        test_labels = [dataset[i][1] for i in test_dataset.indices]
-
-        # Train the model
-        self.model = LogisticRegression()
-        self.model.fit(train_data, train_labels)
-
-        # Test the model
-        score = self.model.score(test_data, test_labels)
-        print("Score: ", score)
-        self.cav_coef = self.model.coef_
-        return score
-
-    def calculate_random_cav(self, concept: str, model_dir: str):
-
-        model_list = os.listdir(model_dir)
-        for model in model_list:
-            episode_number = model.split("_")[-1].split(".")[0]
-            if episode_number not in episode_numbers:
-                continue
-            for block in range(3):
-                print("Block: ", block)
-                negative_file = f"dataset/activations/negative_{concept}_activations_{block}_episode_{episode_number}.pt"
-                positive_file = f"dataset/activations/positive_{concept}_activations_{block}_episode_{episode_number}.pt"
-
-                positive_dataset = torch.load(positive_file)
-                negative_dataset = torch.load(negative_file)
-                print(len(positive_dataset))
-                # Label the datasets
-                positive_labels = [
-                    rd.randint(0, 1) for _ in range(len(positive_dataset))
-                ]
-                # print(positive_labels)
-                negative_labels = [
-                    rd.randint(0, 1) for _ in range(len(negative_dataset))
-                ]
-                dataset = CAV_dataset(positive_dataset, positive_labels)
-                negative = CAV_dataset(negative_dataset, negative_labels)
-
-                dataset.concat(negative)
-                # Save to pt file
-                random_file = f"dataset/random_{concept}_dataset_{block}.pt"
-                torch.save(dataset, random_file)
-
-                accuracy = self.random_cav_model(random_file)
-                self.cav_list.append((block, episode_number, accuracy))
-
-        # Save the CAV list
-        torch.save(self.cav_list, f"./cav_list_{concept}.pt")
-
     def load_cav(self, concept: str):
         cav_list = torch.load(f"./cav_list_{concept}.pt")
         return cav_list
 
     def plot_cav(self, concept: str, tcav: bool = False):
-        import numpy as np
-        from matplotlib.ticker import MultipleLocator
-        from mpl_toolkits.mplot3d import Axes3D
-        from scipy.interpolate import griddata
 
         if len(self.cav_list) == 0:
             self.cav_list = self.load_cav(concept)
@@ -638,15 +506,53 @@ class CAV:
         plt.show()
 
 
+class Analysis:
+    def __init__(self, average: int = 5):
+        self.average = average
+        self.total_tcav = {}
+
+    def add_total_tcav_scores(self, tcav_list: list):
+
+        for block, episode, tcav in tcav_list:
+            if block not in self.total_tcav:
+                self.total_tcav[block] = {}
+            if episode not in self.total_tcav[block]:
+                self.total_tcav[block][episode] = 0
+
+            self.total_tcav[block][episode] += tcav
+
+    def calculate_average_tcav(self):
+        for block in self.total_tcav:
+            for episode in self.total_tcav[block]:
+                self.total_tcav[block][episode] /= self.average
+
+    def get_tcav(self):
+        return self.total_tcav
+
+
 def main():
     cav = CAV()
     model_load_path = "../../agent/model/transformers/model_vivid-firebrand-872"
-    concept = "goal"
+    concept = "random"
     # positive_file = "dataset/positive_wall_activations.pt"
     # negative_file = "dataset/negative_wall_activations.pt"
-    cav.calculate_cav(concept, model_load_path, sensitivity=True)
+
+    average = 5
+    total_tcav = {}
+    analysis = Analysis(average)
+    for _ in range(average):
+        cav.calculate_cav(concept, model_load_path)
+        tcav = cav.tcav_list
+        analysis.add_total_tcav_scores(tcav)
+
+    analysis.calculate_average_tcav()
+    total_tcav = analysis.get_tcav()
+    cav.tcav_list = total_tcav
+    # cav.plot_cav(concept)
+
+    # cav.calculate_cav(concept, model_load_path, sensitivity=True)
     # cav.cav_list = torch.load(f"./cav_list_{concept}.pt")
-    cav.plot_cav(concept)
+    # cav.plot_cav(concept)
     cav.plot_tcav(concept)
 
     # cav.calculate_random_cav("goal", model_load_path)
