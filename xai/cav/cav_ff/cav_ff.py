@@ -336,7 +336,7 @@ class CAV:
 
 def main():
     cav = CAV()
-    model_load_path = "../../../agent/model/feed_forward/frosty-pine-972"
+    model_load_path = "../../../agent/model/feed_forward/serene-voice-977"
     # positive_file = "dataset/positive_wall_activations.pt"
     # negative_file = "dataset/negative_wall_activations.pt"
     cav.calculate_cav("goal", model_load_path)

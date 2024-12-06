@@ -5,6 +5,7 @@ from collections import deque
 import copy
 import pandas as pd
 import random as rd
+import ast
 
 import torch
 
@@ -275,6 +276,26 @@ def build_csv_dataset():
     print("Goal: ", len(positive_dataset_goal))
     print("Inside box: ", len(positive_dataset_inside_box))
 
+def split_dataset_into_train_test(dataset: deque, ratio: float = 0.8, concept: str = ""):
+    # Split the dataset into a training and test set
+    train_size = int(len(dataset) * ratio)
+    train_dataset = dataset[:train_size]
+    test_dataset = dataset[train_size:]
+
+
+    train = [
+        [torch.tensor(ast.literal_eval(state)) for state in states]
+        for _, states in train_dataset.iterrows()
+    ]
+    test = [
+        [torch.tensor(ast.literal_eval(state)) for state in states]
+        for _, states in test_dataset.iterrows()
+    ]
+
+    save_to_csv(train, f"{concept}_train.csv")
+    save_to_csv(test, f"{concept}_test.csv")
+
+    return train_dataset, test_dataset
 
 def run_agent(env: SunburstMazeDiscrete, agent: DTQN_Agent):
 
@@ -344,7 +365,31 @@ def run_agent(env: SunburstMazeDiscrete, agent: DTQN_Agent):
 
 
 def main():
-    build_csv_dataset()
+    #build_csv_dataset()
+
+    # Load the datasets
+    positive_wall = pd.read_csv("./dataset/positive_wall.csv")
+    negative_wall = pd.read_csv("./dataset/negative_wall.csv")
+
+    positive_rotating = pd.read_csv("./dataset/positive_rotating.csv")
+    negative_rotating = pd.read_csv("./dataset/negative_rotating.csv")
+
+    positive_goal = pd.read_csv("./dataset/positive_goal.csv")
+    negative_goal = pd.read_csv("./dataset/negative_goal.csv")
+    # Split the datasets into training and test sets
+
+    split_dataset_into_train_test(positive_wall, ratio=0.8, concept="wall_positive")
+    split_dataset_into_train_test(negative_wall, ratio=0.8, concept="wall_negative")
+
+    split_dataset_into_train_test(positive_rotating, ratio=0.8, concept="rotating_positive")
+    split_dataset_into_train_test(negative_rotating, ratio=0.8, concept="rotating_negative")
+
+    split_dataset_into_train_test(positive_goal, ratio=0.8, concept="goal_positive")
+    split_dataset_into_train_test(negative_goal, ratio=0.8, concept="goal_negative")
+    
+
+
+
 
 
 if __name__ == "__main__":
