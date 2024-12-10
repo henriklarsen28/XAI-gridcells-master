@@ -529,7 +529,7 @@ class Analysis:
 def main():
     cav = CAV()
     model_load_path = "../../agent/model/transformers/model_vivid-firebrand-872"
-    concept = "goal"
+    concept = "random"
     # positive_file = "dataset/positive_wall_activations.pt"
     # negative_file = "dataset/negative_wall_activations.pt"
 
