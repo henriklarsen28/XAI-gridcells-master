@@ -43,6 +43,20 @@ episode_numbers = [
     "5000",
     "5200",
 ]
+episode_numbers = [
+    "100",
+    "500",
+    "1000",
+    "1500",
+    "2000",
+    "2500",
+    "3000",
+    "3500",
+    "4000",
+    "4500",
+    "5000",
+    "5200",
+]
 
 #episode_numbers = ["100", "200"]
 
@@ -277,7 +291,7 @@ class CAV:
             (positive_test_labels, negative_test_labels), axis=0
         )
         # Train the model
-        self.model = LogisticRegression(max_iter=3000)
+        self.model = LogisticRegression(max_iter=300)
 
         self.model.fit(train_data, train_labels)
 
@@ -453,7 +467,7 @@ class CAV:
 
         # Create a grid for interpolation
         block_lin = np.linspace(blocks.min(), blocks.max(), 4)
-        episode_lin = np.linspace(episode_numbers.min(), episode_numbers.max(), 55)
+        episode_lin = np.linspace(episode_numbers.min(), episode_numbers.max(), 550)
         block_grid, episode_grid = np.meshgrid(block_lin, episode_lin)
 
         # Interpolate accuracy values onto the grid
@@ -461,10 +475,10 @@ class CAV:
             (blocks, episode_numbers),
             accuracies,
             (block_grid, episode_grid),
-            method="cubic",
+            method="linear",
         )
 
-        norm = Normalize(vmin=0.0, vmax=1)
+        norm = Normalize(vmin=0, vmax=1)
         colors = cm.viridis
 
         # Plotting
@@ -483,7 +497,7 @@ class CAV:
 
         # Labels
         ax.set_xlabel("Block")
-        ax.set_ylabel("Episode Number")
+        ax.set_ylabel("Episode")
         ax.set_zlabel("Accuracy")
 
         # range
@@ -497,7 +511,7 @@ class CAV:
         fig.colorbar(surf, ax=ax, label="Accuracy")
 
         plt.savefig(f"./{name}_action_{action}.png")
-        #plt.show()
+        plt.show()
 
 
 class Analysis:
@@ -526,36 +540,52 @@ class Analysis:
         return self.total_tcav
 
 
+
+
 def main():
     cav = CAV()
     model_load_path = "../../agent/model/transformers/model_vivid-firebrand-872"
-    concept = "random"
+    concept = "goal"
     # positive_file = "dataset/positive_wall_activations.pt"
     # negative_file = "dataset/negative_wall_activations.pt"
 
-    for action in range(3):
-        average = 5
-        
+    """for action in range(1):
+        average = 1
+        pass
         analysis = Analysis(average)
         for _ in range(average):
             cav = CAV()
-            cav.calculate_cav(concept, model_load_path, sensitivity=True, action_index=action)
-            tcav = cav.tcav_list
-            analysis.add_total_tcav_scores(tcav)
-
-
-
-        #analysis.total_tcav = total_tcav
-        analysis.calculate_average_tcav()
-        total_tcav = analysis.get_tcav()
+            cav.calculate_cav(concept, model_load_path, sensitivity=False, action_index=action)
+            cav.plot_cav(concept)
+            #tcav = cav.tcav_list
+            #analysis.add_total_tcav_scores(tcav)
+        
+    
+    cav_list = torch.load(f"./cav_list_{concept}.pt")
+    cav.cav_list = cav_list
+    cav.plot_cav(concept)"""
+        
+        #analysis.calculate_average_tcav()
+        #total_tcav = analysis.get_tcav()
         # Save tcav list
-        torch.save(total_tcav, f"./tcav_list_{concept}_action_{action}.pt")
+        #torch.save(total_tcav, f"./tcav_list_{concept}_action_{action}.pt")
+        
+        #print(analysis.total_tcav)
+        #cav.tcav_list = total_tcav
 
-        print(analysis.total_tcav)
-        cav.tcav_list = total_tcav
+        #cav.plot_tcav(concept, action=action)
+    total_tcav0 = torch.load("tcav_list_goal_action_0.pt")
+    total_tcav1 = torch.load("tcav_list_goal_action_1.pt")
+    total_tcav2 = torch.load("tcav_list_goal_action_2.pt")
 
-        cav.plot_tcav(concept, action=action)
+    # Loop through the tcav list and calculate the average
+    average_tcav = defaultdict(lambda: defaultdict(float))
+    for block in total_tcav0:
+        for episode in total_tcav0[block]:
+            average_tcav[block][episode] = (total_tcav0[block][episode] + total_tcav1[block][episode] + total_tcav2[block][episode]) / 3
+    cav.tcav_list = average_tcav
 
+    cav.plot_tcav(concept, action=0)
     # cav.calculate_random_cav("goal", model_load_path)
     # cav.plot_cav("random")
 
