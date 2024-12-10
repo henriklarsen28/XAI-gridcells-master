@@ -43,7 +43,11 @@ episode_numbers = [
     "4000",
     "4500",
     "5000",
-    "5200"
+    "6000",
+    "7000",
+    "8000",
+    "9000",
+
 ]
 
 
@@ -339,8 +343,8 @@ def main():
     model_load_path = "../../../agent/model/feed_forward/serene-voice-977"
     # positive_file = "dataset/positive_wall_activations.pt"
     # negative_file = "dataset/negative_wall_activations.pt"
-    cav.calculate_cav("next_wall", model_load_path)
-    cav.plot_cav("next_wall")
+    cav.calculate_cav("goal", model_load_path)
+    cav.plot_cav("goal")
 
     # cav.calculate_random_cav("rotating", model_load_path)
     # cav.plot_cav("random")

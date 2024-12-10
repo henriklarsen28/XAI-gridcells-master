@@ -14,3 +14,4 @@ agent/grad_sam/*
 xai/cav/*.pt
 xai/cav/*.png
 
+xai/cav/cav_ff/*.pt

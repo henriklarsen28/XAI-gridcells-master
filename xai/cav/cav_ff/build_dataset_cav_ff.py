@@ -422,7 +422,7 @@ def run_agent(env: SunburstMazeDiscrete, agent: DQN_Agent):
             agent.model.eval()
 
         if episode == 90:
-            model_load_path = "../../../agent/model/feed_forward/serene-voice-977/sunburst_maze_map_v0_3900.pth"
+            model_load_path = "../../../agent/model/feed_forward/serene-voice-977/sunburst_maze_map_v0_9000.pth"
             agent.model.load_state_dict(torch.load(model_load_path, map_location=device))
             agent.model.eval()
 

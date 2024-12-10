@@ -396,7 +396,7 @@ def main():
     random = pd.concat([negative_goal, positive_goal, negative_rotating, positive_rotating, negative_wall, positive_wall])
     random = random.sample(frac=1, random_state=42).reset_index(drop=True)
 
-    random = random.sample(4000, random_state=42)
+    random = random.sample(1500, random_state=42)
     # Split into positive and negative
     half = int(len(random) / 2)
     positive_random = random.iloc[:half]
