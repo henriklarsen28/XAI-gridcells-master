@@ -261,7 +261,11 @@ class SunburstMazeDiscrete(gym.Env):
     def find_relative_position_in_matrix(self, x2, y2):
         x, y = self.position
 
+    def find_relative_position_in_matrix(self, x2, y2):
+        x, y = self.position
+
         if self.orientation == 0:
+            marked_x = self.matrix_middle_index + y - y2
             marked_x = self.matrix_middle_index + y - y2
             marked_y = x - x2
         if self.orientation == 1:
@@ -511,7 +515,7 @@ class SunburstMazeDiscrete(gym.Env):
         # Return the number of squares that are 1 in the observation
         observation = self._get_observation()
         return len([square for square in observation if square == 1])
-    
+
     # TODO: Gets stuck at wall, q-values for other actions are negative
     def reward(self):
         """

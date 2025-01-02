@@ -14,6 +14,13 @@ def get_attention_gradients(module, grad_input, grad_output):
 
 
 
+def get_attention_gradients(module, grad_input, grad_output):
+    global attention_gradients
+    # print("Grad_input: ", len(grad_input))
+    attention_gradients = grad_output[0]
+
+
+
 class DTQN_Agent:
     """
     DTQN Agent Class. This class defines some key elements of the DQN algorithm,

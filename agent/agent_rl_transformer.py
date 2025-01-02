@@ -18,7 +18,7 @@ import numpy as np
 import pygame
 import torch
 import wandb
-from explain_network import ExplainNetwork
+from explain_network import ExplainNetwork, grad_sam
 from torch.nn.utils.rnn import pad_sequence
 from tqdm import tqdm
 
@@ -36,7 +36,6 @@ map_path_train_2 = os.path.join(project_root, "env/map_v0/map_open_doors_vertica
 map_path_train_3 = os.path.join(project_root, "env/map_v0/map_no_doors.csv")
 map_path_test = os.path.join(project_root, "env/map_v0/map_open_doors_90_degrees.csv")
 map_path_test_2 = os.path.join(project_root, "env/map_v0/map_open_doors_horizontal_v2.csv")
-
 
 device = torch.device("cpu")
 device = torch.device(
@@ -166,6 +165,7 @@ class Model_TrainTest:
         run = wandb.init(project="sunburst-maze", config=self)
 
         gif_path = f"./gifs/{run.name}"
+
         # Create the nessessary directories
         if not os.path.exists(gif_path):
             os.makedirs(gif_path)
@@ -460,13 +460,12 @@ class Model_TrainTest:
         """
 
 
-
         '''map_path_without_ext = map_path_test_2.split("/")[-1].split(".")[0]
         print(map_path_without_ext)
         if not os.path.exists(f"./grad_sam/{map_path_without_ext}"):
             os.makedirs(f"./grad_sam/{map_path_without_ext}")
-'''
-        
+        '''
+  
         # Load the weights of the test_network
         self.agent.model.load_state_dict(
             torch.load(self.RL_load_path, map_location=device)
@@ -491,11 +490,11 @@ class Model_TrainTest:
             "orientation": None,
         }
         ex_network = ExplainNetwork()
-        # Testing loop over episodes
-        for episode in range(1, max_episodes + 1):
-            q_val_list = ex_network.generate_q_values(env=self.env, model=self.agent.model)
-            self.env.q_values = q_val_list
         
+        q_val_list = ex_network.generate_q_values(env=self.env, model=self.agent.model)
+        self.env.q_values = q_val_list
+        # Testing loop over episodes
+        for episode in tqdm(range(1, max_episodes + 1)):
             state, _ = self.env.reset(seed=seed)
             done = False
             truncation = False
@@ -512,7 +511,7 @@ class Model_TrainTest:
                 tensor_sequence = padding_sequence(
                     tensor_sequence, self.sequence_length, device
                 )
-                print(tensor_sequence.shape)
+                # print(tensor_sequence.shape)
                 # q_val_list = generate_q_values(env=self.env, model=self.agent.model)
                 # self.env.q_values = q_val_list
 
@@ -604,7 +603,6 @@ class Model_TrainTest:
                 )
                 frames.clear()
 
-
         pygame.quit()  # close the rendering window
 
 
@@ -661,20 +659,20 @@ if __name__ == "__main__":
         "optimizer": "adam",
         "total_episodes": 5000,
         "epsilon": 1 if train_mode else -1,
-        "epsilon_decay": 0.997,
+        "epsilon_decay": 0.998,
         "epsilon_min": 0.01,
-        "discount_factor": 0.90,
+        "discount_factor": 0.88,
         "alpha": 0.1,
         "map_path": map_path_test_2,
         "target_model_update": 10,  # hard update of the target model
-        "max_steps_per_episode": 250,
+        "max_steps_per_episode": 300,
         "random_start_position": True,
-        "random_goal_position": False,
+        "random_goal_position": True,
         "rewards": {
             "is_goal": 200 / 200,
             "hit_wall": -0.5 / 200,
             "has_not_moved": -0.2 / 200,
-            "new_square": 0.4 / 200,
+            "new_square": 2 / 200,
             "max_steps_reached": -0.5 / 200,
             "penalty_per_step": -0.01 / 200,
             "goal_in_sight": 0 / 200,
@@ -698,6 +696,7 @@ if __name__ == "__main__":
         "number_of_rays": 100,
         "transformer": {
             "sequence_length": 15,
+            "n_embd": 128,
             "n_embd": 128,
             "n_head": 8,
             "n_layer": 3,

@@ -106,7 +106,6 @@ class ExplainNetwork:
                 q_val_list_to_position.append(dicti)
 
         return q_val_list_to_position
-    
 
 class ExplainNetworkFF:
     def __init__(self, RL_load_path=""):
@@ -147,6 +146,7 @@ class ExplainNetworkFF:
                 q_val_list_to_position.append(dicti)
 
         return q_val_list_to_position
+
 
     # Grad-SAM
 
