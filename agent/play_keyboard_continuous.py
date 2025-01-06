@@ -1,15 +1,14 @@
 import math
 import sys
-
 import pygame
 
 sys.path.append("..")
 
-from env import SunburstMazeDiscrete
-from env.sunburstmaze_continuous import action_encoding
+from env import SunburstMazeContinuous
+from env.sunburstmaze_discrete import action_encoding
 
 
-def perform_action(action: int, env: SunburstMazeDiscrete, legal_actions: list):
+def perform_action(action: int, env: SunburstMazeContinuous):
     """
     Perform the given action in the environment.
 
@@ -22,12 +21,12 @@ def perform_action(action: int, env: SunburstMazeDiscrete, legal_actions: list):
         list: The updated list of legal actions.
     """
     # action = action_encoding(action)
-    print("Action: ", action, env.orientation, env.position)
+    print("Action: ", action, env.orientation, env.position, env.velocity_x, env.velocity_y)
 
-    observation, reward, goal, _, info = env.step(action)
+    observation, reward, goal, _, info = env.step((0.00, 3))
     print("Observation: \n", observation)
     # env.show_map()
-    return info["legal_actions"], env
+    return info, env
 
 
 def play_with_keyboard():
@@ -61,14 +60,20 @@ def play_with_keyboard():
         },
         "fov": math.pi / 1.5,
         "ray_length": 10,
-        "number_of_rays": 100,
+        "number_of_rays": 15,
+        "random_start_position": True,
+        "random_goal_position": True,
+
     }
 
-    env = SunburstMazeDiscrete(
+    env = SunburstMazeContinuous(
         maze_file="../env/map_v0/map_open_doors_vertical.csv",
         render_mode="human",
         rewards=config["rewards"],
+        random_start_position=config["random_start_position"],
+        random_goal_position=config["random_goal_position"],
         observation_space=config["observation_space"],
+        max_steps_per_episode=1000,
         fov=config["fov"],
         ray_length=config["ray_length"],
         number_of_rays=config["number_of_rays"],
@@ -76,12 +81,11 @@ def play_with_keyboard():
 
     pygame.init()
     observation, _ = env.reset()
+    env.position = (2,2)
     #print(observation)
-    legal_actions = env.legal_actions()
-    print(legal_actions)
     running = True
     while running:
-        for event in pygame.event.get():
+        """for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
@@ -97,14 +101,15 @@ def play_with_keyboard():
                 elif event.key == pygame.K_d:
                     action = 2
             else:
-                action = None
+                action = 1"""
+        action = 1
 
-            if action is not None:
-                legal_actions, env = perform_action(action, env, legal_actions)
-                if env.is_goal():
-                    print("Goal reached!")
-                    running = False
-                    break
+        if action is not None:
+            legal_actions, env = perform_action(action, env)
+            if env.is_goal():
+                print("Goal reached!")
+                running = False
+                break
     print("Exiting...")
 
 
