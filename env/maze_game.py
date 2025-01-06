@@ -81,14 +81,21 @@ class Maze:
         Returns:
         - sprite (Sprite): The selected sprite based on the given orientation.
         """
-        if orientation == 0:
+        # TODO: Needs to change the sprite based on the orientation in small increments (1 and 1 degree)
+        """if orientation == 0:
             return self.sprite_up
         elif orientation == 1:
             return self.sprite_right
         elif orientation == 2:
             return self.sprite_down
         elif orientation == 3:
-            return self.sprite_left
+            return self.sprite_left"""
+        rect = self.sprite_up.get_rect()
+        sprite = pygame.transform.rotate(self.sprite_up, -orientation)
+        rotated_rect = sprite.get_rect(center=rect.center)
+
+        
+        return sprite, rotated_rect
 
     # set up the maze
     def draw_maze(self, env_map: np.array) -> None:
@@ -149,15 +156,15 @@ class Maze:
         Returns:
         - None
         """
-        sprite = self.select_sprite(orientation)
-
+        sprite, rotated_rect = self.select_sprite(orientation)
+        print("Rot:",rotated_rect)
         self.win.blit(
             sprite,
             (
-                position[1] * self.cell_size,
-                position[0] * self.cell_size,
-                self.spriteWidth,
-                self.spriteHeight,
+                (position[1] * self.cell_size) + rotated_rect[0],
+                (position[0] * self.cell_size) + rotated_rect[1],
+                rotated_rect[2],
+                rotated_rect[3]
             ),
         )
 
@@ -380,7 +387,7 @@ class Maze:
         self.win.fill(grey)  # fill screen before drawing
         self.draw_maze(env_map)
         #self.draw_action_tail(last_ten_actions)
-        #self.draw_rays(position, orientation, wall_rays)
+        self.draw_rays(position, orientation, wall_rays)
         self.draw_marked_blocks(observed_squares_map)
 
         if self.render_mode == "human":
