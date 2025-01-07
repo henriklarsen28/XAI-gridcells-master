@@ -23,10 +23,10 @@ def perform_action(action: int, env: SunburstMazeContinuous):
     # action = action_encoding(action)
     print("Action: ", action, env.orientation, env.position, env.velocity_x, env.velocity_y)
 
-    observation, reward, goal, _, info = env.step((0.00, 3))
+    observation, reward, goal, _, info = env.step((0.03, 0.5))
     print("Observation: \n", observation)
     # env.show_map()
-    return info, env
+    return goal, env
 
 
 def play_with_keyboard():
@@ -73,7 +73,7 @@ def play_with_keyboard():
         random_start_position=config["random_start_position"],
         random_goal_position=config["random_goal_position"],
         observation_space=config["observation_space"],
-        max_steps_per_episode=1000,
+        max_steps_per_episode=2000,
         fov=config["fov"],
         ray_length=config["ray_length"],
         number_of_rays=config["number_of_rays"],
@@ -82,6 +82,7 @@ def play_with_keyboard():
     pygame.init()
     observation, _ = env.reset()
     env.position = (2,2)
+    env.orientation = 270
     #print(observation)
     running = True
     while running:
@@ -105,7 +106,11 @@ def play_with_keyboard():
         action = 1
 
         if action is not None:
-            legal_actions, env = perform_action(action, env)
+            done, env = perform_action(action, env)
+            if done:
+                print("Episode finished.")
+                running = False
+                break
             if env.is_goal():
                 print("Goal reached!")
                 running = False

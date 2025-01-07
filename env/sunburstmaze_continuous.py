@@ -340,9 +340,9 @@ class SunburstMazeContinuous(gym.Env):
     
     def is_collision(self, x, y):
         # Convert continuous coordinates to grid indices
-        grid_x = int(x)
-        grid_y = int(y)
-
+        grid_x = math.floor(x)
+        grid_y = math.floor(y)
+        print("Grid indices: ", grid_x, grid_y)
         # Check if the agent is out of bounds or hits a wall
         if grid_x < 0 or grid_x >= self.width or grid_y < 0 or grid_y >= self.height:
             return True
@@ -462,24 +462,28 @@ class SunburstMazeContinuous(gym.Env):
             terminated (bool): Whether the episode is terminated or not.
             info (dict): Additional information about the environment.
         """
-        acceleration, rotation = action
+        velocity, rotation = action
         self.orientation += rotation
         self.orientation = self.orientation % 360
 
-        # Find the x and y components of the acceleration
-        acceleration_x = acceleration * math.cos(math.radians(self.orientation))
-        acceleration_y = acceleration * math.sin(math.radians(self.orientation))
-        self.velocity_x += acceleration_x
-        self.velocity_y += acceleration_y
+        # Find the x and y components of the velocity
+        self.velocity_x = velocity * math.sin(math.radians(self.orientation))
+        self.velocity_y = -velocity * (math.cos(math.radians(self.orientation)))
+        #self.velocity_x += acceleration_x
+        #self.velocity_y += acceleration_y
+
+        
 
         self.limit_velocity()
+
+        print("Velocity_y:", self.velocity_y)
 
         position_y = self.position[0] + self.velocity_y
         position_x = self.position[1] + self.velocity_x
 
         if self.is_collision(position_x, position_y):
             print("Collision")
-            return None, self.rewards["hit_wall"], False, False, self._get_info()
+            return None, self.rewards["hit_wall"], True, True, self._get_info()
 
         self.position = (position_y, position_x)
 

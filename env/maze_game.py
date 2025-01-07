@@ -95,7 +95,7 @@ class Maze:
         rotated_rect = sprite.get_rect(center=rect.center)
 
         
-        return sprite, rotated_rect
+        return sprite, rotated_rect, rotated_rect.center
 
     # set up the maze
     def draw_maze(self, env_map: np.array) -> None:
@@ -156,13 +156,13 @@ class Maze:
         Returns:
         - None
         """
-        sprite, rotated_rect = self.select_sprite(orientation)
+        sprite, rotated_rect, center = self.select_sprite(orientation)
         print("Rot:",rotated_rect)
         self.win.blit(
             sprite,
             (
-                (position[1] * self.cell_size) + rotated_rect[0],
-                (position[0] * self.cell_size) + rotated_rect[1],
+                (position[1] * self.cell_size) + rotated_rect[0] - center[0],
+                (position[0] * self.cell_size) + rotated_rect[1] - center[1],
                 rotated_rect[2],
                 rotated_rect[3]
             ),
