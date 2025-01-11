@@ -86,25 +86,25 @@ class Block(nn.Module):
         return x, att_weights
 
 
-class TransformerDQN(nn.Module):
+class Transformer(nn.Module):
     def __init__(
         self,
         input_dim,
         output_dim,
-        block_size,
+        sequence_length,
         n_embd,
         n_head,
         n_layer,
         dropout,
         device,
     ):
-        super(TransformerDQN, self).__init__()
+        super(Transformer, self).__init__()
         self.device = device
         self.token_embedding = nn.Linear(input_dim, n_embd)  # nn.Embedding (long, int)
-        self.position_embedding = nn.Embedding(block_size, n_embd)
+        self.position_embedding = nn.Embedding(sequence_length, n_embd)
         self.dropout = nn.Dropout(dropout)
         self.blocks = nn.Sequential(
-            *[Block(n_embd, n_head, block_size, dropout) for _ in range(n_layer)]
+            *[Block(n_embd, n_head, sequence_length, dropout) for _ in range(n_layer)]
         )
         self.ln_f = nn.LayerNorm(n_embd)
         self.output = nn.Linear(
@@ -143,12 +143,13 @@ class TransformerDQN(nn.Module):
 
         return x, att_weights_list
 
-#device = torch.device("mps" if torch.backends.mps.is_available() else "cpu") # Was faster with cpu??? Loading between cpu and mps is slow maybe
+
+# device = torch.device("mps" if torch.backends.mps.is_available() else "cpu") # Was faster with cpu??? Loading between cpu and mps is slow maybe
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-#device = torch.device(
+# device = torch.device(
 #    "mps" if torch.backends.mps.is_available() else "cpu"
-#)  # Was faster with cpu??? Loading between cpu and mps is slow maybe
+# )  # Was faster with cpu??? Loading between cpu and mps is slow maybe
 print(f"Using device {device}")
 
 # ## Suggestion for hyperparameter values

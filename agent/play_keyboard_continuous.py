@@ -1,6 +1,7 @@
 import math
 import sys
 import pygame
+import time
 
 sys.path.append("..")
 
@@ -23,8 +24,8 @@ def perform_action(action: int, env: SunburstMazeContinuous):
     # action = action_encoding(action)
     print("Action: ", action, env.orientation, env.position, env.velocity_x, env.velocity_y)
 
-    observation, reward, goal, _, info = env.step((0.03, 0.5))
-    print("Observation: \n", observation)
+    observation, reward, goal, _, info = env.step(action)
+    #time.sleep(0.05)
     # env.show_map()
     return goal, env
 
@@ -60,7 +61,7 @@ def play_with_keyboard():
         },
         "fov": math.pi / 1.5,
         "ray_length": 10,
-        "number_of_rays": 15,
+        "number_of_rays": 30,
         "random_start_position": True,
         "random_goal_position": True,
 
@@ -80,13 +81,16 @@ def play_with_keyboard():
     )
 
     pygame.init()
+    
     observation, _ = env.reset()
     env.position = (2,2)
-    env.orientation = 270
+    env.orientation = 90
+    env.render()
+    
     #print(observation)
     running = True
     while running:
-        """for event in pygame.event.get():
+        for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
@@ -96,25 +100,25 @@ def play_with_keyboard():
                     running = False
                     break
                 if event.key == pygame.K_w:
-                    action = 0
+                    action = (1,0)
                 elif event.key == pygame.K_a:
-                    action = 1
+                    action = (0.2,-5)
                 elif event.key == pygame.K_d:
-                    action = 2
+                    action = (0.2,5)
             else:
-                action = 1"""
-        action = 1
+                action = None
 
-        if action is not None:
-            done, env = perform_action(action, env)
-            if done:
-                print("Episode finished.")
-                running = False
-                break
-            if env.is_goal():
-                print("Goal reached!")
-                running = False
-                break
+
+            if action is not None:
+                done, env = perform_action(action, env)
+                if done:
+                    print("Episode finished.")
+                    running = False
+                    break
+                if env.is_goal():
+                    print("Goal reached!")
+                    running = False
+                    break
     print("Exiting...")
 
 

@@ -1,2 +1,2 @@
 from .sunburstmaze_discrete import SunburstMazeDiscrete
-from .sunburstmaze_continuous import SunburstMazeContinuous
+from .continuous.sunburstmaze_continuous import SunburstMazeContinuous

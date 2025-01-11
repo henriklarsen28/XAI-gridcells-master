@@ -6,7 +6,7 @@ import pygame
 sys.path.append("..")
 
 from env import SunburstMazeDiscrete
-from env.sunburstmaze_continuous import action_encoding
+from env.continuous.sunburstmaze_continuous import action_encoding
 
 
 def perform_action(action: int, env: SunburstMazeDiscrete, legal_actions: list):

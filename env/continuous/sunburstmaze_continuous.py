@@ -3,6 +3,9 @@ import math
 import random as rd
 from collections import deque
 
+import time
+
+
 import gymnasium as gym
 import numpy as np
 import pandas as pd
@@ -12,7 +15,7 @@ from PIL import Image
 
 from utils.calculate_fov import calculate_fov_matrix_size, step_angle
 
-from .file_manager import build_map
+from ..file_manager import build_map
 from .maze_game import Maze
 
 checkpoints = [
@@ -64,14 +67,6 @@ class SunburstMazeContinuous(gym.Env):
                     self.goal = (y, x)
                     break
         print("height:", self.height, "width:", self.width, "goal:", self.goal)
-
-        # Three possible actions: forward, left, right
-
-        self._action_to_direction = {
-            "forward": self.move_forward,
-            "left": self.turn_left,
-            "right": self.turn_right,
-        }
 
         self.orientation = 0  # Between 0 and 360 degrees, should probably be radians
         self.velocity_x = 0
@@ -185,8 +180,7 @@ class SunburstMazeContinuous(gym.Env):
         Returns:
             np.ndarray: A flattened array representing the environment state with the agent's orientation.
         """
-        #matrix = self.ray_casting()
-        matrix = np.array([0,0,0])
+        matrix = self.ray_casting()
         matrix = matrix.flatten()
 
         # Get the matrix of marked squares without rendering
@@ -237,8 +231,8 @@ class SunburstMazeContinuous(gym.Env):
         self.observed_squares_map = set()
         self.goal_observed_square = set()
 
-        agent_angle = self.orientation * math.pi / 2  # 0, 90, 180, 270
-
+        agent_angle = math.radians(self.orientation) # 0, 90, 180, 270
+        print(agent_angle)
         start_angle = agent_angle - self.half_fov
         for _ in range(self.number_of_rays + 1):
             for depth in range(self.ray_length):
@@ -249,37 +243,31 @@ class SunburstMazeContinuous(gym.Env):
                     self.wall_rays.add((x, y))
                     break
 
-
+                self.find_relative_position_in_matrix(x, y)
                 self.observed_squares_map.add((x,y))
             start_angle += self.step_angle
 
+
         matrix = self.calculate_fov_matrix()
+        #time.sleep(1)
+        print("Matrix: ", matrix)
+        print("Orientation: ", self.orientation)
+        print("Cos: ", math.cos(math.radians(self.orientation)), "Sin: ", math.sin(math.radians(self.orientation)))
         return matrix
 
-    """def find_relative_position_in_matrix(self, x2, y2):
+    def find_relative_position_in_matrix(self, x2, y2):
         x, y = self.position
-
-        if self.orientation == 0:
-            marked_x = self.matrix_middle_index + y - y2
-            marked_x = self.matrix_middle_index + y - y2
-            marked_y = x - x2
-        if self.orientation == 1:
-            marked_x = self.matrix_middle_index + x2 - x
-            marked_y = y2 - y
-
-        if self.orientation == 2:
-            marked_x = self.matrix_middle_index + y - y2
-            marked_y = x2 - x
-
-        if self.orientation == 3:
-            marked_x = self.matrix_middle_index + x2 - x
-            marked_y = y - y2
+        x = math.ceil(x)
+        y = int(y)
+        marked_x = self.matrix_middle_index + y - y2 - 1
+        marked_y = x - x2 - 1
+        
 
         # Add the goal square
         if self.env_map[x2, y2] == 2:
             self.goal_observed_square.add((marked_x, marked_y))
 
-        self.observed_squares.add((marked_x, marked_y))"""
+        self.observed_squares.add((marked_x, marked_y))
 
     def calculate_fov_matrix(self):
         matrix = np.zeros(calculate_fov_matrix_size(self.ray_length, self.half_fov))
@@ -310,33 +298,6 @@ class SunburstMazeContinuous(gym.Env):
 
         return matrix
 
-    def can_move_forward(self) -> bool:
-        """
-        Determines whether the agent can move forward in the maze.
-        Returns:
-            bool: True if the agent can move forward, False otherwise.
-        """
-
-        # Get the coordinates of the cell in front of the agent
-        if self.orientation == 0:
-            next_position = (self.position[0] - 1, self.position[1])
-        elif self.orientation == 1:
-            next_position = (self.position[0], self.position[1] + 1)
-        elif self.orientation == 2:
-            next_position = (self.position[0] + 1, self.position[1])
-        elif self.orientation == 3:
-            next_position = (self.position[0], self.position[1] - 1)
-        else:
-            pass
-            #raise ValueError("Invalid orientation")
-
-        
-
-        # Check if the cell in front of the agent is a wall
-        if int(self.env_map[next_position[0]][next_position[1]]) == 1 or int(self.env_map[next_position[0]][next_position[1]]) == -1:
-            return False
-
-        return True
     
     def is_collision(self, x, y):
         # Convert continuous coordinates to grid indices
@@ -377,69 +338,6 @@ class SunburstMazeContinuous(gym.Env):
             next_to_wall[3] = 1
         return next_to_wall
 
-    def legal_actions(self) -> list:
-        """
-        Returns a list of legal actions that the agent can take.
-
-        Returns:
-            list: A list of legal actions. The agent can always turn left or right.
-            If the agent can move forward, "forward" is also included in the list.
-        """
-
-        # The agent can always turn left or right
-        actions = ["left", "right"]
-
-        if self.can_move_forward():
-            actions.append("forward")
-
-        return actions
-
-    def move_forward(self):
-        """
-        Moves the agent forward in the grid based on its current orientation.
-        The agent's position is updated according to its orientation:
-        - If the orientation is 0 (Up), the agent's position is decremented by 1 in the y-axis.
-        - If the orientation is 1 (Right), the agent's position is incremented by 1 in the x-axis.
-        - If the orientation is 2 (Down), the agent's position is incremented by 1 in the y-axis.
-        - If the orientation is 3 (Left), the agent's position is decremented by 1 in the x-axis.
-        """
-
-        if self.orientation == 0:  # Up
-            self.position = (self.position[0] - 1, self.position[1])
-
-        if self.orientation == 1:  # Right
-            self.position = (self.position[0], self.position[1] + 1)
-
-        if self.orientation == 2:  # Down
-            self.position = (self.position[0] + 1, self.position[1])
-
-        if self.orientation == 3:  # Left
-            self.position = (self.position[0], self.position[1] - 1)
-
-    def turn_left(self):
-        """
-        Turns the agent to the left.
-
-        This method updates the orientation of the agent by subtracting 1 from the current orientation and
-        taking the modulo 4 to ensure the orientation stays within the range of 0 to 3.
-
-        Parameters:
-            None
-
-        Returns:
-            None
-        """
-        self.orientation = (self.orientation - 1) % 4
-
-    def turn_right(self):
-        """
-        Turns the agent to the right.
-
-        This method updates the orientation of the agent by incrementing it by 1 and taking the modulo 4.
-        The modulo operation ensures that the orientation stays within the range of 0 to 3, representing the four
-        cardinal directions (north, east, south, west).
-        """
-        self.orientation = (self.orientation + 1) % 4
 
     def limit_velocity(self):
         """
@@ -469,9 +367,6 @@ class SunburstMazeContinuous(gym.Env):
         # Find the x and y components of the velocity
         self.velocity_x = velocity * math.sin(math.radians(self.orientation))
         self.velocity_y = -velocity * (math.cos(math.radians(self.orientation)))
-        #self.velocity_x += acceleration_x
-        #self.velocity_y += acceleration_y
-
         
 
         self.limit_velocity()
@@ -481,12 +376,15 @@ class SunburstMazeContinuous(gym.Env):
         position_y = self.position[0] + self.velocity_y
         position_x = self.position[1] + self.velocity_x
 
+        
+
         if self.is_collision(position_x, position_y):
             print("Collision")
-            return None, self.rewards["hit_wall"], True, True, self._get_info()
+            return None, self.rewards["hit_wall"], False, False, self._get_info()
 
         self.position = (position_y, position_x)
-
+        
+        observation = self._get_observation()
         
         """self.past_actions.append(
             (self.position, action, self.q_variance, self.orientation)
@@ -509,12 +407,7 @@ class SunburstMazeContinuous(gym.Env):
                 self._get_info(),
             )
 
-        #action = action_encoding(action)
         self.steps_current_episode += 1
-        print(self.steps_current_episode)
-        # Perform the action
-       # self._action_to_direction[action]()
-
         # Updated values
         observation = self._get_observation()
         if 2 in observation[:-1]:

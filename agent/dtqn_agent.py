@@ -1,9 +1,11 @@
 import numpy as np
 import torch
-from .replay_memory import ReplayMemory
 from torch import nn, optim
 
 from agent.neural_network_ff_torch import DQN_Network
+
+from .replay_memory import ReplayMemory
+
 # from agent.transformer_decoder_decoupled import TransformerDQN
 
 
@@ -13,12 +15,10 @@ def get_attention_gradients(module, grad_input, grad_output):
     attention_gradients = grad_output[0]
 
 
-
 def get_attention_gradients(module, grad_input, grad_output):
     global attention_gradients
     # print("Grad_input: ", len(grad_input))
     attention_gradients = grad_output[0]
-
 
 
 class DTQN_Agent:
@@ -43,9 +43,9 @@ class DTQN_Agent:
         transformer_param,
     ):
         if transformer_param["decouple_positional_embedding"]:
-            from agent.transformer_decoder_decoupled import TransformerDQN
+            from agent.transformer_decoder_decoupled import Transformer
         else:
-            from agent.transformer_decoder import TransformerDQN
+            from agent.transformer_decoder import Transformer
 
         # To save the history of network loss
         self.loss_history = []
@@ -77,7 +77,7 @@ class DTQN_Agent:
         sequence_length = transformer_param["sequence_length"]  # Replace value
 
         # Initiate the network models
-        self.model = TransformerDQN(
+        self.model = Transformer(
             state_dim,
             self.action_space.n,
             sequence_length,
@@ -85,11 +85,11 @@ class DTQN_Agent:
             n_head,
             n_layer,
             dropout,
-            self.device
+            self.device,
         )
         self.model = self.model.to(self.device)
 
-        self.target_model = TransformerDQN(
+        self.target_model = Transformer(
             state_dim,
             self.action_space.n,
             sequence_length,
@@ -117,14 +117,14 @@ class DTQN_Agent:
             hook = attention_layer.register_backward_hook(get_attention_gradients)
             Q_values, att_weights_list = self.model(state)
             action = torch.argmax(Q_values[:, -1, :]).item()
-            
+
             future_q, _ = self.model(next_state)
 
             target = reward + self.discount * torch.max(future_q[:, -1, :])
             loss = self.critertion(Q_values, target)
             loss.backward(retain_graph=True)
             gradient_list.append(attention_gradients)
-        #print("Gradient_list: ", gradient_list)
+        # print("Gradient_list: ", gradient_list)
         return gradient_list
 
     def select_action(self, state):
@@ -166,7 +166,7 @@ class DTQN_Agent:
         actions = actions.unsqueeze(2)
         rewards = rewards.unsqueeze(2)
         dones = dones.unsqueeze(2)
-        #print(states.shape, actions.shape, next_states.shape, rewards.shape, dones.shape)
+        # print(states.shape, actions.shape, next_states.shape, rewards.shape, dones.shape)
         # print(states.shape, actions.shape)
         current_q_values, _ = self.model(states)
         # print(current_q_values[:,0,:])

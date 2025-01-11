@@ -13,7 +13,7 @@ from PIL import Image
 from utils.calculate_fov import calculate_fov_matrix_size, step_angle
 
 from .file_manager import build_map
-from .maze_game import Maze
+from .continuous.maze_game import Maze
 
 checkpoints = [
     {"coordinates": [(19, 9), (19, 10), (19, 11)], "visited": False},
