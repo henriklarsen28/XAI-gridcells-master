@@ -29,7 +29,7 @@ from utils.sequence_preprocessing import padding_sequence, padding_sequence_int,
 wandb.login()
 
 # Define the CSV file path relative to the project root
-map_path_train = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
+map_path_train = os.path.join(project_root, "env/map_v0/map_closed_doors_left.csv")
 map_path_train_2 = os.path.join(project_root, "env/map_v0/map_open_doors_vertical.csv")
 map_path_train_3 = os.path.join(project_root, "env/map_v0/map_no_doors.csv")
 map_path_test = os.path.join(project_root, "env/map_v0/map_open_doors_90_degrees.csv")
@@ -62,13 +62,10 @@ def get_random_map():
 
 def salt_and_pepper_noise(matrix, prob=0.1):
 
-    goal_index = torch.where(matrix == 2)
-
     noisy_matrix = matrix.clone()
     noise = torch.rand(*matrix.shape)
     noisy_matrix[noise < prob / 2] = 1  # Add "salt"
     noisy_matrix[noise > 1 - prob / 2] = 0  # Add "pepper"
-    noisy_matrix[goal_index] = 2  # Ensure the goal is not obscured
     return noisy_matrix
 
 
@@ -92,7 +89,6 @@ class Model_TrainTest:
 
         self.rewards = config["rewards"]
         self.random_start_position = config["random_start_position"]
-        self.random_goal_position = config["random_goal_position"]
         self.observation_space = config["observation_space"]
 
         self.fov = config["fov"]
@@ -111,7 +107,6 @@ class Model_TrainTest:
             render_mode=render_mode,
             max_steps_per_episode=self.max_steps,
             random_start_position=self.random_start_position,
-            random_goal_position=self.random_goal_position,
             rewards=self.rewards,
             observation_space=self.observation_space,
             fov=self.fov,
@@ -509,27 +504,24 @@ if __name__ == "__main__":
         "epsilon_min": 0.01,
         "discount_factor": 0.88,
         "alpha": 0.1,
-        "map_path": map_path_test_2,
+        "map_path": map_path_train,
         "n_updates_per_iteration": 5,  # hard update of the target model
         "target_model_update": 10,
         "max_steps_per_episode": 50,
         "random_start_position": True,
-        "random_goal_position": True,
         "rewards": {
-            "is_goal": 200 / 200,
             "hit_wall": -0.5 / 200,
             "has_not_moved": -0.2 / 200,
             "new_square": 2 / 200,
             "max_steps_reached": -0.5 / 200,
             "penalty_per_step": -0.01 / 200,
-            "goal_in_sight": 0 / 200,
-            "number_of_squares_visible": 0 / 200
+            "number_of_squares_visible": 0 / 200,
+            # and the proportion of number of squares viewed (set in the env)
         },
         # TODO
         "observation_space": {
             "position": True,
             "orientation": True,
-            "steps_to_goal": False,
             "last_known_steps": 0,
             "salt_and_pepper_noise": 0,
         },
