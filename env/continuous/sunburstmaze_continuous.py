@@ -109,7 +109,7 @@ class SunburstMazeContinuous(gym.Env):
         self.q_variance = 0
         self.past_actions = deque(maxlen=10)
         # Define the action space. Rotation and acceleration
-        self.action_space = spaces.Box(low=np.array([-10.0, -1.0]), high=np.array([10.0,1.0]), dtype=np.float32)
+        self.action_space = spaces.Box(low=np.array([-10.0, 0.0]), high=np.array([10.0,1.0]), dtype=np.float32)
 
         # TODO: Change how the observation space is defined
         y = self.matrix_size[0]
@@ -232,7 +232,6 @@ class SunburstMazeContinuous(gym.Env):
         self.goal_observed_square = set()
 
         agent_angle = math.radians(self.orientation) # 0, 90, 180, 270
-        print(agent_angle)
         start_angle = agent_angle - self.half_fov
         for _ in range(self.number_of_rays + 1):
             for depth in range(self.ray_length):
@@ -250,9 +249,6 @@ class SunburstMazeContinuous(gym.Env):
 
         matrix = self.calculate_fov_matrix()
         #time.sleep(1)
-        print("Matrix: ", matrix)
-        print("Orientation: ", self.orientation)
-        print("Cos: ", math.cos(math.radians(self.orientation)), "Sin: ", math.sin(math.radians(self.orientation)))
         return matrix
 
     def find_relative_position_in_matrix(self, x2, y2):
@@ -286,8 +282,8 @@ class SunburstMazeContinuous(gym.Env):
             x, y = self.goal_observed_square.pop()
             matrix[y, x] = 2
 
-        #df = pd.DataFrame(matrix)
-        #df.to_csv("matrix.csv")
+        df = pd.DataFrame(matrix)
+        df.to_csv("matrix.csv")
 
         # if self.orientation == 2 or self.orientation == 3:
         #     matrix = np.rot90(matrix, 2)
@@ -303,7 +299,6 @@ class SunburstMazeContinuous(gym.Env):
         # Convert continuous coordinates to grid indices
         grid_x = math.floor(x)
         grid_y = math.floor(y)
-        print("Grid indices: ", grid_x, grid_y)
         # Check if the agent is out of bounds or hits a wall
         if grid_x < 0 or grid_x >= self.width or grid_y < 0 or grid_y >= self.height:
             return True
@@ -371,7 +366,6 @@ class SunburstMazeContinuous(gym.Env):
 
         self.limit_velocity()
 
-        print("Velocity_y:", self.velocity_y)
 
         position_y = self.position[0] + self.velocity_y
         position_x = self.position[1] + self.velocity_x
@@ -380,7 +374,7 @@ class SunburstMazeContinuous(gym.Env):
 
         if self.is_collision(position_x, position_y):
             print("Collision")
-            return None, self.rewards["hit_wall"], False, False, self._get_info()
+            return self._get_observation(), self.rewards["hit_wall"], False, False, self._get_info()
 
         self.position = (position_y, position_x)
         

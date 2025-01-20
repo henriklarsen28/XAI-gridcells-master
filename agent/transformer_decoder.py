@@ -91,7 +91,7 @@ class Transformer(nn.Module):
         self,
         input_dim,
         output_dim,
-        sequence_length,
+        block_size,
         n_embd,
         n_head,
         n_layer,
@@ -101,10 +101,10 @@ class Transformer(nn.Module):
         super(Transformer, self).__init__()
         self.device = device
         self.token_embedding = nn.Linear(input_dim, n_embd)  # nn.Embedding (long, int)
-        self.position_embedding = nn.Embedding(sequence_length, n_embd)
+        self.position_embedding = nn.Embedding(block_size, n_embd)
         self.dropout = nn.Dropout(dropout)
         self.blocks = nn.Sequential(
-            *[Block(n_embd, n_head, sequence_length, dropout) for _ in range(n_layer)]
+            *[Block(n_embd, n_head, block_size, dropout) for _ in range(n_layer)]
         )
         self.ln_f = nn.LayerNorm(n_embd)
         self.output = nn.Linear(
@@ -140,8 +140,7 @@ class Transformer(nn.Module):
         x = self.ln_f(x)
 
         x = self.output(x.to(torch.float32))
-
-        return x, att_weights_list
+        return x  # , att_weights_list
 
 
 # device = torch.device("mps" if torch.backends.mps.is_available() else "cpu") # Was faster with cpu??? Loading between cpu and mps is slow maybe
