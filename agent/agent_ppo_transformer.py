@@ -26,8 +26,6 @@ from utils.calculate_fov import calculate_fov_matrix_size
 from utils.state_preprocess import state_preprocess
 from utils.sequence_preprocessing import padding_sequence, padding_sequence_int, add_to_sequence
 
-wandb.login()
-
 # Define the CSV file path relative to the project root
 map_path_train = os.path.join(project_root, "env/map_v0/map_closed_doors_left.csv")
 map_path_train_2 = os.path.join(project_root, "env/map_v0/map_open_doors_vertical.csv")
@@ -171,7 +169,7 @@ class Model_TrainTest:
         reward_sequence = deque(maxlen=self.sequence_length)
         done_sequence = deque(maxlen=self.sequence_length)
 
-        wandb.init(project="sunburst-maze", config=self)
+        wandb.init(project="sunburst-maze-continuous", config=self)
 
         # Create the nessessary directories
         if not os.path.exists("./gifs"):

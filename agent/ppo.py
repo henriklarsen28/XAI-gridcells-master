@@ -22,7 +22,7 @@ class PPO_agent:
     def __init__(self, env: SunburstMazeContinuous, device, config):
         wandb.login()
 
-        self.run = wandb.init(project="sunburst-maze", config=self)
+        self.run = wandb.init(project="sunburst-maze-continuous", config=self)
 
         gif_path = f"./gifs/{self.run.name}"
 

@@ -106,8 +106,6 @@ class SunburstMazeContinuous(gym.Env):
         self.observed_squares_map = set()
         self.observed_red_wall = set()
 
-       
-
         self.q_variance = 0
         self.past_actions = deque(maxlen=10)
         # Define the action space. Rotation and acceleration
