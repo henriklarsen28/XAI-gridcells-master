@@ -178,6 +178,40 @@ def plot_similarity(block_nr, avg_pos_sim, avg_neg_sim, avg_all_sim):
     plt.tight_layout()
     plt.show()
 
+
+def plot_line_graph(block_nr, avg_pos_sim, avg_neg_sim, avg_all_sim):
+        # Extract the number of heads dynamically (8 in this case)
+    n_groups = len(avg_pos_sim)
+
+    # Convert tensors to list of values for plotting
+    pos = [tensor.item() for tensor in avg_pos_sim.values()]
+    neg = [tensor.item() for tensor in avg_neg_sim.values()]
+    all_ = [tensor.item() for tensor in avg_all_sim.values()]
+
+    # Create plot
+    fig, ax = plt.subplots()
+    index = np.arange(n_groups)  # Index based on number of heads
+
+    # Plot each line with markers
+    plt.plot(index, pos, marker='o', linestyle='-', color='b', label='Positives')
+    plt.plot(index, neg, marker='o', linestyle='-', color='g', label='Negatives')
+    plt.plot(index, all_, marker='o', linestyle='-', color='black', label='All')
+
+    # Labels and Title
+    plt.xlabel('Heads')
+    plt.ylabel('Cosine Similarity')
+    plt.title(f'Cosine Similarity of Grad-SAM for {block_nr}')
+    plt.xticks(index, [f'Head {i}' for i in range(n_groups)])  # Dynamic head labels
+    plt.xlim(0, n_groups - 1)  # Adjust x-axis limits
+    plt.ylim(0.2, 0.8)
+    plt.legend()
+
+    # Adjust layout and display
+    plt.tight_layout()
+    plt.show()
+
+    return pos, neg, all_
+
 def plot_clusters(idx, data_for_clustering, labels, n_clusters):
 
     # Use UMAP for dimensionality reduction to 2D for plotting

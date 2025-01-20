@@ -116,7 +116,6 @@ def salt_and_pepper_noise(matrix, prob=0.1):
     noisy_matrix[goal_index] = 2  # Ensure the goal is not obscured
     return noisy_matrix
 
-
 class Model_TrainTest:
     def __init__(self, config):
 
@@ -639,7 +638,7 @@ def get_num_states(map_path):
 if __name__ == "__main__":
     # Parameters:
 
-    train_mode = False
+    train_mode = True
 
     render = True
     render_mode = "human"
