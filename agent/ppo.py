@@ -22,7 +22,7 @@ class PPO_agent:
     def __init__(self, env: SunburstMazeContinuous, device, config):
         wandb.login()
 
-        self.run = wandb.init(project="sunburst-maze", config=self)
+        self.run = wandb.init(project="sunburst-maze-continuous", config=self)
 
         gif_path = f"./gifs/{self.run.name}"
 
@@ -101,23 +101,23 @@ class PPO_agent:
             obs, actions, log_probs, rtgs, lens = self.rollout(iteration_counter)
             timestep_counter += sum(lens)
             iteration_counter += 1
-            print("Obs: ", obs, obs.shape)
+            #print("Obs: ", obs, obs.shape)
             # Calculate the advantages
-            values = self.critic_network(obs).squeeze(2)
-            print("Values", values.shape)
-            print("RTGS: ", rtgs.shape)
-            advantages = rtgs - values # TODO: Feil i values, log_prob eller rtgs????
+            value, _ = self.evaluate(obs, actions)
+            rtgs = rtgs.unsqueeze(2)
+
+            advantages = rtgs - value.detach() # TODO: Feil i values, log_prob eller rtgs????
 
             # Normalize the advantages
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-10)
             steps_done = 0
             for _ in range(self.n_updates_per_iteration):
                 value, current_log_prob = self.evaluate(obs, actions)
-                print("Current log prob: ", current_log_prob.shape)
-                print("Log probs: ", log_probs.shape)
+
+                #print(current_log_prob)
                 ratio = torch.exp(current_log_prob - log_probs)
-                print("Ratio: ", ratio.shape)
-                print("Advantages: ", advantages.shape)
+                ratio = ratio.unsqueeze(2)
+ 
                 surrogate_loss1 = ratio * advantages
 
                 #print("Surrogate loss1: ", surrogate_loss1, surrogate_loss1.shape)
@@ -126,18 +126,20 @@ class PPO_agent:
                 )
                 # Increase the size of rtgs to be 300 x 15
   
-                policy_loss = torch.min(surrogate_loss1, surrogate_loss2).mean()
+                policy_loss = -torch.min(surrogate_loss1, surrogate_loss2).mean()
 
-                critic_loss = nn.MSELoss()(value, rtgs.unsqueeze(2))
+                critic_loss = nn.MSELoss()(value, rtgs)
 
+                print("Policy loss step")
                 self.policy_network.zero_grad()
                 policy_loss.backward(retain_graph=True)
                 self.policy_optimizer.step()
+                
 
                 self.critic_network.zero_grad()
                 critic_loss.backward()
                 self.critic_optimizer.step()
-
+                print("After")
                 steps_done += 1
 
             gif = None
@@ -152,8 +154,10 @@ class PPO_agent:
 
             wandb.log(
                 {
-                    "Episode": iteration_counter,
+                    "Episode": lens,
                     "Reward per episode": rtgs.mean().item(),
+                    "Policy loss": policy_loss.item(),
+                    "Critic loss": critic_loss.item(),
                     "Steps done": steps_done,
                     "Gif:": (wandb.Video(gif, fps=4, format="gif") if gif else None),
                 },
@@ -191,6 +195,7 @@ class PPO_agent:
             reward_sequence = deque(maxlen=self.sequence_length)
             state, _ = self.env.reset()
             done = False
+            
 
             for ep_timestep in range(self.max_steps):
                 timesteps += 1
@@ -201,9 +206,9 @@ class PPO_agent:
                     tensor_sequence, self.sequence_length, self.device
                 )
                 action, log_prob = self.get_action(tensor_sequence)
-                last_action = action[-1,-1].detach().numpy()
-                last_log_prob = log_prob[-1,-1]
-                print("Last action: ", last_action)
+                last_action = action[-1].detach().numpy()
+                #last_log_prob = log_prob[-1,-1]
+                
                 state, reward, done, turnicated, _ = self.env.step(last_action)
 
                 if self.render_mode == "rgb_array":
@@ -220,13 +225,13 @@ class PPO_agent:
                     tensor_action_sequence, self.sequence_length, self.device
                 )
 
-                log_prob_sequence = add_to_sequence(
-                    log_prob_sequence, last_log_prob, self.device
-                )
-                tensor_log_prob_sequence = torch.stack(list(log_prob_sequence))
-                tensor_log_prob_sequence = padding_sequence(
-                    tensor_log_prob_sequence, self.sequence_length, self.device
-                )
+                #log_prob_sequence = add_to_sequence(
+                #    log_prob_sequence, last_log_prob, self.device
+                #)
+                #tensor_log_prob_sequence = torch.stack(log_prob)
+                #tensor_log_prob_sequence = padding_sequence(
+                 #   tensor_log_prob_sequence, self.sequence_length, self.device
+                #)
 
                 # Reward sequence # TODO: Build a reward sequence for the PPO
                 reward_sequence = add_to_sequence(reward_sequence, reward, self.device)
@@ -236,8 +241,8 @@ class PPO_agent:
                 )
 
                 observations.append(tensor_sequence)
-                actions.append(tensor_action_sequence)
-                log_probs.append(tensor_log_prob_sequence)
+                actions.append(action)
+                log_probs.append(log_prob)
                 episode_rewards.append(tensor_reward_sequence)
 
 
@@ -247,6 +252,7 @@ class PPO_agent:
             lens.append(ep_timestep + 1)
             rewards.append(torch.stack(episode_rewards))
 
+        print("Timesteps: ", timesteps)
         # Reshape the data
         
         obs = torch.stack(observations).to(self.device)
@@ -288,14 +294,14 @@ class PPO_agent:
 
     def get_action(self, obs):
         obs = obs.unsqueeze(0)
-      
+
         mean = self.policy_network(obs)
         dist = torch.distributions.MultivariateNormal(mean, self.cov_mat)
 
         action = dist.sample()
         log_prob = dist.log_prob(action)
 
-        return action, log_prob
+        return action.squeeze(0), log_prob.squeeze(0).detach()
 
     def evaluate(self, obs, actions):
         V = self.critic_network(obs)

@@ -293,7 +293,6 @@ class Model_TrainTest:
                 {
                     "Episode": episode,
                     "Reward per episode": total_reward,
-                    "Epsilon": self.agent.epsilon,
                     "Steps done": steps_done,
                     "Discount factor": self.discount_factor**episode,
                     "Gif:": (wandb.Video(gif, fps=4, format="gif") if gif else None),
@@ -502,7 +501,7 @@ if __name__ == "__main__":
         "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 0.0001,
-        "batch_size": 50,
+        "batch_size": 128,
         "optimizer": "adam",
         "total_episodes": 5000,
         "epsilon_decay": 0.998,
@@ -512,7 +511,7 @@ if __name__ == "__main__":
         "map_path": map_path_test_2,
         "n_updates_per_iteration": 5,  # hard update of the target model
         "target_model_update": 10,
-        "max_steps_per_episode": 50,
+        "max_steps_per_episode": 300,
         "random_start_position": True,
         "random_goal_position": True,
         "rewards": {
