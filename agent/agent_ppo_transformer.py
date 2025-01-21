@@ -33,10 +33,11 @@ map_path_train_3 = os.path.join(project_root, "env/map_v0/map_no_doors.csv")
 map_path_test = os.path.join(project_root, "env/map_v0/map_open_doors_90_degrees.csv")
 map_path_test_2 = os.path.join(project_root, "env/map_v0/map_open_doors_horizontal_v2.csv")
 
-#device = torch.device(
-#    "mps" if torch.backends.mps.is_available() else "cpu"
-#)  # Was faster with cpu??? Loading between cpu and mps is slow maybe
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device(
+    "mps" if torch.backends.mps.is_available() else "cpu"
+)  # Was faster with cpu??? Loading between cpu and mps is slow maybe
+#device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu")
 
 # Seed everything for reproducible results
 seed = 2024

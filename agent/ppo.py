@@ -188,7 +188,6 @@ class PPO_agent:
 
         state_sequence = deque(maxlen=self.sequence_length)
         action_sequence = deque(maxlen=self.sequence_length)
-        log_prob_sequence = deque(maxlen=self.sequence_length)
 
         while timesteps < self.batch_size:
             episode_rewards = []
@@ -199,7 +198,6 @@ class PPO_agent:
 
             for ep_timestep in range(self.max_steps):
                 timesteps += 1
-
                 state_sequence = add_to_sequence(state_sequence, state, self.device)
                 tensor_sequence = torch.stack(list(state_sequence))
                 tensor_sequence = padding_sequence(
