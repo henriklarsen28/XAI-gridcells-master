@@ -494,7 +494,7 @@ if __name__ == "__main__":
         "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 0.0001,
-        "batch_size": 128,
+        "batch_size": 1000,
         "optimizer": "adam",
         "total_episodes": 5000,
         "epsilon_decay": 0.998,
