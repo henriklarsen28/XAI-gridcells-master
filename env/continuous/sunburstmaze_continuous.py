@@ -44,7 +44,6 @@ class SunburstMazeContinuous(gym.Env):
         render_mode=None,
         max_steps_per_episode=200,
         random_start_position=None,
-        random_goal_position=None,
         rewards=None,
         observation_space=None,
         fov=math.pi / 2,
@@ -57,22 +56,22 @@ class SunburstMazeContinuous(gym.Env):
         self.height = self.env_map.shape[0]
         self.width = self.env_map.shape[1]
         self.random_start_position = random_start_position
-        self.random_goal_position = random_goal_position
         self.rewards = rewards
         self.observation_space = observation_space
         self.render_mode = render_mode
+        
+        self.map_observation_size = 0
         for y in range(self.height):
             for x in range(self.width):
-                if self.env_map[y][x] == 2:
-                    self.goal = (y, x)
-                    break
-        print("height:", self.height, "width:", self.width, "goal:", self.goal)
+                if self.env_map[y][x] == 0:
+                    self.map_observation_size += 1
+        print("height:", self.height, "width:", self.width, "map_observation_size:", self.map_observation_size)
+
 
         self.orientation = 0  # Between 0 and 360 degrees, should probably be radians
         self.velocity_x = 0
         self.velocity_y = 0
         self.position = None
-        self.goal = None
 
         # Episode step settings
         self.max_steps_per_episode = max_steps_per_episode
@@ -92,6 +91,8 @@ class SunburstMazeContinuous(gym.Env):
         self.last_position = None
         self.last_moves = []
 
+        self.viewed_squares = set()
+        
         self.fov = fov
         self.half_fov = self.fov / 2
         self.ray_length = ray_length
@@ -104,7 +105,6 @@ class SunburstMazeContinuous(gym.Env):
         self.observed_squares = set()
         self.observed_squares_map = set()
         self.observed_red_wall = set()
-        self.goal_observed_square = set()
 
         self.q_variance = 0
         self.past_actions = deque(maxlen=10)
@@ -117,20 +117,6 @@ class SunburstMazeContinuous(gym.Env):
         # Observation space, position y, x and velocity
         self.observation_space = spaces.Box(low=np.array([0.0, 0.0, 0.0]), high=np.array([y, x, 1.0]), dtype=np.float32)
 
-        #self.q_values = []
-        self.goal_in_sight = False
-
-    def goal_position(self):
-        for y in range(self.height):
-            for x in range(self.width):
-                if self.env_map[y][x] == 2:
-                    if self.random_goal_position is True:
-                        self.env_map[y][x] = 0
-                        position = self.random_position()
-                        self.env_map[position[0]][position[1]] = 2
-                        return position
-                    return (y, x)
-        return None
 
     def select_start_position(self) -> tuple:
         """
@@ -152,7 +138,6 @@ class SunburstMazeContinuous(gym.Env):
 
     def random_position(self):
 
-        # move the goal to a random position
         position = (rd.randint(0, self.height - 1), rd.randint(0, self.width - 1))
         # Check if the position is not a wall
         while int(self.env_map[position[0]][position[1]]) == 1:
@@ -166,8 +151,7 @@ class SunburstMazeContinuous(gym.Env):
     def _get_info(self):
         return {
             #"legal_actions": self.legal_actions(),
-            "orientation": self.orientation,
-            "goal_in_sight": self.goal_in_sight,
+            "orientation": self.orientation
         }
 
     def _get_observation(self):
@@ -192,10 +176,12 @@ class SunburstMazeContinuous(gym.Env):
 
         self.past_actions.clear()
 
+        # Reset visited and observed squares
         self.visited_squares = []
+        self.viewed_squares = set()
+
         self.env_map = copy.deepcopy(self.initial_map)
         self.position = self.select_start_position()
-        self.goal = self.goal_position()
 
         self.steps_current_episode = 0
 
@@ -229,7 +215,6 @@ class SunburstMazeContinuous(gym.Env):
         self.observed_squares = set()
         self.wall_rays = set()
         self.observed_squares_map = set()
-        self.goal_observed_square = set()
 
         agent_angle = math.radians(self.orientation) # 0, 90, 180, 270
         start_angle = agent_angle - self.half_fov
@@ -245,7 +230,9 @@ class SunburstMazeContinuous(gym.Env):
                 self.find_relative_position_in_matrix(x, y)
                 self.observed_squares_map.add((x,y))
             start_angle += self.step_angle
-
+        
+       # print("Observed squares: ", self.observed_squares)
+        # print("Observed squares map: ", self.observed_squares_map)
 
         matrix = self.calculate_fov_matrix()
         #time.sleep(1)
@@ -257,11 +244,6 @@ class SunburstMazeContinuous(gym.Env):
         y = int(y)
         marked_x = self.matrix_middle_index + y - y2 - 1
         marked_y = x - x2 - 1
-        
-
-        # Add the goal square
-        if self.env_map[x2, y2] == 2:
-            self.goal_observed_square.add((marked_x, marked_y))
 
         self.observed_squares.add((marked_x, marked_y))
 
@@ -276,11 +258,6 @@ class SunburstMazeContinuous(gym.Env):
         for square in self.observed_red_wall:
             x, y = square
             matrix[y, x] = -1
-
-        # Mark the goal square
-        if len(self.goal_observed_square) == 1:
-            x, y = self.goal_observed_square.pop()
-            matrix[y, x] = 2
 
         df = pd.DataFrame(matrix)
         df.to_csv("matrix.csv")
@@ -369,7 +346,6 @@ class SunburstMazeContinuous(gym.Env):
 
         position_y = self.position[0] + self.velocity_y
         position_x = self.position[1] + self.velocity_x
-
         
 
         if self.is_collision(position_x, position_y):
@@ -379,15 +355,17 @@ class SunburstMazeContinuous(gym.Env):
         self.position = (position_y, position_x)
         
         observation = self._get_observation()
-        
+
         """self.past_actions.append(
             (self.position, action, self.q_variance, self.orientation)
         )
         self.last_moves.append(self.position)"""
         # Used if the action is invalid
+        
         reward = self.reward()
         observation = None
-        terminated = self.is_goal()
+
+        terminated = self.view_of_maze_complete()
         info = self._get_info()
 
         if self.steps_current_episode >= self.max_steps_per_episode:
@@ -404,29 +382,23 @@ class SunburstMazeContinuous(gym.Env):
         self.steps_current_episode += 1
         # Updated values
         observation = self._get_observation()
-        if 2 in observation[:-1]:
-            self.goal_in_sight = True
-
-        """reward = self.reward()
-        
-        terminated = self.is_goal()
-        info = self._get_info()"""
 
         if self.render_mode == "human":
             self.render()
 
+        #print("Observed squares map in step: ", self.observed_squares_map)
+        #print('Number of squares in total', self.height * self.width)
+
+        
+   
+        #print ("Length of viewed squares: ",  len(self.viewed_squares))
+        #print("Proporition of viewed squares: ", len(self.viewed_squares) / self.map_observation_size)
+
         
         return observation, reward, terminated, False, info
 
-    def is_goal(self):
-        """
-        Checks if the current position is a goal position.
-        Returns:
-            bool: True if the current position is a goal position, False otherwise.
-        """
-        # Round down the position to the nearest integer
-
-        if int(self.env_map[math.floor(self.position[0])][math.floor(self.position[1])]) == 2:
+    def view_of_maze_complete(self):
+        if len(self.viewed_squares) == self.map_observation_size:
             return True
         return False
 
@@ -454,9 +426,6 @@ class SunburstMazeContinuous(gym.Env):
             int: The reward value.
         """
 
-        if self.is_goal():
-            print("Goal reached!")
-            return self.rewards["is_goal"]
         # Penalize for just rotating in place without moving
         current_pos = self.position
         
@@ -476,27 +445,20 @@ class SunburstMazeContinuous(gym.Env):
             self.rewards["number_of_squares_visible"] * self.number_of_squares_visible()
         )"""
         reward = 0
-        if self.goal_in_sight:
-            reward += self.rewards["goal_in_sight"]# + reward
 
         if self.position not in self.visited_squares:
             self.visited_squares.append(self.position)
-            reward +=  self.rewards["new_square"]# + reward # + self.distance_to_goal_reward()
+            reward +=  self.rewards["new_square"]
 
-        reward += self.rewards["penalty_per_step"]# + reward
+        reward += self.rewards["penalty_per_step"]
+
+        # Add reward for increasing the number of viewed squares
+        viewed_squares_original = len(self.viewed_squares)
+        self.viewed_squares.update(self.observed_squares_map)
+        if viewed_squares_original < len(self.viewed_squares):
+            reward += len(self.viewed_squares) / self.map_observation_size
+
         return reward
-
-    def render_q_value_overlay(self, q_values):
-        """
-        Renders the Q-values as an overlay on the maze.
-
-        Args:
-            q_values (np.ndarray): The Q-values to render as an overlay.
-
-        Returns:
-            None
-        """
-        self.render_maze.draw_q_values(q_values)
 
     def render(self):
         self._render_frame()
