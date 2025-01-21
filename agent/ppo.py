@@ -208,7 +208,7 @@ class PPO_agent:
                 )
                 print("State: ", tensor_sequence, tensor_sequence.shape)
                 action, log_prob = self.get_action(tensor_sequence)
-                last_action = action[-1].detach().numpy()
+                last_action = action[-1].cpu().detach().numpy()
                 #last_log_prob = log_prob[-1,-1]
                 
                 state, reward, done, turnicated, _ = self.env.step(last_action)
