@@ -213,9 +213,9 @@ if __name__ == "__main__":
         "max_steps_per_episode": 300,
         "random_start_position": True,
         "rewards": {
-            "hit_wall": -0.5 / 200,
+            "hit_wall": -1 / 200,
             "has_not_moved": -0.2 / 200,
-            "new_square": 2 / 200,
+            "new_square": 5 / 200,
             "max_steps_reached": -0.5 / 200,
             "penalty_per_step": -0.01 / 200,
             "number_of_squares_visible": 0 / 200,
