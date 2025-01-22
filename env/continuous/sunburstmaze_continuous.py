@@ -280,35 +280,16 @@ class SunburstMazeContinuous(gym.Env):
         if grid_x < 0 or grid_x >= self.width or grid_y < 0 or grid_y >= self.height:
             return True
         return self.env_map[grid_y, grid_x] == 1
-
-
-    def next_to_wall(self) -> list: # TODO: Can be removed
+    
+    def is_goal(self):
         """
-        Determines which directions the agent is next to a wall.
-
+        Checks if the current position is a goal position.
         Returns:
-            list: A list of binary values indicating whether the agent is next to a wall in each direction.
-                  The order of the values corresponds to [front, right, back, left].
-                  A value of 1 indicates that the agent is next to a wall in that direction,
-                  while a value of 0 indicates that the agent is not next to a wall in that direction.
+            bool: True if the current position is a goal position, False otherwise.
         """
-
-        next_to_wall = [0, 0, 0, 0]
-
-        # TODO: Clean this up
-        # Check if the cell in front of the agent is a wall
-        if int(self.env_map[self.position[0] - 1][self.position[1]]) == 1:
-            next_to_wall[0] = 1
-        # Check if the cell to the right of the agent is a wall
-        if int(self.env_map[self.position[0]][self.position[1] + 1]) == 1:
-            next_to_wall[1] = 1
-        # Check if the cell behind the agent is a wall
-        if int(self.env_map[self.position[0] + 1][self.position[1]]) == 1:
-            next_to_wall[2] = 1
-        # Check if the cell to the left of the agent is a wall
-        if int(self.env_map[self.position[0]][self.position[1] - 1]) == 1:
-            next_to_wall[3] = 1
-        return next_to_wall
+        if int(self.env_map[round(self.position[0])][round(self.position[1])]) == 2:
+            return True
+        return False
 
 
     def limit_velocity(self):
@@ -362,6 +343,8 @@ class SunburstMazeContinuous(gym.Env):
         
         observation = self._get_observation()
 
+        if self.is_goal():
+            return observation, self.rewards["goal_reached"] + self.reward(), True, True, self._get_info()
         """self.past_actions.append(
             (self.position, action, self.q_variance, self.orientation)
         )
@@ -373,6 +356,9 @@ class SunburstMazeContinuous(gym.Env):
 
         terminated = self.view_of_maze_complete()
         info = self._get_info()
+
+        if self.is_goal():
+            return observation, self.rewards["goal_reached"] + reward, True, True, self._get_info()
 
         if self.steps_current_episode >= self.max_steps_per_episode:
             print("Reached max steps")
@@ -434,22 +420,7 @@ class SunburstMazeContinuous(gym.Env):
 
         # Penalize for just rotating in place without moving
         current_pos = self.position
-        
-        """if self.has_not_moved(self.position):
-            return self.rewards["has_not_moved"]"""
-        # Update the last position
-        self.last_position = current_pos
 
-        # for checkpoint in checkpoints:
-        #     if self.position in checkpoint["coordinates"] and not checkpoint["visited"]:
-        #         checkpoint["visited"] = True
-        #         print("Checkpoint visited: ", self.position)
-        #         return 20
-        # if self.decreased_steps_to_goal():
-        #    return 0.00 #+ self.distance_to_goal_reward()
-        """reward = (
-            self.rewards["number_of_squares_visible"] * self.number_of_squares_visible()
-        )"""
         reward = 0
 
         if self.position not in self.visited_squares:
