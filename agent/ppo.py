@@ -21,7 +21,7 @@ class PPO_agent:
 
     def __init__(self, env: SunburstMazeContinuous, device, config):
         wandb.login()
-
+        self.config = config
         self.run = wandb.init(project="sunburst-maze-continuous", config=self)
 
         gif_path = f"./gifs/{self.run.name}"
@@ -29,8 +29,6 @@ class PPO_agent:
         # Create the nessessary directories
         if not os.path.exists(gif_path):
             os.makedirs(gif_path)
-
-        self.frames = []
 
         model_path = f"./model/transformers/ppo/model_{self.run.name}"
         if not os.path.exists(model_path):
@@ -91,6 +89,11 @@ class PPO_agent:
         self.cov_var = torch.full(size=(self.act_dim,), fill_value=0.5).to(self.device)
         self.cov_mat = torch.diag(self.cov_var).to(self.device)
 
+        self.action_low = torch.tensor(env.action_space.low)
+        self.action_high = torch.tensor(env.action_space.high)
+
+        print(self.action_high, self.action_low)
+
     def learn(self, total_timesteps):
         print("Learning")
 
@@ -99,9 +102,7 @@ class PPO_agent:
 
         while timestep_counter < total_timesteps:
 
-            self.frames = []
-
-            obs, actions, log_probs, rtgs, lens = self.rollout(iteration_counter)
+            obs, actions, log_probs, rtgs, lens, frames = self.rollout(iteration_counter)
             timestep_counter += sum(lens)
             iteration_counter += 1
             #print("Obs: ", obs, obs.shape)
@@ -146,14 +147,14 @@ class PPO_agent:
                 steps_done += 1
 
             gif = None
-            if self.frames:
+            if frames:
                 if os.path.exists("./gifs") is False:
                     os.makedirs("./gifs")
 
                 gif = self.env.create_gif(
-                    gif_path=f"./gifs/{iteration_counter}.gif", frames=self.frames
+                    gif_path=f"./gifs/{iteration_counter}.gif", frames=frames
                 )
-                self.frames.clear()
+                frames.clear()
 
             wandb.log(
                 {
@@ -184,6 +185,7 @@ class PPO_agent:
         rewards = []
         rtgs = []
         lens = []
+        frames = []
 
         episode_rewards = []
 
@@ -206,18 +208,18 @@ class PPO_agent:
                 tensor_sequence = padding_sequence(
                     tensor_sequence, self.sequence_length, self.device
                 )
-                print("State: ", tensor_sequence, tensor_sequence.shape)
                 action, log_prob = self.get_action(tensor_sequence)
                 last_action = action[-1].cpu().detach().numpy()
                 #last_log_prob = log_prob[-1,-1]
                 
                 state, reward, done, turnicated, _ = self.env.step(last_action)
 
-                if self.render_mode == "rgb_array":
-                    if iteration_counter % 100 == 0:
-                        frame = self.env._render_frame()
-                        if type(frame) == np.ndarray:
-                            self.frames.append(frame)
+                if self.render_mode == "rgb_array" and len(rewards) == 0: # Create gif on the first episode in the rollout
+                    frame = self.env._render_frame()
+       
+                    if type(frame) == np.ndarray:
+                        frames.append(frame)
+
                 if self.render_mode == "human":
                     self.env.render()
 
@@ -262,7 +264,7 @@ class PPO_agent:
         log_probs = torch.stack(log_probs).to(self.device)
         rtgs = self.compute_rtgs(rewards)
 
-        return obs, actions, log_probs, rtgs, lens
+        return obs, actions, log_probs, rtgs, lens, frames
         
 
     def compute_rtgs(self, rewards):
@@ -302,8 +304,12 @@ class PPO_agent:
 
         action = dist.sample()
         log_prob = dist.log_prob(action)
+        scaled_action = torch.clamp(
+            self.action_low + (self.action_high - self.action_low) * ((action + 1) / 2),  # Transform from [-1, 1] to [low, high]
+            self.action_low, self.action_high
+        )
 
-        return action.squeeze(0), log_prob.squeeze(0).detach()
+        return scaled_action.squeeze(0), log_prob.squeeze(0).detach()
 
     def evaluate(self, obs, actions):
         V = self.critic_network(obs)
@@ -325,4 +331,5 @@ class PPO_agent:
         self.update_frequency = config["target_model_update"]
         # self.max_episodes = config["total_episodes"]
         self.max_steps = config["max_steps_per_episode"]
-        self.render_mode = config["render"]
+        self.render = config["render"]
+        self.render_mode = config["render_mode"]

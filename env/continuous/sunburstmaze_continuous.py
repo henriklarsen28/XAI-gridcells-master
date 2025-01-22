@@ -109,7 +109,7 @@ class SunburstMazeContinuous(gym.Env):
         self.q_variance = 0
         self.past_actions = deque(maxlen=10)
         # Define the action space. Rotation and acceleration
-        self.action_space = spaces.Box(low=np.array([-10.0, 0.0]), high=np.array([10.0,1.0]), dtype=np.float32)
+        self.action_space = spaces.Box(low=np.array([-30.0, 0.0]), high=np.array([30.0,1.0]), dtype=np.float32)
 
         # TODO: Change how the observation space is defined
         y = self.matrix_size[0]
@@ -332,7 +332,13 @@ class SunburstMazeContinuous(gym.Env):
             terminated (bool): Whether the episode is terminated or not.
             info (dict): Additional information about the environment.
         """
-        velocity, rotation = action
+        rotation, velocity = action
+
+        # Clip the actions
+        velocity = np.clip(velocity, self.action_space.low[1], self.action_space.high[1])
+        rotation = np.clip(rotation, self.action_space.low[0], self.action_space.high[0])
+
+
         self.orientation += rotation
         self.orientation = self.orientation % 360
 
