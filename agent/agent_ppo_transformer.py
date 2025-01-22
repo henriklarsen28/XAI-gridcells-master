@@ -213,6 +213,7 @@ if __name__ == "__main__":
         "max_steps_per_episode": 300,
         "random_start_position": True,
         "rewards": {
+            "goal_reached": 1,
             "hit_wall": -1 / 200,
             "has_not_moved": -0.2 / 200,
             "new_square": 5 / 200,
