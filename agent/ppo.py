@@ -14,7 +14,7 @@ from utils.sequence_preprocessing import (
     padding_sequence,
     padding_sequence_int,
 )
-from utils.state_preprocess import state_preprocess
+from utils.state_preprocess import state_preprocess_continuous
 
 
 class PPO_agent:
@@ -199,10 +199,14 @@ class PPO_agent:
             reward_sequence = deque(maxlen=self.sequence_length)
             state, _ = self.env.reset()
             done = False
+
+
             
 
             for ep_timestep in range(self.max_steps):
                 timesteps += 1
+                state = state_preprocess_continuous(state, device=self.device)
+                print("State: ", state)
                 state_sequence = add_to_sequence(state_sequence, state, self.device)
                 tensor_sequence = torch.stack(list(state_sequence))
                 tensor_sequence = padding_sequence(

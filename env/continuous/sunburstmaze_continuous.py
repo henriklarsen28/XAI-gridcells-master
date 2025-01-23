@@ -342,7 +342,7 @@ class SunburstMazeContinuous(gym.Env):
         self.position = (position_y, position_x)
         
         observation = self._get_observation()
-
+        
         if self.is_goal():
             return observation, self.rewards["goal_reached"] + self.reward(), True, True, self._get_info()
         """self.past_actions.append(
