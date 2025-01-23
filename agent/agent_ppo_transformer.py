@@ -210,7 +210,7 @@ if __name__ == "__main__":
         "map_path": map_path_train,
         "n_updates_per_iteration": 5,  # hard update of the target model
         "target_model_update": 10,
-        "max_steps_per_episode": 600,
+        "max_steps_per_episode": 1000,
         "random_start_position": True,
         "rewards": {
             "goal_reached": 1,

@@ -337,7 +337,7 @@ class SunburstMazeContinuous(gym.Env):
 
         if self.is_collision(position_x, position_y):
             print("Collision")
-            return self._get_observation(), self.rewards["hit_wall"], True, False, self._get_info()
+            return self._get_observation(), self.rewards["hit_wall"], False, False, self._get_info()
 
         self.position = (position_y, position_x)
         
