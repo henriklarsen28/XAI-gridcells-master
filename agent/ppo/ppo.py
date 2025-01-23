@@ -170,6 +170,13 @@ class PPO_agent:
                 self.policy_network.zero_grad()
                 policy_loss.backward(retain_graph=True)
                 self.policy_optimizer.step()
+                
+
+                self.critic_network.zero_grad()
+                critic_loss.backward()
+                self.critic_optimizer.step()
+                print("After")
+                
 
             gif = None
             if frames:
