@@ -144,7 +144,7 @@ class PPO_agent:
                 critic_loss.backward()
                 self.critic_optimizer.step()
                 print("After")
-                steps_done += 1
+                
 
             gif = None
             if frames:
@@ -162,7 +162,7 @@ class PPO_agent:
                     "Reward per episode": rtgs.mean().item(),
                     "Policy loss": policy_loss.item(),
                     "Critic loss": critic_loss.item(),
-                    "Steps done": steps_done,
+                    "Steps done": lens[0],
                     "Gif:": (wandb.Video(gif, fps=4, format="gif") if gif else None),
                 },
                 commit=True,
