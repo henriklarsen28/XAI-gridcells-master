@@ -14,6 +14,7 @@ def generate_random_maps(env_size: tuple):
 
     # Create the border walls
     matrix = add_border(matrix)
+    print(matrix)
     # Generate a random map
     # 1. Generate random room sizes
     # Define how many rooms there should be
@@ -21,9 +22,18 @@ def generate_random_maps(env_size: tuple):
 
     rooms = []
     for i in range(room_count):
-        room_size = np.random.randint(
-            max(6, env_size[1] // 5), max(7, env_size[1] // 2), 2
-        )
+        room_size = np.random.randint(max(5,env_size[1] // 5), max(7,env_size[1] // 2), 2)
+
+        # Generate room matrises
+        room = np.zeros(room_size)
+        room = add_border(room)
+        room = add_doors(room, 1)
+        # Create a door in the room
+        rooms.append(room)
+        print(room)
+
+    #print(rooms)
+    # 2. Generate random room positions
 
         # Generate room matrises
         room = np.zeros(room_size)
@@ -173,6 +183,47 @@ def generate_random_map_conditional_prob(env_size: tuple, prob: float):
 
     # Ytterkantene som vegger
     matrix = add_border(matrix)
+    return matrix
+
+
+def add_border(matrix: np.array):
+    matrix[0, :] = 1
+    matrix[-1, :] = 1
+    matrix[:, 0] = 1
+    matrix[:, -1] = 1
+    return matrix
+
+
+def add_doors(matrix: np.array, number_of_doors: int):
+    sides_with_door = np.random.randint(0, 3, number_of_doors)
+
+    height, width = matrix.shape
+
+    for side in sides_with_door:
+        if side == 0:
+            # Top
+            door_width = max(width-4, np.random.randint(1, width // 2))
+            door_position = np.random.randint(1, width - door_width)
+            matrix[0, door_position : door_position + door_width] = 0
+
+        elif side == 1:
+            # Right
+            door_height = max(height-4, np.random.randint(1, height // 2))
+            door_position = np.random.randint(1, height - door_height)
+            matrix[door_position : door_position + door_height, -1] = 0
+
+        elif side == 2:
+            # Bottom
+            door_width = max(width-4, np.random.randint(1, width // 2))
+            door_position = np.random.randint(1, width - door_width)
+            matrix[-1, door_position : door_position + door_width] = 0
+
+        elif side == 3:
+            # Left
+            door_height = max(height-4, np.random.randint(1, height // 2))
+            door_position = np.random.randint(1, height - door_height)
+            matrix[door_position : door_position + door_height, 0] = 0
+
     return matrix
 
 
