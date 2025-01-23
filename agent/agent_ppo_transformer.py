@@ -214,12 +214,12 @@ if __name__ == "__main__":
         "random_start_position": True,
         "rewards": {
             "goal_reached": 1,
-            "hit_wall": -1 / 200,
-            "has_not_moved": -0.2 / 200,
-            "new_square": 5 / 200,
-            "max_steps_reached": -0.5 / 200,
-            "penalty_per_step": -0.01 / 200,
-            "number_of_squares_visible": 0 / 200,
+            "hit_wall": -0.1,
+            "has_not_moved": -0.004,
+            "new_square": 0.005,
+            "max_steps_reached": -0.1,
+            "penalty_per_step": -0.0001,
+            "number_of_squares_visible": 0,
             # and the proportion of number of squares viewed (set in the env)
         },
         # TODO
