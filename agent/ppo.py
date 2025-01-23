@@ -130,7 +130,7 @@ class PPO_agent:
                 )
                 # Increase the size of rtgs to be 300 x 15
   
-                policy_loss = -torch.min(surrogate_loss1, surrogate_loss2).mean()
+                policy_loss = (-torch.min(surrogate_loss1, surrogate_loss2)).mean()
 
                 critic_loss = nn.MSELoss()(value, rtgs)
 
