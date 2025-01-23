@@ -25,6 +25,7 @@ def perform_action(action: int, env: SunburstMazeContinuous):
     print("Action: ", action, env.orientation, env.position, env.velocity_x, env.velocity_y)
 
     observation, reward, goal, _, info = env.step(action)
+    print(observation)
     #time.sleep(0.05)
     # env.show_map()
     return goal, env
@@ -72,7 +73,6 @@ def play_with_keyboard():
         render_mode="human",
         rewards=config["rewards"],
         random_start_position=config["random_start_position"],
-        random_goal_position=config["random_goal_position"],
         observation_space=config["observation_space"],
         max_steps_per_episode=2000,
         fov=config["fov"],
@@ -100,11 +100,11 @@ def play_with_keyboard():
                     running = False
                     break
                 if event.key == pygame.K_w:
-                    action = (1,0)
+                    action = (0,1)
                 elif event.key == pygame.K_a:
-                    action = (0.2,-5)
+                    action = (-10,0.1)
                 elif event.key == pygame.K_d:
-                    action = (0.2,5)
+                    action = (10,0.1)
             else:
                 action = None
 
