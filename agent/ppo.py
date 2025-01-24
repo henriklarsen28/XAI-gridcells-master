@@ -7,6 +7,7 @@ import wandb
 from torch import nn
 torch.autograd.set_detect_anomaly(True)
 from transformer_decoder import Transformer
+from transformer_decoder_policy import TransformerPolicy
 
 from env import SunburstMazeContinuous
 from utils.sequence_preprocessing import (
@@ -52,7 +53,8 @@ class PPO_agent:
         dropout = transformer_param["dropout"]  # Dropout probability
         self.sequence_length = transformer_param["sequence_length"]  # Replace value
         self.device = device
-        self.policy_network = Transformer(
+
+        self.policy_network = TransformerPolicy(
             input_dim=self.obs_dim,
             output_dim=self.act_dim,
             block_size=self.sequence_length,
@@ -206,7 +208,6 @@ class PPO_agent:
             for ep_timestep in range(self.max_steps):
                 timesteps += 1
                 state = state_preprocess_continuous(state, device=self.device)
-                print("State: ", state)
                 state_sequence = add_to_sequence(state_sequence, state, self.device)
                 tensor_sequence = torch.stack(list(state_sequence))
                 tensor_sequence = padding_sequence(
@@ -303,8 +304,8 @@ class PPO_agent:
     def get_action(self, obs):
         obs = obs.unsqueeze(0)
 
-        mean = self.policy_network(obs)
-        dist = torch.distributions.MultivariateNormal(mean, self.cov_mat)
+        mean, std = self.policy_network(obs)
+        dist = torch.distributions.MultivariateNormal(mean, torch.diag_embed(std))
 
         action = dist.sample()
         log_prob = dist.log_prob(action)
@@ -318,8 +319,8 @@ class PPO_agent:
     def evaluate(self, obs, actions):
         V = self.critic_network(obs)
 
-        mean = self.policy_network(obs)
-        dist = torch.distributions.MultivariateNormal(mean, self.cov_mat)
+        mean, std = self.policy_network(obs)
+        dist = torch.distributions.MultivariateNormal(mean, torch.diag_embed(std))
 
         log_prob = dist.log_prob(actions)
 
