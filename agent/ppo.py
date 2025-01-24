@@ -116,7 +116,6 @@ class PPO_agent:
 
             # Normalize the advantages
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-10)
-            steps_done = 0
             for _ in range(self.n_updates_per_iteration):
                 value, current_log_prob = self.evaluate(obs, actions)
 
@@ -147,7 +146,6 @@ class PPO_agent:
                 self.critic_optimizer.step()
                 print("After")
                 
-
             gif = None
             if frames:
                 if os.path.exists("./gifs") is False:
