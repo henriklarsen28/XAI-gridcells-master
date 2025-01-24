@@ -116,7 +116,6 @@ class PPO_agent:
 
             # Normalize the advantages
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-10)
-            steps_done = 0
             for _ in range(self.n_updates_per_iteration):
                 value, current_log_prob = self.evaluate(obs, actions)
 
@@ -146,7 +145,6 @@ class PPO_agent:
                 critic_loss.backward()
                 self.critic_optimizer.step()
                 print("After")
-                steps_done += 1
 
             gif = None
             if frames:
