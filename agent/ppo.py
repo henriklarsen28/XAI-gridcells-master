@@ -91,8 +91,8 @@ class PPO_agent:
         self.cov_var = torch.full(size=(self.act_dim,), fill_value=0.5).to(self.device)
         self.cov_mat = torch.diag(self.cov_var).to(self.device)
 
-        self.action_low = torch.tensor(env.action_space.low)
-        self.action_high = torch.tensor(env.action_space.high)
+        self.action_low = torch.tensor(env.action_space.low).to(self.device)
+        self.action_high = torch.tensor(env.action_space.high).to(self.device)
 
         print(self.action_high, self.action_low)
 
