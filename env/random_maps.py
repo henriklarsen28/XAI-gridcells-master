@@ -28,23 +28,32 @@ def generate_random_maps(env_size: tuple):
         # Generate room matrises
         room = np.zeros(room_size)
         room = add_border(room)
-        room = add_doors(room, 1)
+        
         # Create a door in the room
         rooms.append(room)
-        print(room)
 
     #print(rooms)
     # 2. Generate random room positions
-    # Find a position for the centre of the room
+    # Find a position for the top left corner of the room
+    corners_taken = []
     for room in rooms:
-        room_position = np.random.randint(1, env_size[0] - room.shape[0]), np.random.randint(1, env_size[1] - room.shape[1])
-        print(room_position)
-        # Check if the room fits in the map
-
+        taken = True
+        while taken:
+            
+            room_position = np.random.randint(0, env_size[0] - room.shape[0]), np.random.randint(0, env_size[1] - room.shape[1]) # (x, y) substract the room size to make sure it fits in the map
+            room_border = [(i, j) for i in range(room_position[0], room_position[0]+room.shape[0]) for j in range(room_position[1], room_position[1]+room.shape[1])]
+            room_corners = [(room_position[0], room_position[1]), (room_position[0]+room.shape[0], room_position[1]), (room_position[0], room_position[1]+room.shape[1]), (room_position[0]+room.shape[0], room_position[1]+room.shape[1])]
+            print("Hello", room_border)
+            if not any(border in corners_taken for border in room_border):
+                taken = False
         
+        matrix[room_position[0]:room_position[0]+room.shape[0], room_position[1]:room_position[1]+room.shape[1]] = room
 
-        # Check if the room overlaps with another room
-        # If it does, generate a new room position
+        corners_taken.extend([(i, j) for i in range(room_position[0], room_position[0]+room.shape[0]) for j in range(room_position[1], room_position[1]+room.shape[1])])
+        print(corners_taken)
+
+        # Add doors to the rooms
+        matrix = add_doors(matrix, 1, room_corners, room.shape)
 
 
 
@@ -207,35 +216,36 @@ def add_border(matrix: np.array):
     return matrix
 
 
-def add_doors(matrix: np.array, number_of_doors: int):
+def add_doors(matrix: np.array, number_of_doors: int, room_corners: list, room_size: tuple):
     sides_with_door = np.random.randint(0, 3, number_of_doors)
-
-    height, width = matrix.shape
-
+    
+    height, width = room_size
+    print(room_corners) # TODO: Fix the corners so that they are correct
     for side in sides_with_door:
+        side = 0
         if side == 0:
             # Top
             door_width = max(width-4, np.random.randint(1, width // 2))
-            door_position = np.random.randint(1, width - door_width)
-            matrix[0, door_position : door_position + door_width] = 0
+            door_position = np.random.randint(room_corners[0][0]+1, (width - door_width) + room_corners[0][1])
+            matrix[room_corners[0][0], door_position : door_position + door_width] = 0
 
         elif side == 1:
             # Right
             door_height = max(height-4, np.random.randint(1, height // 2))
-            door_position = np.random.randint(1, height - door_height)
-            matrix[door_position : door_position + door_height, -1] = 0
+            door_position = np.random.randint(room_corners[1][1] +1, (height - door_height + room_corners[1][1]))
+            matrix[door_position : door_position + door_height, room_corners[1][0]] = 0
 
         elif side == 2:
             # Bottom
             door_width = max(width-4, np.random.randint(1, width // 2))
-            door_position = np.random.randint(1, width - door_width)
-            matrix[-1, door_position : door_position + door_width] = 0
+            door_position = np.random.randint(room_corners[2][0] -1, (width - door_width) + room_corners[2][0])
+            matrix[room_corners[2][1], door_position : door_position + door_width] = 0
 
         elif side == 3:
             # Left
             door_height = max(height-4, np.random.randint(1, height // 2))
-            door_position = np.random.randint(1, height - door_height)
-            matrix[door_position : door_position + door_height, 0] = 0
+            door_position = np.random.randint(room_corners[3][1] -1, (height - door_height) + room_corners[3][1])
+            matrix[door_position : door_position + door_height, room_corners[3][0]+1] = 0
 
     return matrix
 
