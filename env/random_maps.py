@@ -1,6 +1,7 @@
 import random as rd
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 def generate_random_maps(env_size: tuple):
@@ -33,6 +34,18 @@ def generate_random_maps(env_size: tuple):
 
     #print(rooms)
     # 2. Generate random room positions
+    # Find a position for the centre of the room
+    for room in rooms:
+        room_position = np.random.randint(1, env_size[0] - room.shape[0]), np.random.randint(1, env_size[1] - room.shape[1])
+        print(room_position)
+        # Check if the room fits in the map
+
+        
+
+        # Check if the room overlaps with another room
+        # If it does, generate a new room position
+
+
 
     # 3. Generate random corridor positions
 
@@ -81,6 +94,31 @@ def add_doors(matrix: np.array, number_of_doors: int):
 
     return matrix
 
+def generate_random_map_conditional_prob(env_size: tuple, prob: float):
+    matrix = np.zeros(env_size, dtype=int)
+    
+    for i in range(1, env_size[0]-1):
+        for j in range(1, env_size[1]-1):
+            # Calculate the number of walls around
+            neighbor_walls = sum([
+                matrix[i-1, j], matrix[i+1, j],
+                matrix[i, j-1], matrix[i, j+1]
+            ])
+            # Reduce the sum if there is a wall diagonally
+            diagonal_walls = sum([
+                matrix[i-1, j-1], matrix[i-1, j+1],
+                matrix[i+1, j-1], matrix[i+1, j+1]
+            ])
+            
+            # Increase the probability of generating a wall if there are many walls around
+            adjusted_prob = prob + 0.15 * neighbor_walls - 0.05 * diagonal_walls
+            
+            if rd.random() < adjusted_prob:
+                matrix[i, j] = 1
+
+    # Ytterkantene som vegger
+    matrix = add_border(matrix)
+    return matrix
 
 def generate_circular_maps(env_size: tuple):
     assert env_size[0] == env_size[1], "The environment size should be square"
@@ -93,14 +131,17 @@ def generate_circular_maps(env_size: tuple):
             if (r - center[0]) ** 2 + (c - center[1]) ** 2 <= center[0] ** 2:
                 matrix[r, c] = 0
 
-    print(matrix)
+    return matrix
 
 
 def main():
     env_size = (21, 21)
-    # generate_circular_maps(env_size)
-    generate_random_maps(env_size)
-
+    # matrix = generate_circular_maps(env_size)
+    # matrix = generate_random_maps(env_size)
+    for i in range(10):
+        matrix = generate_random_map_conditional_prob(env_size, 0.2)
+        plt.imshow(matrix, cmap="binary")
+        plt.show()
 
 if __name__ == "__main__":
     main()
