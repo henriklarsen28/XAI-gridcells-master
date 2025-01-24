@@ -430,10 +430,10 @@ class SunburstMazeContinuous(gym.Env):
         reward += self.rewards["penalty_per_step"]
 
         # Add reward for increasing the number of viewed squares
-        viewed_squares_original = len(self.viewed_squares)
-        self.viewed_squares.update(self.observed_squares_map)
-        if viewed_squares_original < len(self.viewed_squares):
-            reward += len(self.viewed_squares) / self.map_observation_size
+        #viewed_squares_original = len(self.viewed_squares)
+        #self.viewed_squares.update(self.observed_squares_map)
+        #if viewed_squares_original < len(self.viewed_squares):
+        #    reward += len(self.viewed_squares) / self.map_observation_size
 
         return reward
 
