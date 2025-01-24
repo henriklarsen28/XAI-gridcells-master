@@ -172,7 +172,7 @@ class PPO_agent:
                 critic_loss.backward()
                 self.critic_optimizer.step()
                 print("After")
-
+                
             gif = None
             if frames:
                 if os.path.exists("./gifs") is False:
