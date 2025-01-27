@@ -184,13 +184,10 @@ def generate_circular_maps(env_size: tuple):
             if (r - center[0]) ** 2 + (c - center[1]) ** 2 <= center[0] ** 2:
                 matrix[r, c] = 0
 
-    prob_matrix = generate_random_map_conditional_prob(env_size, 0.15)
-
-    matrix = np.logical_or(matrix, prob_matrix)
-
-    # Convert to integers
-    matrix = matrix.astype(int)
     return matrix
+
+def combine_maps(matrix1: np.array, matrix2: np.array):
+    return np.logical_or(matrix1, matrix2).astype(int)
 
 
 def save_map(matrix: np.array, path: str):
@@ -203,11 +200,12 @@ def save_map(matrix: np.array, path: str):
 
 def main():
     env_size = (21, 21)
-    matrix = generate_circular_maps(env_size)
+    matrix1 = generate_random_map_conditional_prob(env_size, 0.15)
+    matrix2 = generate_circular_maps(env_size)
+    matrix = combine_maps(matrix1, matrix2)
     save_map(matrix, "random_generated_maps/circular_map.csv")
     matrix = generate_random_maps(env_size)
     save_map(matrix, "random_generated_maps/random_map_2_rooms.csv")
-
     matrix = generate_random_map_conditional_prob(env_size, 0.2)
     save_map(matrix, "random_generated_maps/random_map_conditional_prob.csv")
 
