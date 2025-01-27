@@ -363,7 +363,6 @@ class SunburstMazeContinuous(gym.Env):
         # Used if the action is invalid
         
         reward = self.reward()
-        observation = None
 
         terminated = self.view_of_maze_complete()
         info = self._get_info()
@@ -380,9 +379,7 @@ class SunburstMazeContinuous(gym.Env):
             )
 
         self.steps_current_episode += 1
-        # Updated values
-        observation = self._get_observation()
-
+    
         if self.render_mode == "human":
             self.render()
 
