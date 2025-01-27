@@ -25,17 +25,18 @@ from tqdm import tqdm
 from agent.dtqn_agent import DTQN_Agent
 from env import SunburstMazeDiscrete
 from utils.calculate_fov import calculate_fov_matrix_size
+from utils.sequence_preprocessing import (
+    add_to_sequence,
+    padding_sequence,
+    padding_sequence_int,
+)
 from utils.state_preprocess import state_preprocess
-from utils.sequence_preprocessing import padding_sequence, padding_sequence_int, add_to_sequence
 
 wandb.login()
 
 # Define the CSV file path relative to the project root
-map_path_train = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
-map_path_train_2 = os.path.join(project_root, "env/map_v0/map_open_doors_vertical.csv")
-map_path_train_3 = os.path.join(project_root, "env/map_v0/map_no_doors.csv")
-map_path_test = os.path.join(project_root, "env/map_v0/map_open_doors_90_degrees.csv")
-map_path_test_2 = os.path.join(project_root, "env/map_v0/map_open_doors_horizontal_v2.csv")
+map_path_train = os.path.join(project_root, "env/map_no_goal/map_closed_doors_left.csv")
+map_path_test = os.path.join(project_root, "env/map_no_goal/map_closed_doors_left.csv")
 
 device = torch.device("cpu")
 device = torch.device(
@@ -57,20 +58,22 @@ if torch.cuda.is_available():
     torch.backends.cudnn.benchmark = False
 
 
+# STOPPED HERE - update file to remove goal stuff
+
 def get_random_map():
-    map_list = [map_path_train, map_path_train_2]
+    map_list = [map_path_train, map_path_train]
     return rd.choice(map_list)
 
 
 def salt_and_pepper_noise(matrix, prob=0.1):
 
-    goal_index = torch.where(matrix == 2)
+    # goal_index = torch.where(matrix == 2)
 
     noisy_matrix = matrix.clone()
     noise = torch.rand(*matrix.shape)
     noisy_matrix[noise < prob / 2] = 1  # Add "salt"
     noisy_matrix[noise > 1 - prob / 2] = 0  # Add "pepper"
-    noisy_matrix[goal_index] = 2  # Ensure the goal is not obscured
+    # noisy_matrix[goal_index] = 2  # Ensure the goal is not obscured
     return noisy_matrix
 
 
@@ -103,7 +106,7 @@ class Model_TrainTest:
 
         self.rewards = config["rewards"]
         self.random_start_position = config["random_start_position"]
-        self.random_goal_position = config["random_goal_position"]
+        # self.random_goal_position = config["random_goal_position"]
         self.observation_space = config["observation_space"]
 
         self.fov = config["fov"]
@@ -122,7 +125,7 @@ class Model_TrainTest:
             render_mode=render_mode,
             max_steps_per_episode=self.max_steps,
             random_start_position=self.random_start_position,
-            random_goal_position=self.random_goal_position,
+            # random_goal_position=self.random_goal_position,
             rewards=self.rewards,
             observation_space=self.observation_space,
             fov=self.fov,
@@ -162,7 +165,7 @@ class Model_TrainTest:
         reward_sequence = deque(maxlen=self.sequence_length)
         done_sequence = deque(maxlen=self.sequence_length)
 
-        run = wandb.init(project="sunburst-maze", config=self)
+        run = wandb.init(project="sunburst-maze-discrete", config=self)
 
         gif_path = f"./gifs/{run.name}"
 
@@ -329,7 +332,7 @@ class Model_TrainTest:
         reward_sequence = deque(maxlen=self.sequence_length)
         done_sequence = deque(maxlen=self.sequence_length)
 
-        wandb.init(project="sunburst-maze", config=self)
+        wandb.init(project="sunburst-maze-discrete", config=self)
 
         # Create the nessessary directories
         if not os.path.exists("./gifs"):
@@ -621,7 +624,7 @@ def get_num_states(map_path):
 if __name__ == "__main__":
     # Parameters:
 
-    train_mode = False
+    train_mode = True
 
     render = False
     render_mode = "human"
@@ -663,7 +666,7 @@ if __name__ == "__main__":
         "epsilon_min": 0.01,
         "discount_factor": 0.88,
         "alpha": 0.1,
-        "map_path": map_path_test_2,
+        "map_path": map_path_test,
         "target_model_update": 10,  # hard update of the target model
         "max_steps_per_episode": 300,
         "random_start_position": True,
@@ -677,6 +680,7 @@ if __name__ == "__main__":
             "penalty_per_step": -0.01 / 200,
             "goal_in_sight": 0 / 200,
             "number_of_squares_visible": 0 / 200
+            # and the number of swuares viewed (set in the env)
         },
         # TODO
         "observation_space": {

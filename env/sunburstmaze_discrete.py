@@ -41,7 +41,7 @@ class SunburstMazeDiscrete(gym.Env):
         render_mode=None,
         max_steps_per_episode=200,
         random_start_position=None,
-        random_goal_position=None,
+        # random_goal_position=None,
         rewards=None,
         observation_space=None,
         fov=math.pi / 2,
@@ -54,16 +54,21 @@ class SunburstMazeDiscrete(gym.Env):
         self.height = self.env_map.shape[0]
         self.width = self.env_map.shape[1]
         self.random_start_position = random_start_position
-        self.random_goal_position = random_goal_position
+        # self.random_goal_position = random_goal_position
         self.rewards = rewards
         self.observation_space = observation_space
         self.render_mode = render_mode
+
+        # calculate the size of the observation space for rewards of viewing the map
+        self.map_observation_size = 0
         for y in range(self.height):
             for x in range(self.width):
-                if self.env_map[y][x] == 2:
+                if self.env_map[y][x] == 0:
+                    self.map_observation_size += 1
+                '''if self.env_map[y][x] == 2:
                     self.goal = (y, x)
-                    break
-        print("height:", self.height, "width:", self.width, "goal:", self.goal)
+                    break'''
+        print("height:", self.height, "width:", self.width, "map_observation_size:", self.map_observation_size)
 
         # Three possible actions: forward, left, right
 
@@ -76,7 +81,7 @@ class SunburstMazeDiscrete(gym.Env):
         self.orientation = 0  # 0 = Up, 1 = Right, 2 = Down, 3 = Left
 
         self.position = None
-        self.goal = None
+        # self.goal = None
 
         # Episode step settings
         self.max_steps_per_episode = max_steps_per_episode
@@ -92,7 +97,7 @@ class SunburstMazeDiscrete(gym.Env):
         self.clock = None
 
         ## Visited checkpoints
-        self.visited_squares = []
+        # self.visited_squares = []
         self.last_position = None
         self.last_moves = []
 
@@ -108,7 +113,7 @@ class SunburstMazeDiscrete(gym.Env):
         self.observed_squares = set()
         self.observed_squares_map = set()
         self.observed_red_wall = set()
-        self.goal_observed_square = set()
+        # self.goal_observed_square = set()
 
         self.q_variance = 0
         self.past_actions = deque(maxlen=10)
@@ -120,9 +125,9 @@ class SunburstMazeDiscrete(gym.Env):
         )
 
         self.q_values = []
-        self.goal_in_sight = False
+        # self.goal_in_sight = False
 
-    def goal_position(self):
+    '''def goal_position(self):
         for y in range(self.height):
             for x in range(self.width):
                 if self.env_map[y][x] == 2:
@@ -132,7 +137,7 @@ class SunburstMazeDiscrete(gym.Env):
                         self.env_map[position[0]][position[1]] = 2
                         return position
                     return (y, x)
-        return None
+        return None'''
 
     def select_start_position(self) -> tuple:
         """
@@ -168,7 +173,7 @@ class SunburstMazeDiscrete(gym.Env):
         return {
             "legal_actions": self.legal_actions(),
             "orientation": self.orientation,
-            "goal_in_sight": self.goal_in_sight,
+            # "goal_in_sight": self.goal_in_sight,
         }
 
     def _get_observation(self):
@@ -194,9 +199,11 @@ class SunburstMazeDiscrete(gym.Env):
         self.past_actions.clear()
 
         self.visited_squares = []
+        self.viewed_squares = set()
+
         self.env_map = copy.deepcopy(self.initial_map)
         self.position = self.select_start_position()
-        self.goal = self.goal_position()
+        # self.goal = self.goal_position()
 
         self.steps_current_episode = 0
 
@@ -230,7 +237,7 @@ class SunburstMazeDiscrete(gym.Env):
         self.observed_squares = set()
         self.wall_rays = set()
         self.observed_squares_map = set()
-        self.goal_observed_square = set()
+        # self.goal_observed_square = set()
         self.observed_red_wall = set()
 
         agent_angle = self.orientation * math.pi / 2  # 0, 90, 180, 270
@@ -281,8 +288,8 @@ class SunburstMazeDiscrete(gym.Env):
             marked_y = y - y2
 
         # Add the goal square
-        if self.env_map[x2, y2] == 2:
-            self.goal_observed_square.add((marked_x, marked_y))
+        '''if self.env_map[x2, y2] == 2:
+            self.goal_observed_square.add((marked_x, marked_y))'''
 
         self.observed_squares.add((marked_x, marked_y))
 
@@ -299,9 +306,9 @@ class SunburstMazeDiscrete(gym.Env):
             matrix[y, x] = -1
 
         # Mark the goal square
-        if len(self.goal_observed_square) == 1:
+        '''if len(self.goal_observed_square) == 1:
             x, y = self.goal_observed_square.pop()
-            matrix[y, x] = 2
+            matrix[y, x] = 2'''
 
         #df = pd.DataFrame(matrix)
         #df.to_csv("matrix.csv")
@@ -451,7 +458,8 @@ class SunburstMazeDiscrete(gym.Env):
         # Used if the action is invalid
         reward = self.reward()
         observation = self._get_observation()
-        terminated = self.is_goal()
+        # terminated = self.is_goal()
+        terminated = self.view_of_maze_complete()
         info = self._get_info()
 
         if self.steps_current_episode >= self.max_steps_per_episode:
@@ -478,25 +486,32 @@ class SunburstMazeDiscrete(gym.Env):
 
         # Updated values
         reward = self.reward()
-        observation = self._get_observation()
-        terminated = self.is_goal()
+        
+        # terminated = self.is_goal()
         info = self._get_info()
 
         if self.render_mode == "human":
             self.render()
 
-        if 2 in observation[:-1]:
-            self.goal_in_sight = True
+        '''if 2 in observation[:-1]:
+            self.goal_in_sight = True'''
+        if terminated:
+            print("Whole maze is viewed!")
 
         return observation, reward, terminated, False, info
 
-    def is_goal(self):
+    '''def is_goal(self):
         """
         Checks if the current position is a goal position.
         Returns:
             bool: True if the current position is a goal position, False otherwise.
         """
         if int(self.env_map[self.position[0]][self.position[1]]) == 2:
+            return True
+        return False'''
+    
+    def view_of_maze_complete(self):
+        if len(self.viewed_squares) == self.map_observation_size:
             return True
         return False
 
@@ -524,9 +539,9 @@ class SunburstMazeDiscrete(gym.Env):
             int: The reward value.
         """
 
-        if self.is_goal():
+        '''if self.is_goal():
             print("Goal reached!")
-            return self.rewards["is_goal"]
+            return self.rewards["is_goal"]'''
         # Penalize for just rotating in place without moving
         current_pos = self.position
         
@@ -542,18 +557,27 @@ class SunburstMazeDiscrete(gym.Env):
         #         return 20
         # if self.decreased_steps_to_goal():
         #    return 0.00 #+ self.distance_to_goal_reward()
-        """reward = (
+        '''reward = (
             self.rewards["number_of_squares_visible"] * self.number_of_squares_visible()
-        )"""
+        )'''
         reward = 0
-        if self.goal_in_sight:
-            reward += self.rewards["goal_in_sight"]# + reward
+        '''if self.goal_in_sight:
+            reward += self.rewards["goal_in_sight"]# + reward'''
 
         if self.position not in self.visited_squares:
             self.visited_squares.append(self.position)
             reward +=  self.rewards["new_square"]# + reward # + self.distance_to_goal_reward()
 
         reward += self.rewards["penalty_per_step"]# + reward
+
+        # Add reward for increasing the number of viewed squares
+        viewed_squares_original = len(self.viewed_squares)
+        self.viewed_squares.update(self.observed_squares_map)
+        if viewed_squares_original < len(self.viewed_squares):
+            reward_new_squares = (len(self.viewed_squares) - viewed_squares_original) / self.map_observation_size
+            reward += reward_new_squares
+            print("Reward for viewing new squares: ", reward_new_squares)
+
         return reward
 
     def render_q_value_overlay(self, q_values):
