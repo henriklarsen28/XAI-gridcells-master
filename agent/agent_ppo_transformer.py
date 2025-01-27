@@ -19,9 +19,10 @@ import torch
 import wandb
 from explain_network import ExplainNetwork, grad_sam
 from tqdm import tqdm
+import gymnasium as gym
 
 from agent.ppo import PPO_agent
-from env import SunburstMazeContinuous
+from env import SunburstMazeContinuous, SunburstMazeDiscrete
 from utils.calculate_fov import calculate_fov_matrix_size
 from utils.state_preprocess import state_preprocess
 from utils.sequence_preprocessing import padding_sequence, padding_sequence_int, add_to_sequence
@@ -100,7 +101,7 @@ class Model_TrainTest:
             map_path = map_path_test
 
         # Define Env
-        self.env = SunburstMazeContinuous(
+        self.env = SunburstMazeDiscrete(
             maze_file=map_path,
             render_mode=render_mode,
             max_steps_per_episode=self.max_steps,
@@ -111,24 +112,11 @@ class Model_TrainTest:
             ray_length=self.ray_length,
             number_of_rays=self.number_of_rays,
         )
+        
         self.env.metadata["render_fps"] = (
             self.render_fps
         )  # For max frame rate make it 0
 
-        # Define the agent class
-        """self.agent = DTQN_Agent(
-            env=self.env,
-            epsilon=self.epsilon,
-            epsilon_min=self.epsilon_min,
-            epsilon_decay=self.epsilon_decay,
-            clip_grad_normalization=self.clip_grad_normalization,
-            learning_rate=self.learning_rate,
-            discount=self.discount_factor,
-            memory_capacity=self.memory_capacity,
-            device=device,
-            seed=seed,
-            transformer_param=self.transformer,
-        )"""
 
         self.agent = PPO_agent(
             env=self.env,
@@ -210,16 +198,18 @@ if __name__ == "__main__":
         "map_path": map_path_train,
         "n_updates_per_iteration": 5,  # hard update of the target model
         "target_model_update": 10,
-        "max_steps_per_episode": 1000,
+        "max_steps_per_episode": 250,
         "random_start_position": True,
         "rewards": {
             "goal_reached": 1,
+            "is_goal": 1,
             "hit_wall": -0.0001,
             "has_not_moved": -0.005,
-            "new_square": 0.025,
+            "new_square": 0.0025,
             "max_steps_reached": -0.025,
-            "penalty_per_step": -0.000002,
+            "penalty_per_step": -0.0002,
             "number_of_squares_visible": 0,
+            "goal_in_sight": 0.1,
             # and the proportion of number of squares viewed (set in the env)
         },
         # TODO
@@ -231,7 +221,7 @@ if __name__ == "__main__":
         },
         "save_interval": 10,
         "render_fps": 5,
-        "observation_size": num_states + 1,
+        "observation_size": num_states + 4,
         "clip_grad_normalization": 3,
         "clip": 0.3,
         "fov": fov_config["fov"],

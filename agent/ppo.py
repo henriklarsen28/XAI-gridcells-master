@@ -15,7 +15,7 @@ from utils.sequence_preprocessing import (
     padding_sequence,
     padding_sequence_int,
 )
-from utils.state_preprocess import state_preprocess_continuous
+from utils.state_preprocess import state_preprocess
 
 
 class PPO_agent:
@@ -37,7 +37,7 @@ class PPO_agent:
 
         self.env = env
         self.obs_dim = config["observation_size"]
-        self.act_dim = env.action_space.shape[0]
+        self.act_dim = env.action_space.n
 
 
         # Hyperparameters
@@ -91,10 +91,8 @@ class PPO_agent:
         self.cov_var = torch.full(size=(self.act_dim,), fill_value=0.5).to(self.device)
         self.cov_mat = torch.diag(self.cov_var).to(self.device)
 
-        self.action_low = torch.tensor(env.action_space.low).to(self.device)
-        self.action_high = torch.tensor(env.action_space.high).to(self.device)
-
-        print(self.action_high, self.action_low)
+        #self.action_low = torch.tensor(env.action_space.low).to(self.device)
+        #self.action_high = torch.tensor(env.action_space.high).to(self.device)
 
     def learn(self, total_timesteps):
         print("Learning")
@@ -205,32 +203,26 @@ class PPO_agent:
 
             for ep_timestep in range(self.max_steps):
                 timesteps += 1
-                state = state_preprocess_continuous(state, device=self.device)
+                state = state_preprocess(state, device=self.device)
                 state_sequence = add_to_sequence(state_sequence, state, self.device)
                 tensor_sequence = torch.stack(list(state_sequence))
                 tensor_sequence = padding_sequence(
                     tensor_sequence, self.sequence_length, self.device
                 )
                 action, log_prob = self.get_action(tensor_sequence)
-                last_action = action[-1].cpu().detach().numpy()
+                last_action = action[:,-1,:].cpu().detach().numpy()
+                last_action = np.argmax(last_action)
                 #last_log_prob = log_prob[-1,-1]
                 
                 state, reward, done, turnicated, _ = self.env.step(last_action)
 
                 if self.render_mode == "rgb_array" and len(rewards) == 0: # Create gif on the first episode in the rollout
                     frame = self.env._render_frame()
-       
                     if type(frame) == np.ndarray:
                         frames.append(frame)
 
                 if self.render_mode == "human":
                     self.env.render()
-
-                action_sequence = add_to_sequence(action_sequence, last_action, self.device)
-                tensor_action_sequence = torch.stack(list(action_sequence))
-                tensor_action_sequence = padding_sequence_int(
-                    tensor_action_sequence, self.sequence_length, self.device
-                )
 
                 #log_prob_sequence = add_to_sequence(
                 #    log_prob_sequence, last_log_prob, self.device
@@ -239,6 +231,7 @@ class PPO_agent:
                 #tensor_log_prob_sequence = padding_sequence(
                  #   tensor_log_prob_sequence, self.sequence_length, self.device
                 #)
+                
 
                 # Reward sequence # TODO: Build a reward sequence for the PPO
                 reward_sequence = add_to_sequence(reward_sequence, reward, self.device)
@@ -300,6 +293,7 @@ class PPO_agent:
         return torch.stack(rtgs)"""
 
     def get_action(self, obs):
+        
         obs = obs.unsqueeze(0)
 
         mean, std = self.policy_network(obs)
@@ -307,12 +301,13 @@ class PPO_agent:
 
         action = dist.sample()
         log_prob = dist.log_prob(action)
-        scaled_action = torch.clamp(
+        """scaled_action = torch.clamp(
             self.action_low + (self.action_high - self.action_low) * ((action + 1) / 2),  # Transform from [-1, 1] to [low, high]
             self.action_low, self.action_high
-        )
+        )"""
+        scaled_action = action
 
-        return scaled_action.squeeze(0), log_prob.squeeze(0).detach()
+        return scaled_action, log_prob.detach()
 
     def evaluate(self, obs, actions):
         V = self.critic_network(obs)

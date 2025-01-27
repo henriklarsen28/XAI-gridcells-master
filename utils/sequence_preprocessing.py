@@ -38,7 +38,7 @@ def padding_sequence(sequence: torch.tensor, max_length, device):
     return sequence
 
 
-def add_to_sequence(sequence: deque, state, device):
+def add_to_sequence(sequence: deque, state: torch.Tensor, device):
     """
     Add the new state to the sequence
     """
