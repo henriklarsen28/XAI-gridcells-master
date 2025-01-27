@@ -83,7 +83,7 @@ class SunburstMazeDiscrete(gym.Env):
         self.orientation = 0  # 0 = Up, 1 = Right, 2 = Down, 3 = Left
 
         self.position = None
-        self.goal = None
+        # self.goal = None
 
         # Episode step settings
         self.max_steps_per_episode = max_steps_per_episode
@@ -115,7 +115,7 @@ class SunburstMazeDiscrete(gym.Env):
         self.observed_squares = set()
         self.observed_squares_map = set()
         self.observed_red_wall = set()
-        self.goal_observed_square = set()
+        # self.goal_observed_square = set()
 
         self.q_variance = 0
         self.past_actions = deque(maxlen=10)
@@ -127,7 +127,7 @@ class SunburstMazeDiscrete(gym.Env):
         )
 
         self.q_values = []
-        self.goal_in_sight = False
+        # self.goal_in_sight = False
 
     '''def goal_position(self):
         for y in range(self.height):
@@ -175,7 +175,7 @@ class SunburstMazeDiscrete(gym.Env):
         return {
             "legal_actions": self.legal_actions(),
             "orientation": self.orientation,
-            "goal_in_sight": self.goal_in_sight,
+            # "goal_in_sight": self.goal_in_sight,
         }
 
     def _get_observation(self):
@@ -258,7 +258,7 @@ class SunburstMazeDiscrete(gym.Env):
         self.observed_squares = set()
         self.wall_rays = set()
         self.observed_squares_map = set()
-        self.goal_observed_square = set()
+        # self.goal_observed_square = set()
         self.observed_red_wall = set()
 
         agent_angle = self.orientation * math.pi / 2  # 0, 90, 180, 270
@@ -327,9 +327,9 @@ class SunburstMazeDiscrete(gym.Env):
             matrix[y, x] = -1
 
         # Mark the goal square
-        if len(self.goal_observed_square) == 1:
+        '''if len(self.goal_observed_square) == 1:
             x, y = self.goal_observed_square.pop()
-            matrix[y, x] = 2
+            matrix[y, x] = 2'''
 
         #df = pd.DataFrame(matrix)
         #df.to_csv("matrix.csv")
@@ -537,6 +537,11 @@ class SunburstMazeDiscrete(gym.Env):
             bool: True if the current position is a goal position, False otherwise.
         """
         if int(self.env_map[self.position[0]][self.position[1]]) == 2 and self.position != self.goal:
+            return True
+        return False
+    
+    def view_of_maze_complete(self):
+        if len(self.viewed_squares) == self.map_observation_size:
             return True
         return False
     
