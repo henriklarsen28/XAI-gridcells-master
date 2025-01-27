@@ -1,10 +1,17 @@
 import numpy as np
 import torch
-from replay_memory import ReplayMemory
+from .replay_memory import ReplayMemory
 from torch import nn, optim
 
 from agent.neural_network_ff_torch import DQN_Network
-from agent.transformer_decoder import TransformerDQN
+# from agent.transformer_decoder_decoupled import TransformerDQN
+
+
+def get_attention_gradients(module, grad_input, grad_output):
+    global attention_gradients
+    print("Grad_input: ", len(grad_input))
+    attention_gradients = grad_output[0]
+
 
 
 def get_attention_gradients(module, grad_input, grad_output):
@@ -35,6 +42,10 @@ class DTQN_Agent:
         seed,
         transformer_param,
     ):
+        if transformer_param["decouple_positional_embedding"]:
+            from agent.transformer_decoder_decoupled import TransformerDQN
+        else:
+            from agent.transformer_decoder import TransformerDQN
 
         # To save the history of network loss
         self.loss_history = []
@@ -164,7 +175,8 @@ class DTQN_Agent:
 
         # Compute the maximum Q-value for the next states using the target network
         with torch.no_grad():
-            future_q_values = self.target_model(next_states)[0].max(dim=2, keepdim=True)[
+            future_q_values, _ = self.target_model(next_states)
+            future_q_values = future_q_values.max(dim=2, keepdim=True)[
                 0
             ]  # not argmax (cause we want the maxmimum q-value, not the action that maximize it)
 

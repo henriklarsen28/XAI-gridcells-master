@@ -17,7 +17,9 @@ import pygame
 import torch
 import wandb
 from dqn_agent import DQN_Agent
-from explain_network import generate_q_values
+from explain_network import ExplainNetworkFF
+import random as rd
+#from explain_network import generate_q_values
 from scipy.special import softmax
 
 from env import SunburstMazeDiscrete
@@ -27,8 +29,8 @@ from utils.state_preprocess import state_preprocess
 wandb.login()
 
 # Define the CSV file path relative to the project root
-map_path_train = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
-map_path_test = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
+map_path_train = os.path.join(project_root, "env/map_v0/map_open_doors_horizontal.csv")
+map_path_test = os.path.join(project_root, "env/map_v0/map_open_doors_90_degrees.csv")
 
 
 device = torch.device("cpu")
@@ -48,6 +50,17 @@ torch.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False"""
 
+
+def salt_and_pepper_noise(matrix, prob=0.1):
+
+    goal_index = torch.where(matrix == 2)
+
+    noisy_matrix = matrix.clone()
+    noise = torch.rand(*matrix.shape)
+    noisy_matrix[noise < prob / 2] = 1  # Add "salt"
+    noisy_matrix[noise > 1 - prob / 2] = 0  # Add "pepper"
+    noisy_matrix[goal_index] = 2  # Ensure the goal is not obscured
+    return noisy_matrix
 
 class Model_TrainTest:
     def __init__(self, config):
@@ -95,6 +108,7 @@ class Model_TrainTest:
             render_mode=render_mode,
             max_steps_per_episode=self.max_steps,
             random_start_position=self.random_start_position,
+            random_goal_position=config["random_goal_position"],
             rewards=self.rewards,
             observation_space=self.observation_space,
             fov=self.fov,
@@ -129,14 +143,17 @@ class Model_TrainTest:
         total_steps = 0
         self.reward_history = []
         frames = []
-        wandb.init(project="sunburst-maze", config=self)
+        run = wandb.init(project="sunburst-maze", config=self)
 
         # Create the nessessary directories
         if not os.path.exists("./gifs"):
                     os.makedirs("./gifs")
+        model_path = f"./model/{run.name}"
+
+        if not os.path.exists(model_path):
+                    os.makedirs(model_path)
         
-        if not os.path.exists("./model"):
-                    os.makedirs("./model")
+        self.save_path = model_path + self.save_path
 
         # Training loop over episodes
         for episode in range(1, self.max_episodes + 1):
@@ -150,6 +167,9 @@ class Model_TrainTest:
 
 
             while not done and not truncation:
+
+                if rd.random() < self.observation_space["salt_and_pepper_noise"]:
+                    state = salt_and_pepper_noise(state, prob=0.1)
                 action, _= self.agent.select_action(state)
                 
                 next_state, reward, done, truncation, _ = self.env.step(action)
@@ -200,6 +220,13 @@ class Model_TrainTest:
                 )
                 frames.clear()
 
+            if episode < 100 and episode % 10 == 0:
+                 # -- based on interval
+                self.agent.save(self.save_path + "_" + f"{episode}" + ".pth")
+
+                print("\n~~~~~~Interval Save: Model saved.\n")
+                 
+
 
             # -- based on interval
             if episode % self.save_interval == 0:
@@ -226,8 +253,8 @@ class Model_TrainTest:
         # Load the weights of the test_network
         self.agent.model.load_state_dict(torch.load(self.RL_load_path))
         self.agent.model.eval()
-
-        q_val_list = generate_q_values(env=self.env, model=self.agent.model)
+        ex_network = ExplainNetworkFF()
+        q_val_list = ex_network.generate_q_values(env=self.env, model=self.agent.model)
         self.env.q_values = q_val_list
 
         stuck_behavior = dict()
@@ -297,7 +324,7 @@ if __name__ == "__main__":
 
     fov_config = {
         "fov": math.pi / 1.5,
-        "ray_length": 20,
+        "ray_length": 8,
         "number_of_rays": 100,
     }
     half_fov = fov_config["fov"] / 2
@@ -310,13 +337,13 @@ if __name__ == "__main__":
         "train_mode": train_mode,
         "render": render,
         "render_mode": render_mode,
-        "RL_load_path": f"./model/feed_forward/sunburst_maze_{map_version}_8900.pth",
-        "save_path": f"./model/sunburst_maze_{map_version}",
+        "RL_load_path": f"./model/feed_forward/serene-voice-977/sunburst_maze_{map_version}_5000.pth",
+        "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 0.0005,
         "batch_size": 100,
         "optimizer": "adam",
-        "total_episodes": 100_000,
+        "total_episodes": 10_000,
         "epsilon": 1 if train_mode else -1,
         "epsilon_decay": 0.998,
         "epsilon_min": 0.1,
@@ -324,15 +351,17 @@ if __name__ == "__main__":
         "alpha": 0.1,
         "map_path": map_path_train,
         "target_model_update": 10,  # hard update of the target model
-        "max_steps_per_episode": 250,
+        "max_steps_per_episode": 300,
         "random_start_position": True,
+        "random_goal_position": True,
         "rewards": {
             "is_goal": 1,
             "hit_wall": -0.001,
             "has_not_moved": -0.001,
-            "new_square": 0.001,
-            "max_steps_reached": -0.001,
-            "penalty_per_step": -0.0001,
+            "new_square": 0.002,
+            "max_steps_reached": -0.0025,
+            "penalty_per_step": -0.00005,
+            "goal_in_sight": 0,
         },
         # TODO
         "observation_space": {
@@ -340,14 +369,15 @@ if __name__ == "__main__":
             "orientation": True,
             "steps_to_goal": False,
             "last_known_steps": 0,
+            "salt_and_pepper_noise": 0.1,
         },
         "save_interval": 100,
-        "memory_capacity": 50_000,
+        "memory_capacity": 100_000,
         "render_fps": 5,
         "num_states": num_states,
         "clip_grad_normalization": 3,
         "fov": math.pi / 1.5,
-        "ray_length": 20,
+        "ray_length": 8,
         "number_of_rays": 100,
     }
 

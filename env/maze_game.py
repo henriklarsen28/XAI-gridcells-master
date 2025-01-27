@@ -9,7 +9,7 @@ from PIL import Image
 white = (255, 255, 255)
 black = (0, 0, 0)
 green = (91, 240, 146)
-red = (255, 0, 0)
+red = (220, 20, 60)
 grey = (174, 174, 174)
 
 
@@ -125,6 +125,18 @@ class Maze:
                             self.cell_size,
                         ),
                     )
+                elif env_map[y][x] == -1:
+                    pygame.draw.rect(
+                        self.win,
+                        red,
+                        (
+                            x * self.cell_size,
+                            y * self.cell_size,
+                            self.cell_size,
+                            self.cell_size,
+                        ),
+                    )
+
 
     def draw_sprite(self, position: tuple, orientation: int) -> None:
         """
@@ -251,36 +263,6 @@ class Maze:
             )
             self.win.blit(
                 surface, (square[1] * self.cell_size, square[0] * self.cell_size)
-            )
-
-    def draw_rays(self, position: tuple, orientation: int, wall_rays: set):
-        agent_angle = orientation * math.pi / 2
-        position_ahead = self.calculate_square_ahead(position, orientation)
-
-        ray_shift_x = 0
-        ray_shift_y = 0
-        if orientation == 0:
-            ray_shift_y = 20
-            ray_shift_x = 40
-        elif orientation == 1:
-            ray_shift_y = 0
-            ray_shift_x = 20
-        elif orientation == 2:
-            ray_shift_y = 20
-            ray_shift_x = 0
-        elif orientation == 3:
-            ray_shift_y = 40
-            ray_shift_x = 20
-
-        for x,y in wall_rays:
-            pygame.draw.line(
-                self.win,
-                (255, 0, 0),
-                (
-                    (position_ahead[1] * self.cell_size) + ray_shift_y,
-                    (position_ahead[0] * self.cell_size) + ray_shift_x,
-                ),
-                (y * self.cell_size + 15, x * self.cell_size + 15),
             )
 
     def draw_triangle(self, position, orientation, color=green):

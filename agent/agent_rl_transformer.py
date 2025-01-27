@@ -26,14 +26,16 @@ from agent.dtqn_agent import DTQN_Agent
 from env import SunburstMazeDiscrete
 from utils.calculate_fov import calculate_fov_matrix_size
 from utils.state_preprocess import state_preprocess
+from utils.sequence_preprocessing import padding_sequence, padding_sequence_int, add_to_sequence
 
 wandb.login()
 
 # Define the CSV file path relative to the project root
-map_path_train = os.path.join(project_root, "env/map_v0/map_open_doors_horizontal.csv")
+map_path_train = os.path.join(project_root, "env/map_v0/map_closed_doors.csv")
 map_path_train_2 = os.path.join(project_root, "env/map_v0/map_open_doors_vertical.csv")
+map_path_train_3 = os.path.join(project_root, "env/map_v0/map_no_doors.csv")
 map_path_test = os.path.join(project_root, "env/map_v0/map_open_doors_90_degrees.csv")
-
+map_path_test_2 = os.path.join(project_root, "env/map_v0/map_open_doors_horizontal_v2.csv")
 
 device = torch.device("cpu")
 device = torch.device(
@@ -53,51 +55,6 @@ if torch.cuda.is_available():
     torch.cuda.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
-
-
-def padding_sequence_int(sequence: torch.tensor, max_length):
-    """
-    Pad the sequence with zeros to the max_length
-    """
-    last_state = sequence[-1]
-    if len(sequence) < max_length:
-        for _ in range(max_length - len(sequence)):
-            sequence = torch.cat(
-                [
-                    sequence,
-                    torch.as_tensor(
-                        last_state, dtype=torch.int64, device=device
-                    ).unsqueeze(0),
-                ]
-            )
-    return sequence
-
-
-def padding_sequence(sequence: torch.tensor, max_length):
-    """
-    Pad the sequence with zeros to the max_length
-    """
-    last_state = sequence[-1]
-    if len(sequence) < max_length:
-        for _ in range(max_length - len(sequence)):
-            sequence = torch.cat(
-                [
-                    sequence,
-                    torch.as_tensor(
-                        last_state, dtype=torch.float32, device=device
-                    ).unsqueeze(0),
-                ]
-            )
-    return sequence
-
-
-def add_to_sequence(sequence: deque, state):
-    """
-    Add the new state to the sequence
-    """
-    state = torch.as_tensor(state, dtype=torch.float32, device=device)
-    sequence.append(state)
-    return sequence
 
 
 def get_random_map():
@@ -154,7 +111,7 @@ class Model_TrainTest:
         self.number_of_rays = config["number_of_rays"]
 
         self.transformer = config["transformer"]
-        self.sequnence_length = self.transformer["sequence_length"]
+        self.sequence_length = self.transformer["sequence_length"]
         map_path = map_path_train
         if not self.train_mode:
             map_path = map_path_test
@@ -199,11 +156,11 @@ class Model_TrainTest:
         total_steps = 0
         self.reward_history = []
         frames = []
-        sequence = deque(maxlen=self.sequnence_length)
-        action_sequence = deque(maxlen=self.sequnence_length)
-        new_sequence = deque(maxlen=self.sequnence_length)
-        reward_sequence = deque(maxlen=self.sequnence_length)
-        done_sequence = deque(maxlen=self.sequnence_length)
+        sequence = deque(maxlen=self.sequence_length)
+        action_sequence = deque(maxlen=self.sequence_length)
+        new_sequence = deque(maxlen=self.sequence_length)
+        reward_sequence = deque(maxlen=self.sequence_length)
+        done_sequence = deque(maxlen=self.sequence_length)
 
         run = wandb.init(project="sunburst-maze", config=self)
 
@@ -251,13 +208,14 @@ class Model_TrainTest:
                 if rd.random() < self.observation_space["salt_and_pepper_noise"]:
                     state = salt_and_pepper_noise(state, prob=0.1)
 
-                sequence = add_to_sequence(sequence, state)
+                sequence = add_to_sequence(sequence, state, device)
                 tensor_sequence = torch.stack(list(sequence))
                 tensor_sequence = padding_sequence(
-                    tensor_sequence, self.sequnence_length
+                    tensor_sequence, self.sequence_length, device
                 )
                 action, _ = self.agent.select_action(tensor_sequence)
                 next_state, reward, done, truncation, _ = self.env.step(action)
+
                 if render_mode == "rgb_array":
                     if episode % 100 == 0:
                         frame = self.env._render_frame()
@@ -267,32 +225,32 @@ class Model_TrainTest:
                     self.env.render()
 
                 # Action sequence
-                action_sequence = add_to_sequence(action_sequence, action)
+                action_sequence = add_to_sequence(action_sequence, action, device)
                 tensor_action_sequence = torch.stack(list(action_sequence))
                 tensor_action_sequence = padding_sequence_int(
-                    tensor_action_sequence, self.sequnence_length
+                    tensor_action_sequence, self.sequence_length, device
                 )
 
                 # New state sequence
                 next_state = state_preprocess(next_state, device)
-                new_sequence = add_to_sequence(new_sequence, next_state)
+                new_sequence = add_to_sequence(new_sequence, next_state, device)
                 tensor_new_sequence = torch.stack(list(new_sequence))
                 tensor_new_sequence = padding_sequence(
-                    tensor_new_sequence, self.sequnence_length
+                    tensor_new_sequence, self.sequence_length, device
                 )
 
                 # Reward sequence
-                reward_sequence = add_to_sequence(reward_sequence, reward)
+                reward_sequence = add_to_sequence(reward_sequence, reward, device)
                 tensor_reward_sequence = torch.stack(list(reward_sequence))
                 tensor_reward_sequence = padding_sequence(
-                    tensor_reward_sequence, self.sequnence_length
+                    tensor_reward_sequence, self.sequence_length, device
                 )
 
                 # Done sequence
-                done_sequence = add_to_sequence(done_sequence, done)
+                done_sequence = add_to_sequence(done_sequence, done, device)
                 tensor_done_sequence = torch.stack(list(done_sequence))
                 tensor_done_sequence = padding_sequence(
-                    tensor_done_sequence, self.sequnence_length
+                    tensor_done_sequence, self.sequence_length, device
                 )
 
                 self.agent.replay_memory.store(
@@ -365,11 +323,11 @@ class Model_TrainTest:
         total_steps = 0
         self.reward_history = []
         frames = []
-        sequence = deque(maxlen=self.sequnence_length)
-        action_sequence = deque(maxlen=self.sequnence_length)
-        new_sequence = deque(maxlen=self.sequnence_length)
-        reward_sequence = deque(maxlen=self.sequnence_length)
-        done_sequence = deque(maxlen=self.sequnence_length)
+        sequence = deque(maxlen=self.sequence_length)
+        action_sequence = deque(maxlen=self.sequence_length)
+        new_sequence = deque(maxlen=self.sequence_length)
+        reward_sequence = deque(maxlen=self.sequence_length)
+        done_sequence = deque(maxlen=self.sequence_length)
 
         wandb.init(project="sunburst-maze", config=self)
 
@@ -394,10 +352,10 @@ class Model_TrainTest:
             print("Episode: ", episode)
             while not done and not truncation:
 
-                sequence = add_to_sequence(sequence, state)
+                sequence = add_to_sequence(sequence, state, device)
                 tensor_sequence = torch.stack(list(sequence))
                 tensor_sequence = padding_sequence(
-                    tensor_sequence, self.sequnence_length
+                    tensor_sequence, self.sequence_length, device
                 )
                 action, _ = self.agent.select_action(tensor_sequence)
                 next_state, reward, done, truncation, _ = self.env.step(action)
@@ -410,32 +368,32 @@ class Model_TrainTest:
                     self.env.render()
 
                 # Action sequence
-                action_sequence = add_to_sequence(action_sequence, action)
+                action_sequence = add_to_sequence(action_sequence, action, device)
                 tensor_action_sequence = torch.stack(list(action_sequence))
                 tensor_action_sequence = padding_sequence_int(
-                    tensor_action_sequence, self.sequnence_length
+                    tensor_action_sequence, self.sequence_length, device
                 )
 
                 # New state sequence
                 next_state = state_preprocess(next_state, device)
-                new_sequence = add_to_sequence(new_sequence, next_state)
+                new_sequence = add_to_sequence(new_sequence, next_state, device)
                 tensor_new_sequence = torch.stack(list(new_sequence))
                 tensor_new_sequence = padding_sequence(
-                    tensor_new_sequence, self.sequnence_length
+                    tensor_new_sequence, self.sequence_length, device
                 )
 
                 # Reward sequence
-                reward_sequence = add_to_sequence(reward_sequence, reward)
+                reward_sequence = add_to_sequence(reward_sequence, reward, device)
                 tensor_reward_sequence = torch.stack(list(reward_sequence))
                 tensor_reward_sequence = padding_sequence(
-                    tensor_reward_sequence, self.sequnence_length
+                    tensor_reward_sequence, self.sequence_length, device
                 )
 
                 # Done sequence
-                done_sequence = add_to_sequence(done_sequence, done)
+                done_sequence = add_to_sequence(done_sequence, done, device)
                 tensor_done_sequence = torch.stack(list(done_sequence))
                 tensor_done_sequence = padding_sequence(
-                    tensor_done_sequence, self.sequnence_length
+                    tensor_done_sequence, self.sequence_length, device
                 )
 
                 self.agent.replay_memory.store(
@@ -501,12 +459,13 @@ class Model_TrainTest:
         Reinforcement learning policy evaluation.
         """
 
-        map_path_without_ext = map_path_test.split("/")[-1].split(".")[0]
+
+        '''map_path_without_ext = map_path_test_2.split("/")[-1].split(".")[0]
         print(map_path_without_ext)
         if not os.path.exists(f"./grad_sam/{map_path_without_ext}"):
             os.makedirs(f"./grad_sam/{map_path_without_ext}")
-
-
+        '''
+  
         # Load the weights of the test_network
         self.agent.model.load_state_dict(
             torch.load(self.RL_load_path, map_location=device)
@@ -514,6 +473,13 @@ class Model_TrainTest:
         self.agent.model.eval()
 
         sequence = deque(maxlen=self.sequnence_length)
+
+        frames = []
+        gif_path = f"./gifs/{config['model_name']}/{map_version}"
+
+        # Create the nessessary directories
+        if not os.path.exists(gif_path):
+            os.makedirs(gif_path)
 
         episode_list = []
         step_dicti = {
@@ -524,6 +490,7 @@ class Model_TrainTest:
             "orientation": None,
         }
         ex_network = ExplainNetwork()
+        
         q_val_list = ex_network.generate_q_values(env=self.env, model=self.agent.model)
         self.env.q_values = q_val_list
         # Testing loop over episodes
@@ -542,7 +509,7 @@ class Model_TrainTest:
                 sequence = add_to_sequence(sequence, state)
                 tensor_sequence = torch.stack(list(sequence))
                 tensor_sequence = padding_sequence(
-                    tensor_sequence, self.sequnence_length
+                    tensor_sequence, self.sequence_length, device
                 )
                 # print(tensor_sequence.shape)
                 # q_val_list = generate_q_values(env=self.env, model=self.agent.model)
@@ -551,8 +518,15 @@ class Model_TrainTest:
                 action, att_weights_list = self.agent.select_action(tensor_sequence)
                 next_state, reward, done, truncation, _ = self.env.step(action)
 
+                if render_mode == "rgb_array":
+                    frame = self.env._render_frame()
+                    if type(frame) == np.ndarray:
+                        frames.append(frame)
+                if render_mode == "human":
+                    self.env.render()
+
                 # Render rgb_array
-                frame = self.env.render_rgb_array()
+                # frame = self.env.render_rgb_array()
                 # print("Hello", frame)
 
                 next_state_preprosessed = state_preprocess(next_state, device)
@@ -620,6 +594,14 @@ class Model_TrainTest:
             #     )
             #     print(f"Grad sam data saved up to episode {episode}.")
             #     episode_list = []
+        
+            # Create gif
+            if frames:
+                gif_path = f"./gifs/{config['model_name']}/{map_version}/{episode}.gif"
+                self.env.create_gif(
+                    gif_path=gif_path, frames=frames
+                )
+                frames.clear()
 
         pygame.quit()  # close the rendering window
 
@@ -641,20 +623,20 @@ if __name__ == "__main__":
 
     train_mode = False
 
-    render = True
+    render = False
     render_mode = "human"
 
     if train_mode:
         render_mode = "rgb_array" if render else None
 
-    map_version = map_path_train.split("/")[-2]
+    map_version = map_path_test.split("/")[-2]
 
     # Read the map file to find the number of states
     # num_states = get_num_states(map_path_train)
 
     fov_config = {
         "fov": math.pi / 1.5,
-        "ray_length": 20,
+        "ray_length": 15,
         "number_of_rays": 100,
     }
     half_fov = fov_config["fov"] / 2
@@ -665,35 +647,36 @@ if __name__ == "__main__":
     # Parameters
     config = {
         "train_mode": train_mode,
+        "map_path_train": map_path_train,
         "render": render,
         "render_mode": render_mode,
-        "model_name": "visionary-hill-816",
-        "RL_load_path": f"./model/transformers/seq_len_45/youthful-firebrand-839/sunburst_maze_map_v0_5400.pth",
+        "model_name": "vivid-firebrand-872",
+        "RL_load_path": f"./model/transformers/seq_len_45/model_vivid-firebrand-872/sunburst_maze_map_v0_5100.pth",
         "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 0.0001,
         "batch_size": 128,
         "optimizer": "adam",
-        "total_episodes": 5500,
+        "total_episodes": 5000,
         "epsilon": 1 if train_mode else -1,
         "epsilon_decay": 0.998,
         "epsilon_min": 0.01,
         "discount_factor": 0.88,
         "alpha": 0.1,
-        "map_path": map_path_train,
+        "map_path": map_path_test_2,
         "target_model_update": 10,  # hard update of the target model
         "max_steps_per_episode": 300,
         "random_start_position": True,
         "random_goal_position": True,
         "rewards": {
             "is_goal": 200 / 200,
-            "hit_wall": -1 / 200,
+            "hit_wall": -0.5 / 200,
             "has_not_moved": -0.2 / 200,
             "new_square": 2 / 200,
             "max_steps_reached": -0.5 / 200,
             "penalty_per_step": -0.01 / 200,
-            "goal_in_sight": 0.5 / 200,
-            "number_of_squares_visible": 0.001 / 200
+            "goal_in_sight": 0 / 200,
+            "number_of_squares_visible": 0 / 200
         },
         # TODO
         "observation_space": {
@@ -701,24 +684,25 @@ if __name__ == "__main__":
             "orientation": True,
             "steps_to_goal": False,
             "last_known_steps": 0,
-            "salt_and_pepper_noise": 0.5,
+            "salt_and_pepper_noise": 0,
         },
         "save_interval": 100,
-        "memory_capacity": 200_000,
-        "render_fps": 100,
+        "memory_capacity": 100_000,
+        "render_fps": 5,
         "num_states": num_states,
         "clip_grad_normalization": 3,
         "fov": math.pi / 1.5,
-        "ray_length": 10,
+        "ray_length": 20,
         "number_of_rays": 100,
         "transformer": {
-            "sequence_length": 45,
+            "sequence_length": 15,
             "n_embd": 128,
             "n_embd": 128,
             "n_head": 8,
             "n_layer": 3,
             "dropout": 0.3,
             "state_dim": num_states,
+            "decouple_positional_embedding": False,
         },
     }
 

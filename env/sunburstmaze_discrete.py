@@ -107,6 +107,7 @@ class SunburstMazeDiscrete(gym.Env):
         self.wall_rays = set()
         self.observed_squares = set()
         self.observed_squares_map = set()
+        self.observed_red_wall = set()
         self.goal_observed_square = set()
 
         self.q_variance = 0
@@ -125,7 +126,7 @@ class SunburstMazeDiscrete(gym.Env):
         for y in range(self.height):
             for x in range(self.width):
                 if self.env_map[y][x] == 2:
-                    if self.random_start_position is True:
+                    if self.random_goal_position is True:
                         self.env_map[y][x] = 0
                         position = self.random_position()
                         self.env_map[position[0]][position[1]] = 2
@@ -230,6 +231,7 @@ class SunburstMazeDiscrete(gym.Env):
         self.wall_rays = set()
         self.observed_squares_map = set()
         self.goal_observed_square = set()
+        self.observed_red_wall = set()
 
         agent_angle = self.orientation * math.pi / 2  # 0, 90, 180, 270
 
@@ -243,10 +245,14 @@ class SunburstMazeDiscrete(gym.Env):
                     self.wall_rays.add((x, y))
                     break
 
-                self.observed_squares_map.add((x, y))
+                if self.env_map[x][y] == -1:  # Red wall
+                    marked_x, marked_y = self.find_relative_position_in_matrix(x, y)
+                    self.observed_red_wall.add((marked_x, marked_y))
+                    break
 
                 self.find_relative_position_in_matrix(x, y)
-                self.find_relative_position_in_matrix(x, y)
+
+                self.observed_squares_map.add((x,y))
             start_angle += self.step_angle
 
         matrix = self.calculate_fov_matrix()
@@ -288,13 +294,17 @@ class SunburstMazeDiscrete(gym.Env):
             x, y = square
             matrix[y, x] = 1
 
+        for square in self.observed_red_wall:
+            x, y = square
+            matrix[y, x] = -1
+
         # Mark the goal square
         if len(self.goal_observed_square) == 1:
             x, y = self.goal_observed_square.pop()
             matrix[y, x] = 2
 
-        df = pd.DataFrame(matrix)
-        df.to_csv("matrix.csv")
+        #df = pd.DataFrame(matrix)
+        #df.to_csv("matrix.csv")
 
         # if self.orientation == 2 or self.orientation == 3:
         #     matrix = np.rot90(matrix, 2)
@@ -325,12 +335,12 @@ class SunburstMazeDiscrete(gym.Env):
             raise ValueError("Invalid orientation")
 
         # Check if the cell in front of the agent is a wall
-        if int(self.env_map[next_position[0]][next_position[1]]) == 1:
+        if int(self.env_map[next_position[0]][next_position[1]]) == 1 or int(self.env_map[next_position[0]][next_position[1]]) == -1:
             return False
 
         return True
 
-    def next_to_wall(self) -> list:
+    def next_to_wall(self) -> list: # TODO: Can be removed
         """
         Determines which directions the agent is next to a wall.
 
@@ -460,7 +470,7 @@ class SunburstMazeDiscrete(gym.Env):
 
         # Walking into a wall
         if action not in self.legal_actions():
-            # print("Hit a wall")
+            print("Hit a wall")
             return observation, self.rewards["hit_wall"], False, False, info
 
         # Perform the action
@@ -587,6 +597,7 @@ class SunburstMazeDiscrete(gym.Env):
                 self.observed_squares_map,
                 self.wall_rays,
                 [],
+                []
             )
         )
         self.render_maze.render_mode = self.render_mode

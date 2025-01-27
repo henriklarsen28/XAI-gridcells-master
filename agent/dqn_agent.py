@@ -47,12 +47,12 @@ class DQN_Agent:
 
         # Initiate the network models
         self.model = DQN_Network(
-            num_actions=self.action_space.n, input_dim=self.observation_space.n + 4
+            num_actions=self.action_space.n, input_dim=self.observation_space.n + 4, device=self.device
         ).to(self.device)
 
         self.target_model = (
             DQN_Network(
-                num_actions=self.action_space.n, input_dim=self.observation_space.n + 4
+                num_actions=self.action_space.n, input_dim=self.observation_space.n + 4, device=self.device
             )
             .to(self.device)
             .eval()
