@@ -91,8 +91,8 @@ class PPO_agent:
         self.cov_var = torch.full(size=(self.act_dim,), fill_value=0.5).to(self.device)
         self.cov_mat = torch.diag(self.cov_var).to(self.device)
 
-        #self.action_low = torch.tensor(env.action_space.low).to(self.device)
-        #self.action_high = torch.tensor(env.action_space.high).to(self.device)
+        self.action_low = torch.tensor(env.action_space.low).to(self.device)
+        self.action_high = torch.tensor(env.action_space.high).to(self.device)
 
     def learn(self, total_timesteps):
         print("Learning")
@@ -110,7 +110,7 @@ class PPO_agent:
             value, _ = self.evaluate(obs, actions)
             rtgs = rtgs.unsqueeze(2)
 
-            advantages = rtgs - value.detach() # TODO: Feil i values, log_prob eller rtgs????
+            advantages = rtgs - value.detach()
 
             # Normalize the advantages
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-10)
@@ -176,7 +176,7 @@ class PPO_agent:
                     f"./model/transformers/ppo/model_{self.run.name}/critic_network_{iteration_counter}.pth",
                 )
 
-    def rollout(self, iteration_counter):
+    def rollout(self, iteration_counter, render=False):
         observations = []
         actions = []
         log_probs = []
@@ -190,7 +190,6 @@ class PPO_agent:
         timesteps = 0
 
         state_sequence = deque(maxlen=self.sequence_length)
-        action_sequence = deque(maxlen=self.sequence_length)
 
         while timesteps < self.batch_size:
             episode_rewards = []
@@ -211,7 +210,6 @@ class PPO_agent:
                 )
                 action, log_prob = self.get_action(tensor_sequence)
                 last_action = action[:,-1,:].cpu().detach().numpy()
-                last_action = np.argmax(last_action)
                 #last_log_prob = log_prob[-1,-1]
                 
                 state, reward, done, turnicated, _ = self.env.step(last_action)
@@ -223,15 +221,6 @@ class PPO_agent:
 
                 if self.render_mode == "human":
                     self.env.render()
-
-                #log_prob_sequence = add_to_sequence(
-                #    log_prob_sequence, last_log_prob, self.device
-                #)
-                #tensor_log_prob_sequence = torch.stack(log_prob)
-                #tensor_log_prob_sequence = padding_sequence(
-                 #   tensor_log_prob_sequence, self.sequence_length, self.device
-                #)
-                
 
                 # Reward sequence # TODO: Build a reward sequence for the PPO
                 reward_sequence = add_to_sequence(reward_sequence, reward, self.device)
@@ -301,11 +290,10 @@ class PPO_agent:
 
         action = dist.sample()
         log_prob = dist.log_prob(action)
-        """scaled_action = torch.clamp(
+        scaled_action = torch.clamp(
             self.action_low + (self.action_high - self.action_low) * ((action + 1) / 2),  # Transform from [-1, 1] to [low, high]
             self.action_low, self.action_high
-        )"""
-        scaled_action = action
+        )
 
         return scaled_action, log_prob.detach()
 
@@ -331,3 +319,8 @@ class PPO_agent:
         self.max_steps = config["max_steps_per_episode"]
         self.render = config["render"]
         self.render_mode = config["render_mode"]
+
+
+    def load_model(self, policy_path, critic_path):
+        self.policy_network.load_state_dict(torch.load(policy_path))
+        self.critic_network.load_state_dict(torch.load(critic_path))
