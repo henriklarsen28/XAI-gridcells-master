@@ -574,9 +574,9 @@ class SunburstMazeDiscrete(gym.Env):
         viewed_squares_original = len(self.viewed_squares)
         self.viewed_squares.update(self.observed_squares_map)
         if viewed_squares_original < len(self.viewed_squares):
-            reward_new_squares = math.exp(len(self.viewed_squares) / self.map_observation_size)/math.exp(1) - 0.3
+            # reward_new_squares = math.exp(len(self.viewed_squares) / self.map_observation_size)/math.exp(1) - 0.3
             # reward_new_squares = math.pow(1, len(self.viewed_squares) / self.map_observation_size)
-            # reward_new_squares = (len(self.viewed_squares) - viewed_squares_original) / self.map_observation_size
+            reward_new_squares = (len(self.viewed_squares) - viewed_squares_original) / self.map_observation_size
             reward += reward_new_squares
             print("Reward for viewing new squares: ", reward_new_squares)
 
