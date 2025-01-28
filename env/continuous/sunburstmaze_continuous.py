@@ -223,6 +223,10 @@ class SunburstMazeContinuous(gym.Env):
                 x = round(self.position[0] - depth * math.cos(start_angle))
                 y = round(self.position[1] + depth * math.sin(start_angle))
 
+                x = np.clip(x, 0, self.height - 1)
+                y = np.clip(y, 0, self.width - 1)
+
+
                 if self.env_map[x][y] == 1:
                     self.wall_rays.add((x, y))
                     break
@@ -334,7 +338,6 @@ class SunburstMazeContinuous(gym.Env):
         
 
         if self.is_collision(position_x, position_y):
-            print("Collision")
             return self._get_observation(), self.rewards["hit_wall"], False, False, self._get_info()
 
         self.position = (position_y, position_x)
@@ -420,7 +423,7 @@ class SunburstMazeContinuous(gym.Env):
         current_pos = self.position
 
         reward = 0
-        
+
 
         if self.position not in self.visited_squares:
             self.visited_squares.append(self.position)
