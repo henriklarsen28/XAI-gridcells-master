@@ -13,7 +13,6 @@ import random as rd
 from collections import deque
 
 import gymnasium as gym
-import keras as keras
 import numpy as np
 import pygame
 import torch
