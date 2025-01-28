@@ -625,7 +625,7 @@ if __name__ == "__main__":
 
     train_mode = True
 
-    render = False
+    render = True
     render_mode = "human"
 
     if train_mode:
