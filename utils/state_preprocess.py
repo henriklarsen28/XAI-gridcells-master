@@ -12,4 +12,4 @@ def state_preprocess(state: int, device):
         
         onehot_vector_orientation = torch.zeros(4, dtype=torch.float32, device=device)
         onehot_vector_orientation[orientation] = -1
-        return torch.concat((field_of_view, onehot_vector_orientation))
+        return torch.concat((field_of_view, onehot_vector_orientation), dim=0)

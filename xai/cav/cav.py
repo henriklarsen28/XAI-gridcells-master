@@ -25,7 +25,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 
 sys.path.append(project_root)
 
-from agent.transformer_decoder_decoupled import TransformerDQN
+from agent.transformer_decoder_decoupled import Transformer
 from utils.calculate_fov import calculate_fov_matrix_size
 from utils.custom_dataset import CAV_dataset
 
@@ -58,7 +58,7 @@ episode_numbers = [
     "5200",
 ]
 
-#episode_numbers = ["100", "200"]
+# episode_numbers = ["100", "200"]
 
 
 def get_activation(name):
@@ -72,7 +72,7 @@ def get_activation(name):
 
 
 def get_activations(
-    model: TransformerDQN, input, block_name: str = None, embedding: bool = True
+    model: Transformer, input, block_name: str = None, embedding: bool = True
 ):
     """
     Get the activations of the model for the training data.
@@ -92,7 +92,7 @@ def get_activations(
     return q_value
 
 
-def get_embedding_activations(model: TransformerDQN, input):
+def get_embedding_activations(model: Transformer, input):
 
     embedding = model.token_embedding
     embedding.register_forward_hook(get_activation("embedding"))
@@ -129,7 +129,7 @@ def create_activation_dataset(
     action_space = 3
 
     # Initiate the network models
-    model = TransformerDQN(
+    model = Transformer(
         state_dim,
         action_space,
         sequence_length,
@@ -199,7 +199,7 @@ class CAV:
             block,
             embedding=embedding,
             requires_grad=sensitivity,
-            action_index=action_index
+            action_index=action_index,
         )
         assert isinstance(positive, torch.Tensor), "Positive must be a tensor"
 
@@ -209,7 +209,7 @@ class CAV:
             block,
             embedding=embedding,
             requires_grad=sensitivity,
-            action_index=action_index
+            action_index=action_index,
         )
         assert isinstance(negative, torch.Tensor), "Negative must be a tensor"
 
@@ -219,7 +219,7 @@ class CAV:
             block,
             embedding=embedding,
             requires_grad=sensitivity,
-            action_index=action_index
+            action_index=action_index,
         )
         assert isinstance(positive_test, torch.Tensor), "Positive_test must be a tensor"
 
@@ -229,7 +229,7 @@ class CAV:
             block,
             embedding=embedding,
             requires_grad=sensitivity,
-            action_index=action_index
+            action_index=action_index,
         )
         assert isinstance(negative, torch.Tensor), "Negative_test must be a tensor"
 
@@ -319,7 +319,13 @@ class CAV:
         self.cav_list.append((block, episode_number, accuracy))
         return cav
 
-    def calculate_cav(self, concept: str, model_dir: str, sensitivity: bool = False, action_index: int = 0):
+    def calculate_cav(
+        self,
+        concept: str,
+        model_dir: str,
+        sensitivity: bool = False,
+        action_index: int = 0,
+    ):
         model_list = os.listdir(model_dir)
 
         for model in model_list:
@@ -338,7 +344,9 @@ class CAV:
                 q_values_negative,
                 q_values_positive_test,
                 q_values_negative_test,
-            ) = self.read_dataset(concept, model_path, 0, True, sensitivity, action_index=action_index)
+            ) = self.read_dataset(
+                concept, model_path, 0, True, sensitivity, action_index=action_index
+            )
 
             cav = self.calculate_single_cav(
                 0,
@@ -367,7 +375,12 @@ class CAV:
                     q_values_positive_test,
                     q_values_negative_test,
                 ) = self.read_dataset(
-                    concept, model_path, block - 1, False, sensitivity, action_index=action_index
+                    concept,
+                    model_path,
+                    block - 1,
+                    False,
+                    sensitivity,
+                    action_index=action_index,
                 )
 
                 print("Block: ", block, model_path, episode_number)
@@ -529,7 +542,7 @@ class Analysis:
 
             self.total_tcav[block][episode] += tcav
 
-    def  calculate_average_tcav(self):
+    def calculate_average_tcav(self):
         for block in self.total_tcav:
             for episode in self.total_tcav[block]:
                 self.total_tcav[block][episode] /= self.average
@@ -538,8 +551,6 @@ class Analysis:
 
     def get_tcav(self):
         return self.total_tcav
-
-
 
 
 def main():
@@ -564,16 +575,16 @@ def main():
     cav_list = torch.load(f"./cav_list_{concept}.pt")
     cav.cav_list = cav_list
     cav.plot_cav(concept)"""
-        
-        #analysis.calculate_average_tcav()
-        #total_tcav = analysis.get_tcav()
-        # Save tcav list
-        #torch.save(total_tcav, f"./tcav_list_{concept}_action_{action}.pt")
-        
-        #print(analysis.total_tcav)
-        #cav.tcav_list = total_tcav
 
-        #cav.plot_tcav(concept, action=action)
+    # analysis.calculate_average_tcav()
+    # total_tcav = analysis.get_tcav()
+    # Save tcav list
+    # torch.save(total_tcav, f"./tcav_list_{concept}_action_{action}.pt")
+
+    # print(analysis.total_tcav)
+    # cav.tcav_list = total_tcav
+
+    # cav.plot_tcav(concept, action=action)
     total_tcav0 = torch.load("tcav_list_goal_action_0.pt")
     total_tcav1 = torch.load("tcav_list_goal_action_1.pt")
     total_tcav2 = torch.load("tcav_list_goal_action_2.pt")
@@ -582,7 +593,11 @@ def main():
     average_tcav = defaultdict(lambda: defaultdict(float))
     for block in total_tcav0:
         for episode in total_tcav0[block]:
-            average_tcav[block][episode] = (total_tcav0[block][episode] + total_tcav1[block][episode] + total_tcav2[block][episode]) / 3
+            average_tcav[block][episode] = (
+                total_tcav0[block][episode]
+                + total_tcav1[block][episode]
+                + total_tcav2[block][episode]
+            ) / 3
     cav.tcav_list = average_tcav
 
     cav.plot_tcav(concept, action=0)

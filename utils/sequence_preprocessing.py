@@ -42,6 +42,7 @@ def add_to_sequence(sequence: deque, state, device):
     """
     Add the new state to the sequence
     """
-    state = torch.as_tensor(state, dtype=torch.float32, device=device)
+    state = torch.tensor(state, dtype=torch.float32, device=device)
+    #torch.as_tensor(state, dtype=torch.float32, device=devic)
     sequence.append(state)
     return sequence

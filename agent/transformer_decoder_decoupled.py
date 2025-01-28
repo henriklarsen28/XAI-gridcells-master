@@ -14,19 +14,18 @@ class Head(nn.Module):
         self.register_buffer("tril", torch.tril(torch.ones(block_size, block_size)))
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, x, pos_emb): 
-        B, T, C = x.shape # B = batch size, T = seq length, C = emb size
-        k = self.key(x + pos_emb) # Add positional embedding to keys and queries
+    def forward(self, x, pos_emb):
+        B, T, C = x.shape  # B = batch size, T = seq length, C = emb size
+        k = self.key(x + pos_emb)  # Add positional embedding to keys and queries
         q = self.query(x + pos_emb)
 
-        v = self.value(x) # No positional embedding for values
+        v = self.value(x)  # No positional embedding for values
 
         wei = q @ k.transpose(-2, -1) * k.shape[-1] ** -0.5
-        wei = wei.masked_fill(self.tril[:T, :T] == 0, float("-inf")) 
+        wei = wei.masked_fill(self.tril[:T, :T] == 0, float("-inf"))
         wei = F.softmax(wei, dim=-1)
         wei = self.dropout(wei)
 
-        
         out = wei @ v
 
         return out, wei
@@ -46,7 +45,7 @@ class MultiHeadAttention(nn.Module):
         att_weights = []
 
         for h in self.heads:
-            out, wei = h(x, pos_emb) # Add positional embedding to input
+            out, wei = h(x, pos_emb)  # Add positional embedding to input
             head_output.append(out)
             att_weights.append(wei)
 
@@ -82,13 +81,15 @@ class Block(nn.Module):
         self.ln2 = nn.LayerNorm(n_embd)
 
     def forward(self, x, pos_emb):
-        sa_out, att_weights = self.sa(self.ln1(x), pos_emb) # Add positional embedding to input
+        sa_out, att_weights = self.sa(
+            self.ln1(x), pos_emb
+        )  # Add positional embedding to input
         x = x + sa_out
         x = x + self.ffwd(self.ln2(x))
         return x, att_weights
 
 
-class TransformerDQN(nn.Module):
+class Transformer(nn.Module):
     def __init__(
         self,
         input_dim,
@@ -100,7 +101,7 @@ class TransformerDQN(nn.Module):
         dropout,
         device,
     ):
-        super(TransformerDQN, self).__init__()
+        super(Transformer, self).__init__()
         self.device = device
         self.token_embedding = nn.Linear(input_dim, n_embd)  # nn.Embedding (long, int)
         self.position_embedding = nn.Embedding(block_size, n_embd)
@@ -135,22 +136,23 @@ class TransformerDQN(nn.Module):
         att_weights_list = []
 
         for block in self.blocks:
-            tok_emb, att_weights = block(tok_emb, pos_emb) # use tok_emb instead of x
+            tok_emb, att_weights = block(tok_emb, pos_emb)  # use tok_emb instead of x
             att_weights_list.append(att_weights)
 
         # x = self.blocks(x)
-        x = self.ln_f(tok_emb) # Use tok_emb instead of x
+        x = self.ln_f(tok_emb)  # Use tok_emb instead of x
 
         x = self.output(x.to(torch.float32))
 
-        return x#, att_weights_list
+        return x  # , att_weights_list
 
-#device = torch.device("mps" if torch.backends.mps.is_available() else "cpu") # Was faster with cpu??? Loading between cpu and mps is slow maybe
+
+# device = torch.device("mps" if torch.backends.mps.is_available() else "cpu") # Was faster with cpu??? Loading between cpu and mps is slow maybe
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-#device = torch.device(
+# device = torch.device(
 #    "mps" if torch.backends.mps.is_available() else "cpu"
-#)  # Was faster with cpu??? Loading between cpu and mps is slow maybe
+# )  # Was faster with cpu??? Loading between cpu and mps is slow maybe
 print(f"Using device {device}")
 
 # ## Suggestion for hyperparameter values
