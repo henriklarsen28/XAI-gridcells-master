@@ -15,7 +15,7 @@ from utils.sequence_preprocessing import (
     padding_sequence,
     padding_sequence_int,
 )
-from utils.state_preprocess import state_preprocess
+from utils.state_preprocess import state_preprocess_continuous
 
 
 class PPO_agent:
@@ -37,7 +37,7 @@ class PPO_agent:
 
         self.env = env
         self.obs_dim = config["observation_size"]
-        self.act_dim = env.action_space.n
+        self.act_dim = env.action_space.shape[0]
 
 
         # Hyperparameters
@@ -103,47 +103,55 @@ class PPO_agent:
         while timestep_counter < total_timesteps:
 
             obs, actions, log_probs, rtgs, lens, frames = self.rollout(iteration_counter)
+            # Minibatches
+            minibatches = self.generate_minibatches(obs, actions, log_probs, rtgs)
+
             timestep_counter += sum(lens)
             iteration_counter += 1
-            #print("Obs: ", obs, obs.shape)
-            # Calculate the advantages
-            value, _ = self.evaluate(obs, actions)
-            rtgs = rtgs.unsqueeze(2)
 
-            advantages = rtgs - value.detach()
-
-            # Normalize the advantages
-            advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-10)
-            for _ in range(self.n_updates_per_iteration):
-                value, current_log_prob = self.evaluate(obs, actions)
-
-                #print(current_log_prob)
-                ratio = torch.exp(current_log_prob - log_probs)
-                ratio = ratio.unsqueeze(2)
- 
-                surrogate_loss1 = ratio * advantages
-
-                #print("Surrogate loss1: ", surrogate_loss1, surrogate_loss1.shape)
-                surrogate_loss2 = (
-                    torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * advantages
-                )
-                # Increase the size of rtgs to be 300 x 15
-  
-                policy_loss = (-torch.min(surrogate_loss1, surrogate_loss2)).mean()
-
-                critic_loss = nn.MSELoss()(value, rtgs)
-
-                print("Policy loss step")
-                self.policy_network.zero_grad()
-                policy_loss.backward(retain_graph=True)
-                self.policy_optimizer.step()
+            for obs_batch, actions_batch, log_probs_batch, rtgs_batch in minibatches:
                 
+            
+                #print("Obs: ", obs, obs.shape)
+                # Calculate the advantages
+                value, _ = self.evaluate(obs_batch, actions_batch)
+                rtgs_batch = rtgs_batch.unsqueeze(2)
 
-                self.critic_network.zero_grad()
-                critic_loss.backward()
-                self.critic_optimizer.step()
-                print("After")
-                
+                advantages = rtgs_batch - value.detach()
+
+
+                # Normalize the advantages
+                advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-10)
+                for _ in range(self.n_updates_per_iteration):
+                    value, current_log_prob = self.evaluate(obs_batch, actions_batch)
+
+                    #print(current_log_prob)
+                    ratio = torch.exp(current_log_prob - log_probs_batch)
+                    ratio = ratio.unsqueeze(2)
+    
+                    surrogate_loss1 = ratio * advantages
+
+                    #print("Surrogate loss1: ", surrogate_loss1, surrogate_loss1.shape)
+                    surrogate_loss2 = (
+                        torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * advantages
+                    )
+                    # Increase the size of rtgs to be 300 x 15
+    
+                    policy_loss = (-torch.min(surrogate_loss1, surrogate_loss2)).mean()
+
+                    critic_loss = nn.MSELoss()(value, rtgs_batch)
+
+                    print("Policy loss step")
+                    self.policy_network.zero_grad()
+                    policy_loss.backward(retain_graph=True)
+                    self.policy_optimizer.step()
+                    
+
+                    self.critic_network.zero_grad()
+                    critic_loss.backward()
+                    self.critic_optimizer.step()
+                    print("After")
+
             gif = None
             if frames:
                 if os.path.exists("./gifs") is False:
@@ -202,7 +210,7 @@ class PPO_agent:
 
             for ep_timestep in range(self.max_steps):
                 timesteps += 1
-                state = state_preprocess(state, device=self.device)
+                state = state_preprocess_continuous(state, device=self.device)
                 state_sequence = add_to_sequence(state_sequence, state, self.device)
                 tensor_sequence = torch.stack(list(state_sequence))
                 tensor_sequence = padding_sequence(
@@ -210,9 +218,10 @@ class PPO_agent:
                 )
                 action, log_prob = self.get_action(tensor_sequence)
                 last_action = action[:,-1,:].cpu().detach().numpy()
+
                 #last_log_prob = log_prob[-1,-1]
                 
-                state, reward, done, turnicated, _ = self.env.step(last_action)
+                state, reward, done, turnicated, _ = self.env.step(last_action[0])
 
                 if self.render_mode == "rgb_array" and len(rewards) == 0: # Create gif on the first episode in the rollout
                     frame = self.env._render_frame()
@@ -312,13 +321,21 @@ class PPO_agent:
         self.clip = config["clip"]
         self.learning_rate = config["learning_rate"]
         self.n_updates_per_iteration = config["n_updates_per_iteration"]
-        self.gamma = config["discount_factor"]
+        self.gamma = config["gamma"]
         self.batch_size = config["batch_size"]
         self.update_frequency = config["target_model_update"]
         # self.max_episodes = config["total_episodes"]
         self.max_steps = config["max_steps_per_episode"]
         self.render = config["render"]
         self.render_mode = config["render_mode"]
+
+    def generate_minibatches(self, obs, actions, log_probs, rtgs):
+        minibatches = []
+        for _ in range(self.n_updates_per_iteration):
+            idxs = np.random.randint(0, len(obs), self.batch_size)
+            minibatches.append((obs[idxs], actions[idxs], log_probs[idxs], rtgs[idxs]))
+
+        return minibatches
 
 
     def load_model(self, policy_path, critic_path):
