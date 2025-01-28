@@ -328,8 +328,6 @@ class SunburstMazeContinuous(gym.Env):
         self.velocity_y = -velocity * (math.cos(math.radians(self.orientation)))
         
 
-        self.limit_velocity()
-
 
         position_y = self.position[0] + self.velocity_y
         position_x = self.position[1] + self.velocity_x

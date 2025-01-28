@@ -73,7 +73,8 @@ class Model_TrainTest:
 
         # Define RL parameters
         self.train_mode = config["train_mode"]
-        self.RL_load_path = config["RL_load_path"]
+        self.policy_load_path = config["policy_load_path"]
+        self.critic_load_path = config["critic_load_path"]
         self.save_path = config["save_path"]
         self.save_interval = config["save_interval"]
 
@@ -101,7 +102,7 @@ class Model_TrainTest:
             map_path = map_path_test
 
         # Define Env
-        self.env = SunburstMazeDiscrete(
+        self.env = SunburstMazeContinuous(
             maze_file=map_path,
             render_mode=render_mode,
             max_steps_per_episode=self.max_steps,
@@ -135,6 +136,14 @@ class Model_TrainTest:
         # Add noise 80% of the time and to 10% of the pixels
         """if rd.random() < self.observation_space["salt_and_pepper_noise"]:
             state = salt_and_pepper_noise(state, prob=0.1)"""
+        
+
+    def test(self, max_episodes=100):
+        """
+        Reinforcement learning testing loop.
+        """
+        self.agent.load_model(self.policy_load_path, self.critic_load_path)
+        self.agent.rollout(max_episodes, render=True)
 
 
     
@@ -184,7 +193,8 @@ if __name__ == "__main__":
         "render": render,
         "render_mode": render_mode,
         "model_name": "vivid-firebrand-872",
-        "RL_load_path": f"./model/transformers/seq_len_45/model_vivid-firebrand-872/sunburst_maze_map_v0_5100.pth",
+        "policy_load_path": f"./model/transformers/seq_len_45/model_vivid-firebrand-872/sunburst_maze_map_v0_5100.pth",
+        "critic_load_path": "/model/transformers/ppo/model_vivid-firebrand-872/sunburst_maze_map_v0_5100.pth",
         "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 0.0001,
