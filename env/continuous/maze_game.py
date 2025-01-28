@@ -53,7 +53,7 @@ class Maze:
 
         # load sprite
         script_dir = os.path.dirname(__file__)
-        sprite_file = os.path.join(script_dir, "images", "orange_mouse_single.png")
+        sprite_file = os.path.join(script_dir, "../images", "orange_mouse_single.png")
         sprite = pygame.image.load(sprite_file).convert_alpha()
 
         self.spriteWidth, self.spriteHeight = sprite.get_size()
@@ -179,63 +179,13 @@ class Maze:
             return (position[0], position[1] - 1)
         return position
 
-    """def draw_raycast(self, position: tuple, orientation):
-        agent_angle = orientation * math.pi / 2  # 0, 90, 180, 270
-        position_ahead = self.calculate_square_ahead(position, orientation)
-        ray_shift_x = 0
-        ray_shift_y = 0
-        if orientation == 0:
-            ray_shift_y = 20
-            ray_shift_x = 40
-        elif orientation == 1:
-            ray_shift_y = 0
-            ray_shift_x = 20
-        elif orientation == 2:
-            ray_shift_y = 20
-            ray_shift_x = 0
-        elif orientation == 3:
-            ray_shift_y = 40
-            ray_shift_x = 20
-
-        start_angle = agent_angle - HALF_FOV
-        for ray in range(NUMBER_OF_RAYS):
-            for depth in range(RAY_LENGTH):
-                x = int(position[0] - depth * math.cos(start_angle))
-                y = int(position[1] + depth * math.sin(start_angle))
-
-                if self.env_map[x][y] == 1:
-                    pygame.draw.line(
-                        self.win,
-                        (255, 0, 0),
-                        (
-                            (position_ahead[1] * self.cell_size) + ray_shift_y,
-                            (position_ahead[0] * self.cell_size) + ray_shift_x,
-                        ),
-                        (y * self.cell_size + 15, x * self.cell_size + 15),
-                    )
-                    break
-
-                if orientation == 0 or orientation == 2:
-                    x_2 = int(MATRIX_MIDDLE_INDEX + depth * math.sin(start_angle))
-                    y_2 = 0 + math.ceil(depth * math.cos(start_angle))
-                if orientation == 1 or orientation == 3:
-                    y_2 = int(depth * math.sin(start_angle))
-                    x_2 = MATRIX_MIDDLE_INDEX - math.ceil(depth * math.cos(start_angle))
-
-                # Change position based on orientaion
-                marked_square = (x, y)
-                # print("Position in matrix: ", x_2, y_2)
-                self.marked_squares.add(marked_square)
-                self.marked_2.add((x_2, y_2))
-            start_angle += STEP_ANGLE"""
-
     def draw_rays(self, position: tuple, orientation: int, wall_rays: set):
         agent_angle = orientation * math.pi / 2
-        position_ahead = self.calculate_square_ahead(position, orientation)
+        #position_ahead = self.calculate_square_ahead(position, orientation)
 
         ray_shift_x = 0
         ray_shift_y = 0
-        if orientation == 0:
+        """if orientation == 0:
             ray_shift_y = 20
             ray_shift_x = 40
         elif orientation == 1:
@@ -247,22 +197,22 @@ class Maze:
         elif orientation == 3:
             ray_shift_y = 40
             ray_shift_x = 20
-
+"""
         for x, y in wall_rays:
             pygame.draw.line(
                 self.win,
                 (255, 0, 0),
                 (
-                    (position_ahead[1] * self.cell_size) + ray_shift_y,
-                    (position_ahead[0] * self.cell_size) + ray_shift_x,
+                    (position[1] * self.cell_size) + ray_shift_y,
+                    (position[0] * self.cell_size) + ray_shift_x,
                 ),
-                (y * self.cell_size + 15, x * self.cell_size + 15),
+                (y * self.cell_size + 15, x * self.cell_size + 15), # TODO: Fix the offset to match toril
             )
 
     def draw_marked_blocks(self, observed_squares_map: set):
         surface = pygame.Surface((self.cell_size, self.cell_size), pygame.SRCALPHA)
         surface.set_alpha(128)
-        # surface.fill((255, 255, 255))
+
         for square in observed_squares_map:
             surface.fill(
                 (255, 255, 255),
@@ -276,30 +226,7 @@ class Maze:
         triangle_surface = pygame.Surface((self.cell_size, self.cell_size), pygame.SRCALPHA)
         triangle_surface.set_alpha(100)
 
-        width = 2
-
-
         # Calculate coordinates of the triangle
-
-        '''if orientation == 0:
-            triangle_coordinates = [(0, 0),
-                                    (self.cell_size, 0),
-                                    (self.cell_size / 2, self.cell_size / 2)]
-        elif orientation == 1:
-            triangle_coordinates = [(self.cell_size, 0),
-                                    (self.cell_size, self.cell_size),
-                                    (self.cell_size / 2, self.cell_size / 2)]
-
-        elif orientation == 2:
-            triangle_coordinates = [(0, self.cell_size),
-                                    (self.cell_size, self.cell_size),
-                                    (self.cell_size / 2, self.cell_size / 2)]
-        
-        elif orientation == 3:
-            triangle_coordinates = [(0, 0),
-                                    (0, self.cell_size),
-                                    (self.cell_size / 2, self.cell_size / 2)]'''
-        
         if orientation == 2:
             triangle_coordinates = [(0, 0),
                                     (self.cell_size, 0),
