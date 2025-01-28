@@ -420,6 +420,7 @@ class SunburstMazeContinuous(gym.Env):
         current_pos = self.position
 
         reward = 0
+        
 
         if self.position not in self.visited_squares:
             self.visited_squares.append(self.position)

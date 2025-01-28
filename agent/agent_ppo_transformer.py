@@ -201,11 +201,10 @@ if __name__ == "__main__":
         "batch_size": 200,
         "mini_batch_size": 2,
         "optimizer": "adam",
-        "total_episodes": 5000,
         "epsilon_decay": 0.998,
         "epsilon_min": 0.01,
         "gamma": 0.99,
-        "gae_lambda": 0.95,
+        #"gae_lambda": 0.95,
         "map_path": map_path_train,
         "n_updates_per_iteration": 5,  # hard update of the target model
         "target_model_update": 10,

@@ -295,12 +295,12 @@ class PPO_agent:
         obs = obs.unsqueeze(0)
 
         mean, std = self.policy_network(obs)
-        dist = torch.distributions.MultivariateNormal(mean, torch.diag_embed(std))
+        dist = torch.distributions.Normal(mean, torch.diag_embed(std))
 
         action = dist.sample()
         log_prob = dist.log_prob(action)
         scaled_action = torch.clamp(
-            self.action_low + (self.action_high - self.action_low) * ((action + 1) / 2),  # Transform from [-1, 1] to [low, high]
+            self.action_low + (self.action_high - self.action_low) * ((action + 1) / 2),  # Transform from [0, 1] to [low, high]
             self.action_low, self.action_high
         )
 
@@ -310,7 +310,7 @@ class PPO_agent:
         V = self.critic_network(obs)
 
         mean, std = self.policy_network(obs)
-        dist = torch.distributions.MultivariateNormal(mean, torch.diag_embed(std))
+        dist = torch.distributions.Normal(mean, torch.diag_embed(std))
 
         log_prob = dist.log_prob(actions)
 
