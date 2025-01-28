@@ -80,7 +80,7 @@ class Model_TrainTest:
 
         self.clip_grad_normalization = config["clip_grad_normalization"]
         self.learning_rate = config["learning_rate"]
-        self.discount_factor = config["discount_factor"]
+        self.gamma = config["gamma"]
         self.max_steps = config["max_steps_per_episode"]
         self.render = config["render"]
         self.memory_capacity = 3000
@@ -199,12 +199,13 @@ if __name__ == "__main__":
         "loss_function": "mse",
         "learning_rate": 0.0001,
         "batch_size": 200,
+        "mini_batch_size": 2,
         "optimizer": "adam",
         "total_episodes": 5000,
         "epsilon_decay": 0.998,
         "epsilon_min": 0.01,
-        "discount_factor": 0.88,
-        "alpha": 0.1,
+        "gamma": 0.99,
+        "gae_lambda": 0.95,
         "map_path": map_path_train,
         "n_updates_per_iteration": 5,  # hard update of the target model
         "target_model_update": 10,
@@ -231,7 +232,7 @@ if __name__ == "__main__":
         },
         "save_interval": 10,
         "render_fps": 5,
-        "observation_size": num_states + 4,
+        "observation_size": num_states + 1,
         "clip_grad_normalization": 3,
         "clip": 0.3,
         "fov": fov_config["fov"],
