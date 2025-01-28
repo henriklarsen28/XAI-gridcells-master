@@ -274,28 +274,13 @@ class PPO_agent:
         #rtgs = torch.unsqueeze(rtgs, 2)
 
         return rtgs
-        """for ep_rewards in rewards:
-            seq_len = len(ep_rewards)
-            rtg = torch.zeros((len(ep_rewards),seq_len, 1), device=self.device)
-            discounted_reward = 0
-
-            # Compute RTG in reverse
-            for t in reversed(range(seq_len)):
-                print(t)
-                print("Ep_rewards: ", ep_rewards[t])
-                discounted_reward = ep_rewards[t] + self.gamma * discounted_reward
-                rtg[t] = discounted_reward
-
-            rtgs.append(rtg)
-        print("RTGS: ", rtgs)
-        return torch.stack(rtgs)"""
 
     def get_action(self, obs):
         
         obs = obs.unsqueeze(0)
 
         mean, std = self.policy_network(obs)
-        dist = torch.distributions.Normal(mean, torch.diag_embed(std))
+        dist = torch.distributions.MultivariateNormal(mean, torch.diag_embed(std))
 
         action = dist.sample()
         log_prob = dist.log_prob(action)
@@ -304,13 +289,13 @@ class PPO_agent:
             self.action_low, self.action_high
         )
 
-        return scaled_action, log_prob.detach()
+        return scaled_action, log_prob
 
     def evaluate(self, obs, actions):
         V = self.critic_network(obs)
 
         mean, std = self.policy_network(obs)
-        dist = torch.distributions.Normal(mean, torch.diag_embed(std))
+        dist = torch.distributions.MultivariateNormal(mean, torch.diag_embed(std))
 
         log_prob = dist.log_prob(actions)
 
@@ -323,6 +308,7 @@ class PPO_agent:
         self.n_updates_per_iteration = config["n_updates_per_iteration"]
         self.gamma = config["gamma"]
         self.batch_size = config["batch_size"]
+        self.mini_batch_size = config["mini_batch_size"]
         self.update_frequency = config["target_model_update"]
         # self.max_episodes = config["total_episodes"]
         self.max_steps = config["max_steps_per_episode"]
@@ -332,7 +318,7 @@ class PPO_agent:
     def generate_minibatches(self, obs, actions, log_probs, rtgs):
         minibatches = []
         for _ in range(self.n_updates_per_iteration):
-            idxs = np.random.randint(0, len(obs), self.batch_size)
+            idxs = np.random.randint(0, len(obs), self.mini_batch_size)
             minibatches.append((obs[idxs], actions[idxs], log_probs[idxs], rtgs[idxs]))
 
         return minibatches
