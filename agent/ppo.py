@@ -211,7 +211,7 @@ class PPO_agent:
 
             for ep_timestep in range(self.max_steps):
                 timesteps += 1
-                state = state_preprocess_continuous(state, device=self.device)
+                #state = state_preprocess_continuous(state, device=self.device)
                 state_sequence = add_to_sequence(state_sequence, state, self.device)
                 tensor_sequence = torch.stack(list(state_sequence))
                 tensor_sequence = padding_sequence(
