@@ -209,7 +209,7 @@ if __name__ == "__main__":
         "gamma": 0.99,
         #"gae_lambda": 0.95,
         "map_path": map_path_train,
-        "n_updates_per_iteration": 3,  # hard update of the target model
+        "n_updates_per_iteration": 10,  # hard update of the target model
         "target_model_update": 10,
         "max_steps_per_episode": 500,
         "random_start_position": True,
