@@ -292,7 +292,7 @@ class PPO_agent:
                 rtgs.insert(0, discounted_reward)
 
 
-        rtgs = torch.tensor(rtgs, dtype=torch.float).unsqueeze(0)
+        rtgs = torch.tensor(rtgs, dtype=torch.float, device=self.device).unsqueeze(0)
         rtgs = rtgs[0]
         print("RTGS: ", rtgs, rtgs.shape)
         # Convert the rewards-to-go into a tensor
@@ -307,7 +307,7 @@ class PPO_agent:
         processed_rtgs = []
 
         for i in range(len(rtgs)):
-            rtg_tensor = torch.tensor(rtgs[:i], dtype=torch.float32)
+            rtg_tensor = torch.tensor(rtgs[:i], dtype=torch.float32, device=self.device)
 
             # If RTG sequence is too short, pad it
             if len(rtg_tensor) < self.sequence_length:
