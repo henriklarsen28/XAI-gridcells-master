@@ -1,6 +1,16 @@
 import numpy as np
 from PIL import Image
+import random as rd
 
+def get_map(map_path):
+
+    map = map_path
+    # check if map_load_path is a list, pick random from list
+    if isinstance(map_path, list):
+        map = rd.choice(map_path)
+        print("Random map: ", map)
+        
+    return map
 
 def read_map(map_file):
     with open(map_file, "r", encoding="utf-8-sig") as f:
