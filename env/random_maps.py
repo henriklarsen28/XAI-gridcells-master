@@ -75,6 +75,9 @@ def generate_random_maps(env_size: tuple):
         # Add doors to the rooms
         matrix = add_doors(matrix, 2, room_corners, room.shape)
 
+        # change matrix to integer values
+        matrix = matrix.astype(int)
+        
     # 3. Generate random corridor positions
 
     # 4. Generate random corridor sizes
