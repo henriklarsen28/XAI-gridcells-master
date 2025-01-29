@@ -27,7 +27,7 @@ sys.path.append(project_root)
 
 from agent.transformer_decoder_decoupled import Transformer
 from utils.calculate_fov import calculate_fov_matrix_size
-from utils.custom_dataset import CAV_dataset
+from utils import CAV_dataset
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
