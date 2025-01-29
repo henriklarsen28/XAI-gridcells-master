@@ -222,7 +222,7 @@ class PPO_agent:
 
                 # last_log_prob = log_prob[-1,-1]
 
-                state, reward, done, turnicated, _ = self.env.step(last_action[0])
+                state, reward, terminated, turnicated, _ = self.env.step(last_action[0])
 
                 if (
                     self.render_mode == "rgb_array" and len(rewards) == 0
@@ -245,7 +245,7 @@ class PPO_agent:
                 actions.append(action)
                 log_probs.append(log_prob)
                 episode_rewards.append(reward)
-
+                done = terminated or turnicated
                 if done:
                     break
 
