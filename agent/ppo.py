@@ -346,7 +346,7 @@ class PPO_agent:
         dist = torch.distributions.MultivariateNormal(mean, torch.diag_embed(std))
 
         log_prob = dist.log_prob(actions)
-        print(V)
+        
         return V, log_prob
 
     def __init_hyperparameters(self, config):
