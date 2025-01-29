@@ -1,15 +1,15 @@
 import math
 import os
+from collections import deque
 
 import numpy as np
 import pygame
-from collections import deque
 from PIL import Image
 
 white = (255, 255, 255)
 black = (0, 0, 0)
 green = (91, 240, 146)
-red = (220, 20, 60)
+red = (255, 0, 0)
 grey = (174, 174, 174)
 
 
@@ -81,21 +81,14 @@ class Maze:
         Returns:
         - sprite (Sprite): The selected sprite based on the given orientation.
         """
-        # TODO: Needs to change the sprite based on the orientation in small increments (1 and 1 degree)
-        """if orientation == 0:
+        if orientation == 0:
             return self.sprite_up
         elif orientation == 1:
             return self.sprite_right
         elif orientation == 2:
             return self.sprite_down
         elif orientation == 3:
-            return self.sprite_left"""
-        rect = self.sprite_up.get_rect()
-        sprite = pygame.transform.rotate(self.sprite_up, -orientation)
-        rotated_rect = sprite.get_rect(center=rect.center)
-
-        
-        return sprite, rotated_rect, rotated_rect.center
+            return self.sprite_left
 
     # set up the maze
     def draw_maze(self, env_map: np.array) -> None:
@@ -132,18 +125,6 @@ class Maze:
                             self.cell_size,
                         ),
                     )
-                elif env_map[y][x] == -1:
-                    pygame.draw.rect(
-                        self.win,
-                        red,
-                        (
-                            x * self.cell_size,
-                            y * self.cell_size,
-                            self.cell_size,
-                            self.cell_size,
-                        ),
-                    )
-
 
     def draw_sprite(self, position: tuple, orientation: int) -> None:
         """
@@ -156,14 +137,15 @@ class Maze:
         Returns:
         - None
         """
-        sprite, rotated_rect, center = self.select_sprite(orientation)
+        sprite = self.select_sprite(orientation)
+
         self.win.blit(
             sprite,
             (
-                (position[1] * self.cell_size) + rotated_rect[0] - center[0],
-                (position[0] * self.cell_size) + rotated_rect[1] - center[1],
-                rotated_rect[2],
-                rotated_rect[3]
+                position[1] * self.cell_size,
+                position[0] * self.cell_size,
+                self.spriteWidth,
+                self.spriteHeight,
             ),
         )
 
@@ -271,6 +253,36 @@ class Maze:
                 surface, (square[1] * self.cell_size, square[0] * self.cell_size)
             )
 
+    def draw_rays(self, position: tuple, orientation: int, wall_rays: set):
+        agent_angle = orientation * math.pi / 2
+        position_ahead = self.calculate_square_ahead(position, orientation)
+
+        ray_shift_x = 0
+        ray_shift_y = 0
+        if orientation == 0:
+            ray_shift_y = 20
+            ray_shift_x = 40
+        elif orientation == 1:
+            ray_shift_y = 0
+            ray_shift_x = 20
+        elif orientation == 2:
+            ray_shift_y = 20
+            ray_shift_x = 0
+        elif orientation == 3:
+            ray_shift_y = 40
+            ray_shift_x = 20
+
+        for x,y in wall_rays:
+            pygame.draw.line(
+                self.win,
+                (255, 0, 0),
+                (
+                    (position_ahead[1] * self.cell_size) + ray_shift_y,
+                    (position_ahead[0] * self.cell_size) + ray_shift_x,
+                ),
+                (y * self.cell_size + 15, x * self.cell_size + 15),
+            )
+
     def draw_triangle(self, position, orientation, color=green):
 
         triangle_surface = pygame.Surface((self.cell_size, self.cell_size), pygame.SRCALPHA)
@@ -347,7 +359,7 @@ class Maze:
                         color = grey
                         # color = (0,0,255-saturation)
                     self.draw_triangle((position[0], position[1]), orientation, color)
-    # TODO: Draw dots behind the agent to show the last 100 actions
+
     def draw_action_tail(self, last_ten_actions):
         orientation = 0
         for position, action, q_variance, orientation in last_ten_actions:
@@ -386,7 +398,7 @@ class Maze:
         self.win.fill(grey)  # fill screen before drawing
         self.draw_maze(env_map)
         #self.draw_action_tail(last_ten_actions)
-        self.draw_rays(position, orientation, wall_rays)
+        #self.draw_rays(position, orientation, wall_rays)
         self.draw_marked_blocks(observed_squares_map)
 
         if self.render_mode == "human":

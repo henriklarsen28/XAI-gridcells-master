@@ -12,8 +12,8 @@ from PIL import Image
 
 from utils.calculate_fov import calculate_fov_matrix_size, step_angle
 
-from .file_manager import build_map
-from .continuous.maze_game import Maze
+from .file_manager import build_map, get_map
+from .maze_game import Maze
 
 checkpoints = [
     {"coordinates": [(19, 9), (19, 10), (19, 11)], "visited": False},
@@ -49,7 +49,8 @@ class SunburstMazeDiscrete(gym.Env):
         number_of_rays=100,
     ):
         self.map_file = maze_file
-        self.initial_map = build_map(maze_file)
+        self.maze_file = get_map(maze_file)
+        self.initial_map = build_map(self.maze_file)
         self.env_map = copy.deepcopy(self.initial_map)
         self.height = self.env_map.shape[0]
         self.width = self.env_map.shape[1]
@@ -201,6 +202,8 @@ class SunburstMazeDiscrete(gym.Env):
         self.visited_squares = []
         self.viewed_squares = set()
 
+        self.maze_file = get_map(self.map_file)
+        self.initial_map = build_map(self.maze_file)
         self.env_map = copy.deepcopy(self.initial_map)
         self.position = self.select_start_position()
         # self.goal = self.goal_position()
@@ -217,7 +220,7 @@ class SunburstMazeDiscrete(gym.Env):
 
             self.render_maze = Maze(
                 self.render_mode,
-                self.map_file,
+                self.initial_map,
                 self.env_map,
                 self.width,
                 self.height,
