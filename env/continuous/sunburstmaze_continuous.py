@@ -3,17 +3,13 @@ import math
 import random as rd
 from collections import deque
 
-import time
-
-
 import gymnasium as gym
 import numpy as np
 import pandas as pd
 import pygame
 from gymnasium import spaces
-from PIL import Image
 
-from utils.calculate_fov import calculate_fov_matrix_size, step_angle
+from utils import calculate_fov_matrix_size, step_angle
 
 from ..file_manager import build_map
 from .maze_game import Maze
@@ -59,14 +55,20 @@ class SunburstMazeContinuous(gym.Env):
         self.rewards = rewards
         self.observation_space = observation_space
         self.render_mode = render_mode
-        
+
         self.map_observation_size = 0
         for y in range(self.height):
             for x in range(self.width):
                 if self.env_map[y][x] == 0:
                     self.map_observation_size += 1
-        print("height:", self.height, "width:", self.width, "map_observation_size:", self.map_observation_size)
-
+        print(
+            "height:",
+            self.height,
+            "width:",
+            self.width,
+            "map_observation_size:",
+            self.map_observation_size,
+        )
 
         self.orientation = 0  # Between 0 and 360 degrees, should probably be radians
         self.velocity_x = 0
@@ -92,7 +94,7 @@ class SunburstMazeContinuous(gym.Env):
         self.last_moves = []
 
         self.viewed_squares = set()
-        
+
         self.fov = fov
         self.half_fov = self.fov / 2
         self.ray_length = ray_length
@@ -109,14 +111,17 @@ class SunburstMazeContinuous(gym.Env):
         self.q_variance = 0
         self.past_actions = deque(maxlen=10)
         # Define the action space. Rotation and acceleration
-        self.action_space = spaces.Box(low=np.array([-30.0, 0.0]), high=np.array([30.0,1.0]), dtype=np.float32)
+        self.action_space = spaces.Box(
+            low=np.array([-30.0, 0.0]), high=np.array([30.0, 1.0]), dtype=np.float32
+        )
 
         # TODO: Change how the observation space is defined
         y = self.matrix_size[0]
         x = self.matrix_size[1]
         # Observation space, position y, x and velocity
-        self.observation_space = spaces.Box(low=np.array([0.0, 0.0, 0.0]), high=np.array([y, x, 1.0]), dtype=np.float32)
-
+        self.observation_space = spaces.Box(
+            low=np.array([0.0, 0.0, 0.0]), high=np.array([y, x, 1.0]), dtype=np.float32
+        )
 
     def select_start_position(self) -> tuple:
         """
@@ -150,7 +155,7 @@ class SunburstMazeContinuous(gym.Env):
 
     def _get_info(self):
         return {
-            #"legal_actions": self.legal_actions(),
+            # "legal_actions": self.legal_actions(),
             "orientation": self.orientation
         }
 
@@ -216,7 +221,7 @@ class SunburstMazeContinuous(gym.Env):
         self.wall_rays = set()
         self.observed_squares_map = set()
 
-        agent_angle = math.radians(self.orientation) # 0, 90, 180, 270
+        agent_angle = math.radians(self.orientation)  # 0, 90, 180, 270
         start_angle = agent_angle - self.half_fov
         for _ in range(self.number_of_rays + 1):
             for depth in range(self.ray_length):
@@ -226,20 +231,19 @@ class SunburstMazeContinuous(gym.Env):
                 x = np.clip(x, 0, self.height - 1)
                 y = np.clip(y, 0, self.width - 1)
 
-
                 if self.env_map[x][y] == 1:
                     self.wall_rays.add((x, y))
                     break
 
                 self.find_relative_position_in_matrix(x, y)
-                self.observed_squares_map.add((x,y))
+                self.observed_squares_map.add((x, y))
             start_angle += self.step_angle
-        
-       # print("Observed squares: ", self.observed_squares)
+
+        # print("Observed squares: ", self.observed_squares)
         # print("Observed squares map: ", self.observed_squares_map)
 
         matrix = self.calculate_fov_matrix()
-        #time.sleep(1)
+        # time.sleep(1)
         return matrix
 
     def find_relative_position_in_matrix(self, x2, y2):
@@ -275,7 +279,6 @@ class SunburstMazeContinuous(gym.Env):
 
         return matrix
 
-    
     def is_collision(self, x, y):
         # Convert continuous coordinates to grid indices
         grid_x = math.floor(x)
@@ -284,7 +287,7 @@ class SunburstMazeContinuous(gym.Env):
         if grid_x < 0 or grid_x >= self.width or grid_y < 0 or grid_y >= self.height:
             return True
         return self.env_map[grid_y, grid_x] == 1
-    
+
     def is_goal(self):
         """
         Checks if the current position is a goal position.
@@ -294,7 +297,6 @@ class SunburstMazeContinuous(gym.Env):
         if int(self.env_map[round(self.position[0])][round(self.position[1])]) == 2:
             return True
         return False
-
 
     def limit_velocity(self):
         """
@@ -320,9 +322,12 @@ class SunburstMazeContinuous(gym.Env):
         rotation, velocity = action
 
         # Clip the actions
-        velocity = np.clip(velocity, self.action_space.low[1], self.action_space.high[1])
-        rotation = np.clip(rotation, self.action_space.low[0], self.action_space.high[0])
-
+        velocity = np.clip(
+            velocity, self.action_space.low[1], self.action_space.high[1]
+        )
+        rotation = np.clip(
+            rotation, self.action_space.low[0], self.action_space.high[0]
+        )
 
         self.orientation += rotation
         self.orientation = self.orientation % 360
@@ -330,28 +335,37 @@ class SunburstMazeContinuous(gym.Env):
         # Find the x and y components of the velocity
         self.velocity_x = velocity * math.sin(math.radians(self.orientation))
         self.velocity_y = -velocity * (math.cos(math.radians(self.orientation)))
-        
-
 
         position_y = self.position[0] + self.velocity_y
         position_x = self.position[1] + self.velocity_x
-        
 
         if self.is_collision(position_x, position_y):
-            return self._get_observation(), self.rewards["hit_wall"], False, False, self._get_info()
+            return (
+                self._get_observation(),
+                self.rewards["hit_wall"],
+                False,
+                False,
+                self._get_info(),
+            )
 
         self.position = (position_y, position_x)
-        
+
         observation = self._get_observation()
-        
+
         if self.is_goal():
-            return observation, self.rewards["goal_reached"] + self.reward(), True, True, self._get_info()
+            return (
+                observation,
+                self.rewards["goal_reached"] + self.reward(),
+                True,
+                True,
+                self._get_info(),
+            )
         """self.past_actions.append(
             (self.position, action, self.q_variance, self.orientation)
         )
         self.last_moves.append(self.position)"""
         # Used if the action is invalid
-        
+
         reward = self.reward()
         observation = None
 
@@ -359,7 +373,13 @@ class SunburstMazeContinuous(gym.Env):
         info = self._get_info()
 
         if self.is_goal():
-            return observation, self.rewards["goal_reached"] + reward, True, True, self._get_info()
+            return (
+                observation,
+                self.rewards["goal_reached"] + reward,
+                True,
+                True,
+                self._get_info(),
+            )
 
         if self.steps_current_episode >= self.max_steps_per_episode:
             print("Reached max steps")
@@ -379,15 +399,12 @@ class SunburstMazeContinuous(gym.Env):
         if self.render_mode == "human":
             self.render()
 
-        #print("Observed squares map in step: ", self.observed_squares_map)
-        #print('Number of squares in total', self.height * self.width)
+        # print("Observed squares map in step: ", self.observed_squares_map)
+        # print('Number of squares in total', self.height * self.width)
 
-        
-   
-        #print ("Length of viewed squares: ",  len(self.viewed_squares))
-        #print("Proporition of viewed squares: ", len(self.viewed_squares) / self.map_observation_size)
+        # print ("Length of viewed squares: ",  len(self.viewed_squares))
+        # print("Proporition of viewed squares: ", len(self.viewed_squares) / self.map_observation_size)
 
-        
         return observation, reward, terminated, False, info
 
     def view_of_maze_complete(self):
@@ -424,17 +441,16 @@ class SunburstMazeContinuous(gym.Env):
 
         reward = 0
 
-
         if self.position not in self.visited_squares:
             self.visited_squares.append(self.position)
-            reward +=  self.rewards["new_square"]
+            reward += self.rewards["new_square"]
 
         reward += self.rewards["penalty_per_step"]
 
         # Add reward for increasing the number of viewed squares
-        #viewed_squares_original = len(self.viewed_squares)
-        #self.viewed_squares.update(self.observed_squares_map)
-        #if viewed_squares_original < len(self.viewed_squares):
+        # viewed_squares_original = len(self.viewed_squares)
+        # self.viewed_squares.update(self.observed_squares_map)
+        # if viewed_squares_original < len(self.viewed_squares):
         #    reward += len(self.viewed_squares) / self.map_observation_size
 
         return reward
@@ -468,7 +484,7 @@ class SunburstMazeContinuous(gym.Env):
                 self.observed_squares_map,
                 self.wall_rays,
                 [],
-                []
+                [],
             )
         )
         self.render_maze.render_mode = self.render_mode
@@ -477,21 +493,3 @@ class SunburstMazeContinuous(gym.Env):
     def close(self):  # TODO: Not tested
         if self.window is not None:
             pygame.display.quit()
-
-    def create_gif(self, gif_path: str, frames: list):
-        """
-        Creates a GIF from a list of frames.
-
-        Args:
-            frames (list): A list of frames to be included in the GIF.
-            gif_path (str): The path to save the GIF file.
-            duration (int): The duration of each frame in milliseconds.
-
-        Returns:
-            None
-        """
-        images = [Image.fromarray(frame, mode="RGB") for frame in frames]
-        images[0].save(
-            gif_path, save_all=True, append_images=images[1:], duration=100, loop=0
-        )
-        return gif_path

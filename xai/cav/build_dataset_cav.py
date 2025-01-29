@@ -18,7 +18,7 @@ from agent import DTQN_Agent
 from agent.replay_memory import ReplayMemory
 from env import SunburstMazeDiscrete
 from utils.calculate_fov import calculate_fov_matrix_size
-from utils.coordinates import larger_than_less_than
+from utils import larger_than_less_than
 from utils.sequence_preprocessing import add_to_sequence, padding_sequence
 from utils.state_preprocess import state_preprocess
 

@@ -83,6 +83,7 @@ class Model_TrainTest:
         self.gamma = config["gamma"]
         self.max_steps = config["max_steps_per_episode"]
         self.render = config["render"]
+        self.render_mode = config["render_mode"]
         self.memory_capacity = 3000
 
         self.render_fps = config["render_fps"]
@@ -101,7 +102,7 @@ class Model_TrainTest:
         if not self.train_mode:
             map_path = map_path_test
 
-        # Define Env
+        """# Define Env
         self.env = SunburstMazeContinuous(
             maze_file=map_path,
             render_mode=render_mode,
@@ -116,7 +117,9 @@ class Model_TrainTest:
         
         self.env.metadata["render_fps"] = (
             self.render_fps
-        )  # For max frame rate make it 0
+        )  # For max frame rate make it 0"""
+        self.env = gym.make('Pendulum-v1', render_mode=self.render_mode)
+
 
 
         self.agent = PPO_agent(
@@ -198,7 +201,7 @@ if __name__ == "__main__":
         "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 0.0001,
-        "batch_size": 1000,
+        "batch_size": 100,
         "mini_batch_size": 64,
         "optimizer": "adam",
         "epsilon_decay": 0.998,
