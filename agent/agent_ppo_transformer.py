@@ -200,7 +200,7 @@ if __name__ == "__main__":
         "critic_load_path": "/model/transformers/ppo/model_vivid-firebrand-872/sunburst_maze_map_v0_5100.pth",
         "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
-        "learning_rate": 0.0001,
+        "learning_rate": 0.005,
         "batch_size": 100,
         "mini_batch_size": 64,
         "optimizer": "adam",
