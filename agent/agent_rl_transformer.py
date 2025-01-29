@@ -36,6 +36,8 @@ wandb.login()
 # Define the CSV file path relative to the project root
 map_path_train = os.path.join(project_root, "env/map_no_goal/map_closed_doors_left.csv")
 map_path_test = os.path.join(project_root, "env/map_no_goal/map_closed_doors_left.csv")
+map_path_random = os.path.join(project_root, "env/random_generated_maps")
+map_path_random_files = [os.path.join(map_path_random, f) for f in os.listdir(map_path_random) if os.path.isfile(os.path.join(map_path_random, f))]
 
 device = torch.device("cpu")
 device = torch.device(
@@ -55,13 +57,6 @@ if torch.cuda.is_available():
     torch.cuda.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
-
-
-# STOPPED HERE - update file to remove goal stuff
-
-def get_random_map():
-    map_list = [map_path_train, map_path_train]
-    return rd.choice(map_list)
 
 
 def salt_and_pepper_noise(matrix, prob=0.1):
@@ -114,9 +109,9 @@ class Model_TrainTest:
 
         self.transformer = config["transformer"]
         self.sequence_length = self.transformer["sequence_length"]
-        map_path = map_path_train
+        map_path = config["map_path_train"]
         if not self.train_mode:
-            map_path = map_path_test
+            map_path = config["map_path_test"]
 
         # Define Env
         self.env = SunburstMazeDiscrete(
@@ -166,12 +161,6 @@ class Model_TrainTest:
 
         run = wandb.init(project="sunburst-maze-discrete", config=self)
 
-        gif_path = f"./gifs/{run.name}"
-
-        # Create the nessessary directories
-        if not os.path.exists(gif_path):
-            os.makedirs(gif_path)
-
         model_path = f"./model_{run.name}"
         if not os.path.exists(model_path):
             os.makedirs(model_path)
@@ -181,19 +170,6 @@ class Model_TrainTest:
 
         # Training loop over episodes
         for episode in range(1, self.max_episodes + 1):
-
-            """train_env = get_random_map()
-            self.env = SunburstMazeDiscrete(
-                maze_file=train_env,
-                render_mode=render_mode,
-                max_steps_per_episode=self.max_steps,
-                random_start_position=self.random_start_position,
-                rewards=self.rewards,
-                observation_space=self.observation_space,
-                fov=self.fov,
-                ray_length=self.ray_length,
-                number_of_rays=self.number_of_rays,
-            )"""
 
             state, _ = self.env.reset()
 
@@ -287,12 +263,14 @@ class Model_TrainTest:
             # Create gif
             gif = None
             if frames:
-                if os.path.exists("./gifs") is False:
-                    os.makedirs("./gifs")
-
-                gif = self.env.create_gif(
-                    gif_path=f"./gifs/{episode}.gif", frames=frames
-                )
+                if not os.path.exists(f"./gifs/{run.name}"):
+                    os.makedirs(f"./gifs/{run.name}")
+                try:
+                    gif = self.env.create_gif(
+                        gif_path=f"./gifs/{run.name}/{episode}.gif", frames=frames
+                    )
+                except Exception as e:
+                    print(e)
                 frames.clear()
 
             # -- based on interval
@@ -474,7 +452,7 @@ class Model_TrainTest:
         )
         self.agent.model.eval()
 
-        sequence = deque(maxlen=self.sequnence_length)
+        sequence = deque(maxlen=self.sequence_length)
 
         frames = []
         gif_path = f"./gifs/{config['model_name']}/{map_version}"
@@ -649,7 +627,8 @@ if __name__ == "__main__":
     # Parameters
     config = {
         "train_mode": train_mode,
-        "map_path_train": map_path_train,
+        "map_path_train": map_path_random_files, # if this is a list it will select a random map from the list
+        "map_path_test": map_path_test,
         "render": render,
         "render_mode": render_mode,
         "model_name": "vivid-firebrand-872",
@@ -679,7 +658,7 @@ if __name__ == "__main__":
             "penalty_per_step": -0.01 / 200,
             "goal_in_sight": 0 / 200,
             "number_of_squares_visible": 0 / 200
-            # and the number of swuares viewed (set in the env)
+            # and the number of squares viewed (set in the env)
         },
         # TODO
         "observation_space": {
@@ -687,11 +666,11 @@ if __name__ == "__main__":
             "orientation": True,
             "steps_to_goal": False,
             "last_known_steps": 0,
-            "salt_and_pepper_noise": 0,
+            "salt_and_pepper_noise": 0
         },
         "save_interval": 100,
         "memory_capacity": 100_000,
-        "render_fps": 5,
+        "render_fps": 15,
         "num_states": num_states,
         "clip_grad_normalization": 3,
         "fov": math.pi / 1.5,
