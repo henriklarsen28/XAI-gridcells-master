@@ -140,6 +140,7 @@ class Transformer(nn.Module):
         x = self.ln_f(x)
 
         x = self.output(x.to(torch.float32))
+        #x_last = x[:, -1, :]
         return x # , att_weights_list
 
 

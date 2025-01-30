@@ -108,53 +108,56 @@ class PPO_agent:
             obs, actions, log_probs, rtgs, lens, frames = self.rollout(
                 iteration_counter
             )
+
+            
             # Minibatches
-            minibatches = self.generate_minibatches(obs, actions, log_probs, rtgs)
+            #minibatches = self.generate_minibatches(obs, actions, log_probs, rtgs)
 
             timestep_counter += sum(lens)
             iteration_counter += 1
 
-            for obs_batch, actions_batch, log_probs_batch, rtgs_batch in minibatches:
+            #for obs_batch, actions_batch, log_probs_batch, rtgs_batch in minibatches:
 
-                # print("Obs: ", obs, obs.shape)
-                # Calculate the advantages
-                value, _ = self.evaluate(obs_batch, actions_batch)
-                rtgs_batch = rtgs_batch.unsqueeze(2)
+            # print("Obs: ", obs, obs.shape)
+            # Calculate the advantages
+            value, _ = self.evaluate(obs, actions)
+            rtgs = rtgs.unsqueeze(2)
 
-                advantages = rtgs_batch - value.detach()
+            advantages = rtgs - value.detach()
 
-                # Normalize the advantages
-                advantages = (advantages - advantages.mean()) / (
-                    advantages.std() + 1e-10
+            # Normalize the advantages
+            advantages = (advantages - advantages.mean()) / (
+                advantages.std() + 1e-10
+            )
+            for _ in range(self.n_updates_per_iteration):
+                value, current_log_prob = self.evaluate(obs, actions)
+
+                # print(current_log_prob)
+                ratio = torch.exp(current_log_prob - log_probs)
+                ratio = ratio.unsqueeze(2)
+
+                surrogate_loss1 = ratio * advantages
+
+                # print("Surrogate loss1: ", surrogate_loss1, surrogate_loss1.shape)
+                surrogate_loss2 = (
+                    torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * advantages
                 )
-                for _ in range(self.n_updates_per_iteration):
-                    value, current_log_prob = self.evaluate(obs_batch, actions_batch)
+                # Increase the size of rtgs to be 300 x 15
 
-                    # print(current_log_prob)
-                    ratio = torch.exp(current_log_prob - log_probs_batch)
-                    ratio = ratio.unsqueeze(2)
+                policy_loss = (-torch.min(surrogate_loss1, surrogate_loss2)).mean()
+                #print("Value: ", value)
+                #print("RTGS: ", rtgs)
+                critic_loss = nn.MSELoss()(value, rtgs)
 
-                    surrogate_loss1 = ratio * advantages
+                print("Policy loss step")
+                self.policy_network.zero_grad()
+                policy_loss.backward(retain_graph=True)
+                self.policy_optimizer.step()
 
-                    # print("Surrogate loss1: ", surrogate_loss1, surrogate_loss1.shape)
-                    surrogate_loss2 = (
-                        torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * advantages
-                    )
-                    # Increase the size of rtgs to be 300 x 15
-
-                    policy_loss = (-torch.min(surrogate_loss1, surrogate_loss2)).mean()
-
-                    critic_loss = nn.MSELoss()(value, rtgs_batch)
-
-                    print("Policy loss step")
-                    self.policy_network.zero_grad()
-                    policy_loss.backward(retain_graph=True)
-                    self.policy_optimizer.step()
-
-                    self.critic_network.zero_grad()
-                    critic_loss.backward()
-                    self.critic_optimizer.step()
-                    print("After")
+                self.critic_network.zero_grad()
+                critic_loss.backward()
+                self.critic_optimizer.step()
+                print("After")
 
             gif = None
             if frames:
@@ -205,7 +208,6 @@ class PPO_agent:
 
         while timesteps < self.batch_size:
             episode_rewards = []
-            reward_sequence = deque(maxlen=self.sequence_length)
             state, _ = self.env.reset()
             done = False
 
@@ -218,14 +220,14 @@ class PPO_agent:
                     tensor_sequence, self.sequence_length, self.device
                 )
                 action, log_prob = self.get_action(tensor_sequence)
-                last_action = action[:, -1, :].cpu().detach().numpy()
+                last_action = action[:,-1,:].cpu().detach().numpy()
 
                 # last_log_prob = log_prob[-1,-1]
 
                 state, reward, terminated, turnicated, _ = self.env.step(last_action[0])
 
                 if (
-                    self.render_mode == "rgb_array" and len(rewards) == 0
+                    self.render_mode == "rgb_array" and iteration_counter % 100 == 0 and len(rewards) == 0
                 ):  # Create gif on the first episode in the rollout
                     frame = self.env.render()
                     if type(frame) == np.ndarray:
@@ -329,15 +331,15 @@ class PPO_agent:
 
         action = dist.sample()
         log_prob = dist.log_prob(action)
-        scaled_action = torch.clamp(
+        """scaled_action = torch.clamp(
             self.action_low
             + (self.action_high - self.action_low)
             * ((action + 1) / 2),  # Transform from [0, 1] to [low, high]
             self.action_low,
             self.action_high,
-        )
+        )"""
 
-        return scaled_action, log_prob.detach()
+        return action, log_prob.detach()
 
     def evaluate(self, obs, actions):
         V = self.critic_network(obs)
@@ -346,7 +348,7 @@ class PPO_agent:
         dist = torch.distributions.MultivariateNormal(mean, torch.diag_embed(std))
 
         log_prob = dist.log_prob(actions)
-        
+
         return V, log_prob
 
     def __init_hyperparameters(self, config):

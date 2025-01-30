@@ -17,3 +17,5 @@ xai/cav/*.png
 xai/cav/cav_ff/*.pt
 agent/grad_sam/*
 
+agent/ppo_test_code/wandb/*
+agent/ppo_test_code/__pycache__/*
