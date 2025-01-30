@@ -53,7 +53,6 @@ class SunburstMazeContinuous(gym.Env):
         self.width = self.env_map.shape[1]
         self.random_start_position = random_start_position
         self.rewards = rewards
-        self.observation_space = observation_space
         self.render_mode = render_mode
 
         self.map_observation_size = 0
@@ -170,7 +169,7 @@ class SunburstMazeContinuous(gym.Env):
         matrix = self.ray_casting()
         matrix = matrix.flatten()
 
-        output = np.array([*matrix, self.orientation/360])
+        output = np.array([*matrix, self.orientation / 360])
 
         # Get the matrix of marked squares without rendering
         return output
@@ -267,8 +266,8 @@ class SunburstMazeContinuous(gym.Env):
             x, y = square
             matrix[y, x] = -1
 
-        #df = pd.DataFrame(matrix)
-        #df.to_csv("matrix.csv")
+        # df = pd.DataFrame(matrix)
+        # df.to_csv("matrix.csv")
 
         # if self.orientation == 2 or self.orientation == 3:
         #     matrix = np.rot90(matrix, 2)
@@ -307,6 +306,20 @@ class SunburstMazeContinuous(gym.Env):
         if self.velocity_y > 1:
             self.velocity_y = 1
 
+    def scale_actions(self, action):
+
+        # rotation, velocity = action
+
+        # Clip the actions
+        scaled_action = np.clip(
+            self.action_space.low
+            + (self.action_space.high - self.action_space.low)
+            * ((action + 1) / 2),  # Transform from [0, 1] to [low, high]
+            self.action_space.low,
+            self.action_space.high,
+        )
+        return scaled_action
+
     def step(self, action: int):
         """
         Takes a step in the environment based on the given action.
@@ -319,15 +332,17 @@ class SunburstMazeContinuous(gym.Env):
             terminated (bool): Whether the episode is terminated or not.
             info (dict): Additional information about the environment.
         """
+        action = self.scale_actions(action)
+
         rotation, velocity = action
 
-        # Clip the actions
+        """# Clip the actions
         velocity = np.clip(
             velocity, self.action_space.low[1], self.action_space.high[1]
         )
         rotation = np.clip(
             rotation, self.action_space.low[0], self.action_space.high[0]
-        )
+        )"""
 
         self.orientation += rotation
         self.orientation = self.orientation % 360
@@ -441,9 +456,9 @@ class SunburstMazeContinuous(gym.Env):
 
         reward = 0
 
-        if self.position not in self.visited_squares:
+        """if self.position not in self.visited_squares:
             self.visited_squares.append(self.position)
-            reward += self.rewards["new_square"]
+            reward += self.rewards["new_square"]"""
 
         reward += self.rewards["penalty_per_step"]
 
@@ -456,11 +471,12 @@ class SunburstMazeContinuous(gym.Env):
         return reward
 
     def render(self):
-        self._render_frame()
+        return self._render_frame()
 
     def _render_frame(self):
         if self.render_mode == "rgb_array":
-            return self.render_rgb_array()
+            frame = self.render_rgb_array()
+            return frame
 
         elif self.render_mode == "human":
             self.render_maze.draw_frame(

@@ -78,7 +78,7 @@ def test(env, actor_model):
 		sys.exit(0)
 
 	# Extract out dimensions of observation and action spaces
-	obs_dim = env.observation_space.shape[0]
+	obs_dim = env.observation_space.n
 	act_dim = env.action_space.shape[0]
 
 	# Build our policy the same way we build our actor model in PPO
@@ -108,7 +108,7 @@ def main(args):
 	# To see a list of hyperparameters, look in ppo.py at function _init_hyperparameters
 	hyperparameters = {
 				'timesteps_per_batch': 2048, 
-				'max_timesteps_per_episode': 200, 
+				'max_timesteps_per_episode': 500, 
 				'gamma': 0.99, 
 				'n_updates_per_iteration': 10,
 				'lr': 3e-4, 
@@ -131,7 +131,7 @@ def main(args):
             "has_not_moved": -0.005,
             "new_square": 0.0025,
             "max_steps_reached": -0.025,
-            "penalty_per_step": -0.0002,
+            "penalty_per_step": -0.002,
             "number_of_squares_visible": 0,
             "goal_in_sight": 0.1,
 	}
@@ -140,17 +140,13 @@ def main(args):
         "ray_length": 10,
         "number_of_rays": 100,
     }
-	half_fov = fov_config["fov"] / 2
-	matrix_size = calculate_fov_matrix_size(fov_config["ray_length"], half_fov)
-	num_states = matrix_size[0] * matrix_size[1]
 
 	env = SunburstMazeContinuous(
 		maze_file=map_path_train,
 		render_mode="rgb_array",
-		max_steps_per_episode=500,
-		random_start_position=False,
+		max_steps_per_episode=hyperparameters["max_timesteps_per_episode"],
+		random_start_position=True,
 		rewards=rewards,
-		observation_space=num_states+1,
 		fov=fov_config["fov"],
 		ray_length=fov_config["ray_length"],
 		number_of_rays=fov_config["number_of_rays"],

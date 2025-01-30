@@ -140,8 +140,8 @@ class Transformer(nn.Module):
         x = self.ln_f(x)
 
         x = self.output(x.to(torch.float32))
-        #x_last = x[:, -1, :]
-        return x # , att_weights_list
+        x_last = x[:, -1, :]
+        return x_last # , att_weights_list
 
 
 # device = torch.device("mps" if torch.backends.mps.is_available() else "cpu") # Was faster with cpu??? Loading between cpu and mps is slow maybe

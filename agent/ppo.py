@@ -121,7 +121,7 @@ class PPO_agent:
             # print("Obs: ", obs, obs.shape)
             # Calculate the advantages
             value, _ = self.evaluate(obs, actions)
-            rtgs = rtgs.unsqueeze(2)
+            rtgs = rtgs#.unsqueeze(2)
 
             advantages = rtgs - value.detach()
 
@@ -134,7 +134,7 @@ class PPO_agent:
 
                 # print(current_log_prob)
                 ratio = torch.exp(current_log_prob - log_probs)
-                ratio = ratio.unsqueeze(2)
+                ratio = ratio#.unsqueeze(2)
 
                 surrogate_loss1 = ratio * advantages
 
@@ -220,11 +220,11 @@ class PPO_agent:
                     tensor_sequence, self.sequence_length, self.device
                 )
                 action, log_prob = self.get_action(tensor_sequence)
-                last_action = action[:,-1,:].cpu().detach().numpy()
+                #last_action = action[:,-1,:].cpu().detach().numpy()
 
                 # last_log_prob = log_prob[-1,-1]
-
-                state, reward, terminated, turnicated, _ = self.env.step(last_action[0])
+                action = action[0]
+                state, reward, terminated, turnicated, _ = self.env.step(action)
 
                 if (
                     self.render_mode == "rgb_array" and iteration_counter % 100 == 0 and len(rewards) == 0
@@ -259,8 +259,8 @@ class PPO_agent:
         # Reshape the data
 
         obs = torch.stack(observations).to(self.device)
-        actions = torch.stack(actions).to(self.device)
-        log_probs = torch.stack(log_probs).to(self.device)
+        actions = torch.tensor(actions).to(self.device)
+        log_probs = torch.tensor(log_probs).to(self.device)
         rtgs = self.compute_rtgs(rewards)
 
         # Create a sequence of rtgs
@@ -295,14 +295,14 @@ class PPO_agent:
                 rtgs.insert(0, discounted_reward)
 
 
-        rtgs = torch.tensor(rtgs, dtype=torch.float, device=self.device).unsqueeze(0)
-        rtgs = rtgs[0]
+        rtgs = torch.tensor(rtgs, dtype=torch.float, device=self.device)#.unsqueeze(0)
+        #rtgs = rtgs[0]
         print("RTGS: ", rtgs, rtgs.shape)
         # Convert the rewards-to-go into a tensor
         
 
         # Pad the rtgs tensor to be the same length as the observations
-        rtgs = self.pad_rtgs(rtgs)
+        #rtgs = self.pad_rtgs(rtgs)
         return rtgs
 
     def pad_rtgs(self, rtgs):
@@ -339,7 +339,7 @@ class PPO_agent:
             self.action_high,
         )"""
 
-        return action, log_prob.detach()
+        return action.cpu().detach().numpy(), log_prob.detach()
 
     def evaluate(self, obs, actions):
         V = self.critic_network(obs)
