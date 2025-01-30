@@ -229,7 +229,6 @@ class PPO_agent:
                     tensor_sequence, self.sequence_length, self.device
                 )
                 action, log_prob = self.get_action(tensor_sequence)
-
                 action = action[0]
                 state, reward, terminated, turnicated, _ = self.env.step(action)
 
