@@ -402,6 +402,12 @@ class PPO:
 		# Calculate the log probability for that action
 		log_prob = dist.log_prob(action)
 		# Return the sampled action and the log probability of that action in our distribution
+		action = torch.tensor(action, dtype=torch.float)
+		#log_prob_scaled = log_prob - torch.sum(torch.log(1 - scaled_action.pow(2) + 1e-6), dim=-1)
+
+		#scaled_action, log_prob = self.scale_actions_log_probs(action, log_prob)
+
+		#print("scaled_log_prob", log_prob_scaled)
 		return action.detach().numpy(), log_prob.detach()
 
 	def evaluate(self, batch_obs, batch_acts):
