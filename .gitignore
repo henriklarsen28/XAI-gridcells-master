@@ -28,3 +28,5 @@ xai/cav/cav_ff/dataset/*
 
 agent/ppo_test_code/gifs/*
 agent/ppo_test_code/wandb/*
+agent/ppo_test_code/wandb/*
+agent/ppo_test_code/__pycache__/*

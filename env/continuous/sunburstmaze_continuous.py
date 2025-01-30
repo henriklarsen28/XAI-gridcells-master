@@ -119,9 +119,7 @@ class SunburstMazeContinuous(gym.Env):
         y = self.matrix_size[0]
         x = self.matrix_size[1]
         # Observation space, position y, x and velocity
-        self.observation_space = spaces.Box(
-            low=np.array([0.0, 0.0, 0.0]), high=np.array([y, x, 1.0]), dtype=np.float32
-        )
+        self.observation_space = spaces.Discrete(y * x + 1)
 
     def select_start_position(self) -> tuple:
         """
@@ -172,8 +170,10 @@ class SunburstMazeContinuous(gym.Env):
         matrix = self.ray_casting()
         matrix = matrix.flatten()
 
+        output = np.array([*matrix, self.orientation/360])
+
         # Get the matrix of marked squares without rendering
-        return np.array([*matrix, self.orientation])
+        return output
 
     def reset(self, seed=None, options=None) -> tuple:
 
@@ -267,8 +267,8 @@ class SunburstMazeContinuous(gym.Env):
             x, y = square
             matrix[y, x] = -1
 
-        df = pd.DataFrame(matrix)
-        df.to_csv("matrix.csv")
+        #df = pd.DataFrame(matrix)
+        #df.to_csv("matrix.csv")
 
         # if self.orientation == 2 or self.orientation == 3:
         #     matrix = np.rot90(matrix, 2)
