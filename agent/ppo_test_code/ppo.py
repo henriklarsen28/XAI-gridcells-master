@@ -52,7 +52,7 @@ class PPO:
 	"""
 		This is the PPO class we will use as our model in main.py
 	"""
-	def __init__(self, policy_class, env, **hyperparameters):
+	def __init__(self, policy_class, env: SunburstMazeContinuous, **hyperparameters):
 		"""
 			Initializes the PPO model, including hyperparameters.
 
@@ -67,6 +67,7 @@ class PPO:
 		# Make sure the environment is compatible with our code
 		#assert(type(env.observation_space) == gym.spaces.Box)
 		assert(type(env.action_space) == gym.spaces.Box)
+		self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 		wandb.init(project="sunburst-maze-continuous", config=self)
 		self.render_mode = "rgb_array"
@@ -89,6 +90,9 @@ class PPO:
 		# Initialize the covariance matrix used to query the actor for actions
 		self.cov_var = torch.full(size=(self.act_dim,), fill_value=0.5)
 		self.cov_mat = torch.diag(self.cov_var)
+
+		self.action_low = torch.tensor(env.action_space.low).to(self.device)
+		self.action_high = torch.tensor(env.action_space.high).to(self.device)
 
 		# This logger will help us with printing out summaries of each iteration
 		self.logger = {
@@ -258,9 +262,8 @@ class PPO:
 				action, log_prob = self.get_action(obs)
 				obs, rew, terminated, truncated, _ = self.env.step(action)
 				if (
-                    self.render_mode == "rgb_array" and i_so_far % 10 == 0
+                    self.render_mode == "rgb_array" and i_so_far % 25 == 0 and len(batch_rews) == 0
                 ):  # Create gif on the first episode in the rollout
-					
 					frame = self.env.render()
 					if type(frame) == np.ndarray:
 						frames.append(frame)
@@ -326,6 +329,29 @@ class PPO:
 		batch_rtgs = torch.tensor(batch_rtgs, dtype=torch.float)
 
 		return batch_rtgs
+	
+	def scale_actions_log_probs(self, actions, log_probs):
+
+		 # Split rotation and velocity components
+		actions_rot = actions[0]  # First column: rotation (-30, 30)
+		actions_vel = actions[1]  # Second column: velocity (0, 1)
+
+		# Apply tanh and sigmoid scaling
+		actions_rot_scaled = 30 * torch.tanh(actions_rot)  # Scale to [-30, 30]
+		actions_vel_scaled = torch.sigmoid(actions_vel)    # Scale to [0, 1]
+
+		# Compute log probability corrections
+		log_prob_rot_correction = -torch.log(1 - torch.tanh(actions_rot).pow(2) + 1e-6).sum(dim=-1)
+		sigmoid_derivative = actions_vel_scaled * (1 - actions_vel_scaled)
+		log_prob_vel_correction = -torch.log(sigmoid_derivative + 1e-6).sum(dim=-1)
+
+		# Adjust log probability
+		log_prob_adjusted = log_probs + log_prob_rot_correction + log_prob_vel_correction
+
+		actions_scaled = torch.stack([actions_rot_scaled, actions_vel_scaled], dim=-1)
+
+		return actions_scaled, log_prob_adjusted
+
 
 	def get_action(self, obs):
 		"""
@@ -352,6 +378,12 @@ class PPO:
 		# Calculate the log probability for that action
 		log_prob = dist.log_prob(action)
 		# Return the sampled action and the log probability of that action in our distribution
+		action = torch.tensor(action, dtype=torch.float)
+		#log_prob_scaled = log_prob - torch.sum(torch.log(1 - scaled_action.pow(2) + 1e-6), dim=-1)
+
+		#scaled_action, log_prob = self.scale_actions_log_probs(action, log_prob)
+
+		#print("scaled_log_prob", log_prob_scaled)
 		return action.detach().numpy(), log_prob.detach()
 
 	def evaluate(self, batch_obs, batch_acts):
@@ -378,6 +410,8 @@ class PPO:
 		mean = self.actor(batch_obs)
 		dist = MultivariateNormal(mean, self.cov_mat)
 		log_probs = dist.log_prob(batch_acts)
+
+		#_ , log_probs = self.scale_actions_log_probs(batch_acts, log_probs)
 
 		# Return the value vector V of each observation in the batch
 		# and log probabilities log_probs of each action in the batch
