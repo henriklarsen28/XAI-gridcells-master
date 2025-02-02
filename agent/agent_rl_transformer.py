@@ -677,7 +677,7 @@ if __name__ == "__main__":
         "ray_length": 20,
         "number_of_rays": 100,
         "transformer": {
-            "sequence_length": 15,
+            "sequence_length": 45,
             "n_embd": 128,
             "n_embd": 128,
             "n_head": 8,
