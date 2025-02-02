@@ -115,7 +115,7 @@ class SunburstMazeDiscrete(gym.Env):
         self.observed_squares = set()
         self.observed_squares_map = set()
         self.observed_red_wall = set()
-        # self.goal_observed_square = set()
+        self.goal_observed_square = set()
 
         self.q_variance = 0
         self.past_actions = deque(maxlen=10)
@@ -127,7 +127,7 @@ class SunburstMazeDiscrete(gym.Env):
         )
 
         self.q_values = []
-        # self.goal_in_sight = False
+        self.goal_in_sight = False
 
     '''def goal_position(self):
         for y in range(self.height):
@@ -175,7 +175,7 @@ class SunburstMazeDiscrete(gym.Env):
         return {
             "legal_actions": self.legal_actions(),
             "orientation": self.orientation,
-            # "goal_in_sight": self.goal_in_sight,
+            "goal_in_sight": self.goal_in_sight,
         }
 
     def _get_observation(self):
@@ -258,7 +258,7 @@ class SunburstMazeDiscrete(gym.Env):
         self.observed_squares = set()
         self.wall_rays = set()
         self.observed_squares_map = set()
-        # self.goal_observed_square = set()
+        self.goal_observed_square = set()
         self.observed_red_wall = set()
 
         agent_angle = self.orientation * math.pi / 2  # 0, 90, 180, 270
@@ -309,8 +309,8 @@ class SunburstMazeDiscrete(gym.Env):
             marked_y = y - y2
 
         # Add the goal square
-        '''if self.env_map[x2, y2] == 2:
-            self.goal_observed_square.add((marked_x, marked_y))'''
+        if (marked_x, marked_y) == self.goal:
+            self.goal_observed_square.add((marked_x, marked_y)) # TODO: Not sure if this should be changed since we have three goals?
 
         self.observed_squares.add((marked_x, marked_y))
 
@@ -327,9 +327,9 @@ class SunburstMazeDiscrete(gym.Env):
             matrix[y, x] = -1
 
         # Mark the goal square
-        '''if len(self.goal_observed_square) == 1:
+        if len(self.goal_observed_square) == 1:
             x, y = self.goal_observed_square.pop()
-            matrix[y, x] = 2'''
+            matrix[y, x] = 2
 
         #df = pd.DataFrame(matrix)
         #df.to_csv("matrix.csv")
@@ -479,8 +479,9 @@ class SunburstMazeDiscrete(gym.Env):
         # Used if the action is invalid
         reward = self.reward()
         observation = self._get_observation()
-        # terminated = self.is_goal()
-        terminated = self.view_of_maze_complete()
+        terminated = self.is_goal()
+        # terminated = self.view_of_maze_complete()
+        terminated = self.is_false_goal()
         info = self._get_info()
 
         if self.steps_current_episode >= self.max_steps_per_episode:
@@ -499,7 +500,7 @@ class SunburstMazeDiscrete(gym.Env):
 
         # Walking into a wall
         if action not in self.legal_actions():
-            print("Hit a wall")
+            # print("Hit a wall")
             return observation, self.rewards["hit_wall"], False, False, info
 
         # Perform the action
@@ -514,22 +515,31 @@ class SunburstMazeDiscrete(gym.Env):
         if self.render_mode == "human":
             self.render()
 
-        '''if 2 in observation[:-1]:
-            self.goal_in_sight = True'''
-        if terminated:
-            print("Whole maze is viewed!")
+        if 2 in observation[:-1]:
+            self.goal_in_sight = True # TODO: Not sure if this should be changed since we have three goals?
 
         return observation, reward, terminated, False, info
 
-    '''def is_goal(self):
+    def is_goal(self):
         """
         Checks if the current position is a goal position.
         Returns:
             bool: True if the current position is a goal position, False otherwise.
         """
-        if int(self.env_map[self.position[0]][self.position[1]]) == 2:
+        if int(self.env_map[self.position[0]][self.position[1]]) == 2 and self.position == self.goal:
+            print("Correct goal reached!")
             return True
-        return False'''
+        return False
+    
+    def is_false_goal(self):
+        """
+        Checks if the current position is a goal position.
+        Returns:
+            bool: True if the current position is a goal position, False otherwise.
+        """
+        if int(self.env_map[self.position[0]][self.position[1]]) == 2 and self.position != self.goal:
+            return True
+        return False
     
     def view_of_maze_complete(self):
         if len(self.viewed_squares) == self.map_observation_size:
@@ -560,9 +570,9 @@ class SunburstMazeDiscrete(gym.Env):
             int: The reward value.
         """
 
-        '''if self.is_goal():
+        if self.is_goal():
             print("Goal reached!")
-            return self.rewards["is_goal"]'''
+            return self.rewards["is_goal"]
         # Penalize for just rotating in place without moving
         current_pos = self.position
         
@@ -582,8 +592,8 @@ class SunburstMazeDiscrete(gym.Env):
             self.rewards["number_of_squares_visible"] * self.number_of_squares_visible()
         )'''
         reward = 0
-        '''if self.goal_in_sight:
-            reward += self.rewards["goal_in_sight"]# + reward'''
+        if self.goal_in_sight:
+            reward += self.rewards["goal_in_sight"]# # TODO: Not sure if this should be changed since we have three goals?
 
         if self.position not in self.visited_squares:
             self.visited_squares.append(self.position)

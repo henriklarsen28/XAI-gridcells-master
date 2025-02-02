@@ -24,6 +24,7 @@ class Maze:
         height: int,
         framerate: int,
         position: tuple,
+        goal: tuple,
         orientation: int,
         observed_squares_map: set,
         wall_rays: set,
@@ -35,6 +36,7 @@ class Maze:
         self.width = width
         self.height = height
         self.position = position
+        self.goal_position = goal
         self.orientation = orientation
         self.cell_size = 30
         screen_width = width * self.cell_size
@@ -115,9 +117,23 @@ class Maze:
                         ),
                     )
                 elif env_map[y][x] == 2:
-                    pygame.draw.rect(
+                    if (x, y) == self.goal_position:
+                        # print("Goal position: ", (x, y))
+                        pygame.draw.rect(
+                            self.win,
+                            green,
+                            (
+                                x * self.cell_size,
+                                y * self.cell_size,
+                                self.cell_size,
+                                self.cell_size,
+                            ),
+                        )
+                    else:
+                        # print("False goal position: ", (x, y))
+                        pygame.draw.rect(
                         self.win,
-                        green,
+                        red,
                         (
                             x * self.cell_size,
                             y * self.cell_size,
@@ -125,6 +141,7 @@ class Maze:
                             self.cell_size,
                         ),
                     )
+                        
 
     def draw_sprite(self, position: tuple, orientation: int) -> None:
         """
@@ -345,8 +362,6 @@ class Maze:
         self.win.blit(triangle_surface, (position[1] * self.cell_size, position[0] * self.cell_size))
 
     def draw_q_values(self, q_values):
-        
-        
 
         for q_value in q_values:
             for position, value in q_value.items():
