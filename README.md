@@ -4,7 +4,7 @@ By Gro Oleivsgard and Henrik Larsen
 
 ## Explainable AI Approaches to Detect Independent Spatial Representations of Environments in Deep Reinforcement Learning Agents
 
-The purpose of our master thesis is to explore how methods from explainable artificial intelligence (XAI) can be applied to a transformed-based reinforcement learning agent to evaluate parallels in how spatial environments are encoded between an artificial neural network and the biological brain. This is an interesting area of research because it bridges the gap between artificial intelligence and neuroscience using novel methods from the field of XAI.
+The purpose of our master thesis is to explore how methods from explainable artificial intelligence (XAI) can be applied to a transformer-based reinforcement learning agent to evaluate parallels in how spatial environments are encoded between an artificial neural network and the biological brain. This is an interesting area of research because it bridges the gap between artificial intelligence and neuroscience using novel methods from the field of XAI.
 
 In our thesis, we will determine if spatial environments are independently encoded in a transformer-based reinforcement learning architecture. This is inspired by studies on the biological brain which suggests that spatial representations are stored independently with minimal overlap between different environments. To develop an artificial agent that can act in an environment similar to physical space, we seek to implement the architecture in a continuous, partially observable environment. The thesis will be guided by the following research questions.
 
