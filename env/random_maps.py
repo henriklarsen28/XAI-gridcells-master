@@ -373,12 +373,40 @@ def is_reachable(matrix: np.array, goal_position: tuple):
     return False
 
 
-def save_map(matrix: np.array, path: str):
+def save_map(matrix: np.array, true_goal: tuple, path: str):
+    y = str(true_goal[1])
+    x = str(true_goal[0])
+    path = "random_generated_maps/goal/" + path + "_" + y + "_" + x + ".csv"
+    print("Saving map to", path)
     with open(path, "w") as f:
         for row in matrix:
             f.write(",".join([str(x) for x in row]) + "\n")
-
     
+def add_goal(matrix: np.array):
+
+    goal_position = np.random.randint(1, matrix.shape[0] - 1), np.random.randint(1, matrix.shape[1] - 1)
+    matrix[goal_position] = 2
+    print("Checking if goal is reachable from", goal_position)
+    # check if the goal is reachable
+    # if not, generate a new goal
+    for i in range(1, matrix.shape[0] - 1):
+        for j in range(1, matrix.shape[1] - 1):
+            if matrix[i, j] == 0:
+                # check if the goal is reachable
+                if not is_reachable(matrix, goal_position):
+                    matrix[goal_position] = 0
+                    return add_goal(matrix)
+    
+    print("Goal is reachable from", goal_position)                
+    return matrix, goal_position
+
+def is_reachable(matrix: np.array, goal_position: tuple):
+
+    # check if the goal is accessible by checking if it surrounded by at least four free cells
+    i, j = goal_position
+    if sum([matrix[i - 1, j], matrix[i + 1, j], matrix[i, j - 1], matrix[i, j + 1]]) <= 4:
+        return True
+    return False
 
 
 def main():

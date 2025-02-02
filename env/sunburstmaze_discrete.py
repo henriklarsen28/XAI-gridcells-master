@@ -83,7 +83,7 @@ class SunburstMazeDiscrete(gym.Env):
         self.orientation = 0  # 0 = Up, 1 = Right, 2 = Down, 3 = Left
 
         self.position = None
-        # self.goal = None
+        self.goal = None
 
         # Episode step settings
         self.max_steps_per_episode = max_steps_per_episode
