@@ -26,12 +26,12 @@ In the beginning, we will explore whether three distinct environments are repres
 
 We are researching multiple XAI methods on their applicability to explain the encodings of navigation in deep neural networks. Below is a summary of the methods we tested this past fall, where we trained an agent to find a goal, comparing a regular feed-forward network to a transformer-based network based on the Deep Q-learning reinforcement learning algorithm.
 
-1. **Visualization of Q-values in a Deep Q-learning Network**\
-   The Deep Q-Learning algorithm is a reinforcement learning algorithm where the agent learns optimal actions by experiencing consequences in the form of immediate positive or        negative rewards and uses this to estimate the value of the next state. Each state has an action with a corresponding q-value. After training a regular feed-forward network, we    visualized the q-values in order to depict how the agent has learned to move through the environment. The plot shows a clear preference for moving toward the goal in areas that    are closer to the goal.
+1. **Visualization of Q-values in a Deep Q-learning network**\
+   The Deep Q-learning algorithm is a reinforcement learning algorithm where the agent learns optimal actions by experiencing consequences in the form of immediate positive or        negative rewards and uses this to estimate the value of the next state. Each state has an action with a corresponding q-value. After training a regular feed-forward network, we    visualized the q-values in order to depict how the agent has learned to move through the environment. The plot shows a clear preference for moving toward the goal in areas that    are closer to the goal.
    
    <img src="xai/q-values/q-values-visualized.png" width="250px">
 
-2. **Concept Activation Vectors (TCAV)**\
+2. **Concept Activation Vectors**\
    Concepts are human-interpretable patterns in data that convey information at a high level, making it straightforward for humans to identify whether a concept is present or not,
    even if the raw data is complex and difficult to interpret. We tested for the presence of the following concepts:
 
