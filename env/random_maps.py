@@ -376,7 +376,7 @@ def is_reachable(matrix: np.array, goal_position: tuple):
 def save_map(matrix: np.array, true_goal: tuple, path: str):
     y = str(true_goal[1])
     x = str(true_goal[0])
-    path = "random_generated_maps/goal/" + path + "_" + y + "_" + x + ".csv"
+    path = folder + path + "_" + y + "_" + x + ".csv"
     print("Saving map to", path)
     with open(path, "w") as f:
         for row in matrix:
