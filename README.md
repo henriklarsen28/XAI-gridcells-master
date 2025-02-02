@@ -10,11 +10,11 @@ In our thesis, we will determine if spatial environments are independently encod
 
 *RQ1: What methods improve the training of transformer-based reinforcement learning agents using Proximal Policy Optimization (PPO) in partially observable continuous environments?*
 
-#### RQ2: How do we identify spatial mapping in an artificial neural network using methods from explainable artificial intelligence (XAI)?
+*RQ2: How do we identify spatial mapping in an artificial neural network using methods from explainable artificial intelligence (XAI)?*
 
-#### RQ3: How different must an environment be for a cognitive remapping of the environment in an artificial neural network to occur?
+*RQ3: How different must an environment be for a cognitive remapping of the environment in an artificial neural network to occur?*
 
-#### RQ4: Can static concepts be used to detect cognitive remapping in transformer-based deep reinforcement learning agents?
+*RQ4: Can static concepts be used to detect cognitive remapping in transformer-based deep reinforcement learning agents?*
 
-#### RQ5: Given the identification of cognitive remapping, what are the scalability limits for transformer architectures in handling multiple environments?
+*RQ5: Given the identification of cognitive remapping, what are the scalability limits for transformer architectures in handling multiple environments?*
 
