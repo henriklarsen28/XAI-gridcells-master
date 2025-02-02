@@ -1,5 +1,5 @@
 import random as rd
-
+import os
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -196,10 +196,10 @@ def combine_maps(matrix1: np.array, matrix2: np.array):
     return matrix
 
 
-def save_map(matrix: np.array, true_goal: tuple, path: str):
+def save_map(matrix: np.array, true_goal: tuple, path: str, folder: str):
     y = str(true_goal[1])
     x = str(true_goal[0])
-    path = "random_generated_maps/goal/" + path + "_" + y + "_" + x + ".csv"
+    path = folder + path + "_" + y + "_" + x + ".csv"
     print("Saving map to", path)
     with open(path, "w") as f:
         for row in matrix:
@@ -234,6 +234,18 @@ def is_reachable(matrix: np.array, goal_position: tuple):
 
 def main():
     env_size = (21, 21)
+    n_goals = 3
+
+    # delete all files in the folder random_generated_maps/goal
+    
+    folder = "random_generated_maps/goal"
+    for file in os.listdir(folder):
+        file_path = os.path.join(folder, file)
+        try:
+            if os.path.isfile(file_path):
+                os.unlink(file_path)
+        except Exception as e:
+            print(e)
 
     # Room 1
     matrix1 = generate_random_map_conditional_prob(env_size, 0.15)
@@ -241,30 +253,30 @@ def main():
     matrix = combine_maps(matrix1, matrix2)
     
     goals = []
-    for _ in range(2):
+    for _ in range(n_goals):
         matrix, goal = add_goal(matrix)
         goals.append(goal)
     # choose random goal position
     true_goal = rd.choice(goals)
-    save_map(matrix, true_goal, "map_circular")
+    save_map(matrix, true_goal, "/map_circular", folder)
 
     # Room 2
     matrix = generate_random_maps(env_size)
     goals = []
-    for _ in range(2):
+    for _ in range(n_goals):
         matrix, goal_position = add_goal(matrix)
         goals.append(goal_position)
     true_goal = rd.choice(goals)
-    save_map(matrix, true_goal,"map_two_rooms")
+    save_map(matrix, true_goal,"/map_two_rooms", folder)
 
     # Room 3
     matrix = generate_random_map_conditional_prob(env_size, 0.2)
     goals = []
-    for _ in range(2):
+    for _ in range(n_goals):
         matrix, goal_position = add_goal(matrix)
         goals.append(goal_position)
     true_goal = rd.choice(goals)
-    save_map(matrix, true_goal,"map_conditional_prob")
+    save_map(matrix, true_goal,"/map_conditional_prob", folder)
 
 
 if __name__ == "__main__":
