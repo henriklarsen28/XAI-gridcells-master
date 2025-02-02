@@ -1,6 +1,7 @@
 import copy
 import math
 import random as rd
+import re
 from collections import deque
 
 import gymnasium as gym
@@ -67,9 +68,9 @@ class SunburstMazeDiscrete(gym.Env):
                 if self.env_map[y][x] == 0:
                     self.map_observation_size += 1
                 '''if self.env_map[y][x] == 2:
-                    self.goal = (y, x)
-                    break'''
+                    self.goal = (y, x)'''
         print("height:", self.height, "width:", self.width, "map_observation_size:", self.map_observation_size)
+        
 
         # Three possible actions: forward, left, right
 
@@ -82,7 +83,7 @@ class SunburstMazeDiscrete(gym.Env):
         self.orientation = 0  # 0 = Up, 1 = Right, 2 = Down, 3 = Left
 
         self.position = None
-        # self.goal = None
+        self.goal = None
 
         # Episode step settings
         self.max_steps_per_episode = max_steps_per_episode
@@ -193,6 +194,22 @@ class SunburstMazeDiscrete(gym.Env):
         # Get the matrix of marked squares without rendering
         return np.array([*matrix, self.orientation])
 
+    def extract_goal_coordinates(self):
+        """
+        Extracts the goal coordinates from the maze filename.
+
+        Returns:
+            tuple: The goal coordinates extracted from the maze filename.
+        """
+         # Extract the goal coordinates from the maze filename
+        match = re.search(r'(\d+)_(\d+)\.csv$', self.maze_file)
+        if match:
+            self.goal = (int(match.group(1)), int(match.group(2)))
+        else:
+            self.goal = None
+        print("Goal:", self.goal, "in maze file:", self.maze_file)
+        return self.goal
+
     def reset(self, seed=None, options=None) -> tuple:
 
         super().reset(seed=seed)
@@ -206,7 +223,7 @@ class SunburstMazeDiscrete(gym.Env):
         self.initial_map = build_map(self.maze_file)
         self.env_map = copy.deepcopy(self.initial_map)
         self.position = self.select_start_position()
-        # self.goal = self.goal_position()
+        self.goal = self.extract_goal_coordinates()
 
         self.steps_current_episode = 0
 
@@ -226,6 +243,7 @@ class SunburstMazeDiscrete(gym.Env):
                 self.height,
                 framerate,
                 self.position,
+                self.goal,
                 self.orientation,
                 self.observed_squares_map,
                 self.wall_rays,

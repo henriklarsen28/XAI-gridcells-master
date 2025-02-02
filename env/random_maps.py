@@ -187,30 +187,84 @@ def generate_circular_maps(env_size: tuple):
             if (r - center[0]) ** 2 + (c - center[1]) ** 2 <= center[0] ** 2:
                 matrix[r, c] = 0
 
+    # matrix = add_goal(matrix)
+
     return matrix
 
 def combine_maps(matrix1: np.array, matrix2: np.array):
-    return np.logical_or(matrix1, matrix2).astype(int)
+    matrix = np.logical_or(matrix1, matrix2).astype(int)
+    return matrix
 
 
-def save_map(matrix: np.array, path: str):
+def save_map(matrix: np.array, true_goal: tuple, path: str):
+    y = str(true_goal[1])
+    x = str(true_goal[0])
+    path = "random_generated_maps/goal/" + path + "_" + y + "_" + x + ".csv"
+    print("Saving map to", path)
     with open(path, "w") as f:
         for row in matrix:
             f.write(",".join([str(x) for x in row]) + "\n")
-
     
+def add_goal(matrix: np.array):
+
+    goal_position = np.random.randint(1, matrix.shape[0] - 1), np.random.randint(1, matrix.shape[1] - 1)
+    matrix[goal_position] = 2
+    print("Checking if goal is reachable from", goal_position)
+    # check if the goal is reachable
+    # if not, generate a new goal
+    for i in range(1, matrix.shape[0] - 1):
+        for j in range(1, matrix.shape[1] - 1):
+            if matrix[i, j] == 0:
+                # check if the goal is reachable
+                if not is_reachable(matrix, goal_position):
+                    matrix[goal_position] = 0
+                    return add_goal(matrix)
+    
+    print("Goal is reachable from", goal_position)                
+    return matrix, goal_position
+
+def is_reachable(matrix: np.array, goal_position: tuple):
+
+    # check if the goal is accessible by checking if it surrounded by at least four free cells
+    i, j = goal_position
+    if sum([matrix[i - 1, j], matrix[i + 1, j], matrix[i, j - 1], matrix[i, j + 1]]) <= 4:
+        return True
+    return False
 
 
 def main():
     env_size = (21, 21)
+
+    # Room 1
     matrix1 = generate_random_map_conditional_prob(env_size, 0.15)
     matrix2 = generate_circular_maps(env_size)
     matrix = combine_maps(matrix1, matrix2)
-    save_map(matrix, "random_generated_maps/circular_map.csv")
+    
+    goals = []
+    for _ in range(2):
+        matrix, goal = add_goal(matrix)
+        goals.append(goal)
+    # choose random goal position
+    true_goal = rd.choice(goals)
+    save_map(matrix, true_goal, "map_circular")
+
+    # Room 2
     matrix = generate_random_maps(env_size)
-    save_map(matrix, "random_generated_maps/random_map_2_rooms.csv")
+    goals = []
+    for _ in range(2):
+        matrix, goal_position = add_goal(matrix)
+        goals.append(goal_position)
+    true_goal = rd.choice(goals)
+    save_map(matrix, true_goal,"map_two_rooms")
+
+    # Room 3
     matrix = generate_random_map_conditional_prob(env_size, 0.2)
-    save_map(matrix, "random_generated_maps/random_map_conditional_prob.csv")
+    goals = []
+    for _ in range(2):
+        matrix, goal_position = add_goal(matrix)
+        goals.append(goal_position)
+    true_goal = rd.choice(goals)
+    save_map(matrix, true_goal,"map_conditional_prob")
 
 
 if __name__ == "__main__":
