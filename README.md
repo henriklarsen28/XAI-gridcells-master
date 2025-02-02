@@ -8,7 +8,7 @@ The purpose of our master thesis is to explore how methods from explainable arti
 
 In our thesis, we will determine if spatial environments are independently encoded in a transformer-based reinforcement learning architecture. This is inspired by studies on the biological brain which suggests that spatial representations are stored independently with minimal overlap between different environments. To develop an artificial agent that can act in an environment similar to physical space, we seek to implement the architecture in a continuous, partially observable environment. The thesis will be guided by the following research questions.
 
-#### RQ1: What methods improve the training of transformer-based reinforcement learning agents using Proximal Policy Optimization (PPO) in partially observable continuous environments?
+*RQ1: What methods improve the training of transformer-based reinforcement learning agents using Proximal Policy Optimization (PPO) in partially observable continuous environments?*
 
 #### RQ2: How do we identify spatial mapping in an artificial neural network using methods from explainable artificial intelligence (XAI)?
 
