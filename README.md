@@ -18,3 +18,12 @@ In our thesis, we will determine if spatial environments are independently encod
 
 *RQ5: Given the identification of cognitive remapping, what are the scalability limits for transformer architectures in handling multiple environments?*
 
+### Explainable AI methods
+
+We are researching multiple XAI methods on their applicability to explain the encodings of navigation in deep neural networks. Below is a summary of the methods we have tested so far.
+
+1. Visualization of Q-values in a Deep Q-learning Network
+   '''
+   The Deep Q-Learning algorithm is a reinforcement learning algorithm where the agent learns optimal actions by experiencing consequences in the form of immediate positive or negative rewards and uses this to estimate the value of the next state. Each state has an action with a corresponding q-value, which we visualized in the environment in order to depict how the agent has learned to move through the environment.
+   ![image](xai/q-values/q-values-visualized.png)
+   '''
