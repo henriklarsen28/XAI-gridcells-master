@@ -670,7 +670,7 @@ if __name__ == "__main__":
             "salt_and_pepper_noise": 0
         },
         "save_interval": 100,
-        "memory_capacity": 100_000,
+        "memory_capacity": 200_000,
         "render_fps": 15,
         "num_states": num_states,
         "clip_grad_normalization": 3,
