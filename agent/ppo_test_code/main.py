@@ -133,7 +133,7 @@ def main(args):
             "has_not_moved": -0.005,
             "new_square": 0.0025,
             "max_steps_reached": -0.025,
-            "penalty_per_step": -0.002,
+            "penalty_per_step": -0.0002,
             "number_of_squares_visible": 0,
             "goal_in_sight": 0.1,
 			"is_false_goal": -0.01,
