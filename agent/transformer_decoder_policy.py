@@ -145,7 +145,7 @@ class TransformerPolicy(nn.Module):
         x = self.output(x.to(torch.float32))
 
         x_std = torch.exp(self.log_std)
-        x_last = x[:, -1, :]
+        #x_last = x[:, -1, :]
         #print(x_last.shape)
         return x, x_std, att_weights_list
 
