@@ -619,6 +619,10 @@ class SunburstMazeDiscrete(gym.Env):
         if self.is_false_goal():
             return self.rewards["is_false_goal"]
 
+        
+        if self.is_false_goal():
+            return self.rewards["is_false_goal"]
+
         return reward
 
     def render_q_value_overlay(self, q_values):
