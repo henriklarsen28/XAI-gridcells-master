@@ -25,9 +25,28 @@ from torch.distributions import MultivariateNormal
 import os
 import wandb
 from PIL import Image
-
+import random as rd
 
 from env import SunburstMazeContinuous
+
+map_path_random = os.path.join(project_root, "env/random_generated_maps/goal")
+map_path_random_files = [os.path.join(map_path_random, f) for f in os.listdir(map_path_random) if os.path.isfile(os.path.join(map_path_random, f))]
+
+def random_maps(env: SunburstMazeContinuous, random_map: bool = False, iteration_counter: int = 0):
+	if random_map and iteration_counter % 20 == 0:
+		# Select and load a new random map
+		map_path = rd.choice(map_path_random_files)
+		env = SunburstMazeContinuous(
+			maze_file=map_path,
+			render_mode=env.render_mode,
+			rewards=env.rewards,
+			fov=env.fov,
+			ray_length=env.ray_length,
+			number_of_rays=env.number_of_rays,
+		)
+		
+	return env
+
 
 
 def create_gif(gif_path: str, frames: list):

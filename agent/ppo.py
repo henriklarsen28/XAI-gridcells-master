@@ -95,17 +95,13 @@ class PPO_agent:
         self.cov_var = torch.full(size=(self.act_dim,), fill_value=0.5).to(self.device)
         self.cov_mat = torch.diag(self.cov_var).to(self.device)
 
-        self.action_low = torch.tensor(env.action_space.low).to(self.device)
-        self.action_high = torch.tensor(env.action_space.high).to(self.device)
-
     def learn(self, total_timesteps):
-        print("Learning")
 
         timestep_counter = 0
         iteration_counter = 0
 
         while timestep_counter < total_timesteps:
-
+            print("Iteration: ", iteration_counter)
             obs, actions, log_probs, rtgs, lens, frames = self.rollout(
                 iteration_counter
             )
