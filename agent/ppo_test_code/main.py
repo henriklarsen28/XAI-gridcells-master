@@ -125,13 +125,13 @@ def main(args):
 	map_path_train = os.path.join(project_root, "env/map_v0/map_closed_doors_left.csv")
 
 	rewards =  {
-            "goal_reached": 1,
-            "is_goal": 1,
-            "hit_wall": -0.001,
+            "goal_reached": 2,
+            "is_goal": 2,
+            "hit_wall": -0.01,
             "has_not_moved": -0.005,
             "new_square": 0.0025,
             "max_steps_reached": -0.025,
-            "penalty_per_step": -0.002,
+            "penalty_per_step": -0.0002,
             "number_of_squares_visible": 0,
             "goal_in_sight": 0.1,
 	}

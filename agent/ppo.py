@@ -227,7 +227,7 @@ class PPO_agent:
                 state, reward, terminated, turnicated, _ = self.env.step(action)
 
                 if (
-                    self.render_mode == "rgb_array" and iteration_counter % 100 == 0 and len(rewards) == 0
+                    self.render_mode == "rgb_array" and iteration_counter % 30 == 0 and len(rewards) == 0
                 ):  # Create gif on the first episode in the rollout
                     frame = self.env.render()
                     if type(frame) == np.ndarray:
@@ -297,7 +297,7 @@ class PPO_agent:
 
         rtgs = torch.tensor(rtgs, dtype=torch.float, device=self.device)#.unsqueeze(0)
         #rtgs = rtgs[0]
-        print("RTGS: ", rtgs, rtgs.shape)
+        #print("RTGS: ", rtgs, rtgs.shape)
         # Convert the rewards-to-go into a tensor
         
 
@@ -331,13 +331,6 @@ class PPO_agent:
 
         action = dist.sample()
         log_prob = dist.log_prob(action)
-        """scaled_action = torch.clamp(
-            self.action_low
-            + (self.action_high - self.action_low)
-            * ((action + 1) / 2),  # Transform from [0, 1] to [low, high]
-            self.action_low,
-            self.action_high,
-        )"""
 
         return action.cpu().detach().numpy(), log_prob.detach()
 
