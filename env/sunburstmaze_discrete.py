@@ -481,7 +481,6 @@ class SunburstMazeDiscrete(gym.Env):
         observation = self._get_observation()
         terminated = self.is_goal()
         # terminated = self.view_of_maze_complete()
-        terminated = self.is_false_goal()
         info = self._get_info()
 
         if self.steps_current_episode >= self.max_steps_per_episode:
@@ -610,6 +609,10 @@ class SunburstMazeDiscrete(gym.Env):
             reward_new_squares = (len(self.viewed_squares) - viewed_squares_original) / self.map_observation_size
             reward += reward_new_squares
             print("Reward for viewing new squares: ", reward_new_squares)
+
+        
+        if self.is_false_goal():
+            return self.rewards["is_false_goal"]
 
         return reward
 
