@@ -52,6 +52,7 @@ def play_with_keyboard():
             "new_square": 0.2,
             "penalty_per_step": -0.1,
             "goal_in_sight": -0.1,
+            "is_false_goal": -0.1,
         },
         # TODO
         "observation_space": {

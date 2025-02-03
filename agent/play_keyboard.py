@@ -6,7 +6,7 @@ import pygame
 sys.path.append("..")
 
 from env import SunburstMazeDiscrete
-from env.continuous.sunburstmaze_continuous import action_encoding
+#from env.continuous.sunburstmaze_continuous import action_encoding
 
 
 def perform_action(action: int, env: SunburstMazeDiscrete, legal_actions: list):
@@ -51,6 +51,7 @@ def play_with_keyboard():
             "new_square": 0.2,
             "penalty_per_step": -0.1,
             "goal_in_sight": -0.1,
+            "is_false_goal": -0.1,
         },
         # TODO
         "observation_space": {
@@ -65,7 +66,7 @@ def play_with_keyboard():
     }
 
     env = SunburstMazeDiscrete(
-        maze_file="../env/map_v0/map_open_doors_vertical.csv",
+        maze_file="../env/random_generated_maps/goal/map_circular_16_18.csv",
         render_mode="human",
         rewards=config["rewards"],
         observation_space=config["observation_space"],

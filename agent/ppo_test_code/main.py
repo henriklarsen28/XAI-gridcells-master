@@ -24,6 +24,8 @@ from env import SunburstMazeContinuous
 from utils.calculate_fov import calculate_fov_matrix_size
 
 
+# TODO: Implementere med ulike kart, byttes hver 20 episode
+
 def train(env, hyperparameters, actor_model, critic_model):
 	"""
 		Trains the model.

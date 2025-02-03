@@ -18,6 +18,7 @@ from utils import (
     padding_sequence,
     padding_sequence_int,
     state_preprocess_continuous,
+    create_gif,
 )
 
 
@@ -111,54 +112,54 @@ class PPO_agent:
 
             
             # Minibatches
-            #minibatches = self.generate_minibatches(obs, actions, log_probs, rtgs)
+            minibatches = self.generate_minibatches(obs, actions, log_probs, rtgs)
 
             timestep_counter += sum(lens)
             iteration_counter += 1
 
-            #for obs_batch, actions_batch, log_probs_batch, rtgs_batch in minibatches:
+            for obs_batch, actions_batch, log_probs_batch, rtgs_batch in minibatches:
 
-            # print("Obs: ", obs, obs.shape)
-            # Calculate the advantages
-            value, _ = self.evaluate(obs, actions)
-            rtgs = rtgs.unsqueeze(1)
+                # print("Obs: ", obs, obs.shape)
+                # Calculate the advantages
+                value, _ = self.evaluate(obs_batch, actions_batch)
+                rtgs_batch = rtgs_batch.unsqueeze(1)
 
-            advantages = rtgs - value.detach()
+                advantages = rtgs_batch - value.detach()
 
-            # Normalize the advantages
-            advantages = (advantages - advantages.mean()) / (
-                advantages.std() + 1e-10
-            )
-            for _ in range(self.n_updates_per_iteration):
-                value, current_log_prob = self.evaluate(obs, actions)
-
-                # print(current_log_prob)
-                ratio = torch.exp(current_log_prob - log_probs)
-                ratio = ratio
-
-                surrogate_loss1 = ratio * advantages
-
-                # print("Surrogate loss1: ", surrogate_loss1, surrogate_loss1.shape)
-                surrogate_loss2 = (
-                    torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * advantages
+                # Normalize the advantages
+                advantages = (advantages - advantages.mean()) / (
+                    advantages.std() + 1e-10
                 )
-                # Increase the size of rtgs to be 300 x 1
+                for _ in range(1):
+                    value, current_log_prob = self.evaluate(obs_batch, actions_batch)
 
-                policy_loss = (-torch.min(surrogate_loss1, surrogate_loss2)).mean()
-                #print("Value: ", value.shape)
-                #print("RTGS: ", rtgs.shape)
+                    # print(current_log_prob)
+                    ratio = torch.exp(current_log_prob - log_probs_batch)
+                    ratio = ratio
 
-                critic_loss = nn.MSELoss()(value, rtgs)
+                    surrogate_loss1 = ratio * advantages
 
-                print("Policy loss step")
-                self.policy_network.zero_grad()
-                policy_loss.backward(retain_graph=True)
-                self.policy_optimizer.step()
+                    # print("Surrogate loss1: ", surrogate_loss1, surrogate_loss1.shape)
+                    surrogate_loss2 = (
+                        torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * advantages
+                    )
+                    # Increase the size of rtgs to be 300 x 1
 
-                self.critic_network.zero_grad()
-                critic_loss.backward()
-                self.critic_optimizer.step()
-                print("After")
+                    policy_loss = (-torch.min(surrogate_loss1, surrogate_loss2)).mean()
+                    #print("Value: ", value.shape)
+                    #print("RTGS: ", rtgs.shape)
+
+                    critic_loss = nn.MSELoss()(value, rtgs_batch)
+
+                    print("Policy loss step")
+                    self.policy_network.zero_grad()
+                    policy_loss.backward(retain_graph=True)
+                    self.policy_optimizer.step()
+
+                    self.critic_network.zero_grad()
+                    critic_loss.backward()
+                    self.critic_optimizer.step()
+                    print("After")
 
             gif = None
             if frames:
