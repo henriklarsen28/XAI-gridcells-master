@@ -36,7 +36,7 @@ wandb.login()
 # Define the CSV file path relative to the project root
 map_path_train = os.path.join(project_root, "env/map_no_goal/map_closed_doors_left.csv")
 map_path_test = os.path.join(project_root, "env/map_no_goal/map_closed_doors_left.csv")
-map_path_random = os.path.join(project_root, "env/random_generated_maps")
+map_path_random = os.path.join(project_root, "env/random_generated_maps/goal")
 map_path_random_files = [os.path.join(map_path_random, f) for f in os.listdir(map_path_random) if os.path.isfile(os.path.join(map_path_random, f))]
 
 device = torch.device("cpu")
@@ -657,7 +657,8 @@ if __name__ == "__main__":
             "max_steps_reached": -0.5 / 200,
             "penalty_per_step": -0.01 / 200,
             "goal_in_sight": 0 / 200,
-            "number_of_squares_visible": 0 / 200
+            "number_of_squares_visible": 0 / 200,
+            "is_false_goal": -0.5 / 200,
             # and the number of squares viewed (set in the env)
         },
         # TODO
@@ -677,7 +678,7 @@ if __name__ == "__main__":
         "ray_length": 20,
         "number_of_rays": 100,
         "transformer": {
-            "sequence_length": 15,
+            "sequence_length": 45,
             "n_embd": 128,
             "n_embd": 128,
             "n_head": 8,
