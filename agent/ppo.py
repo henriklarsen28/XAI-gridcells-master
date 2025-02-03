@@ -121,7 +121,7 @@ class PPO_agent:
             # print("Obs: ", obs, obs.shape)
             # Calculate the advantages
             value, _ = self.evaluate(obs, actions)
-            rtgs = rtgs#.unsqueeze(2)
+            rtgs = rtgs.unsqueeze(1)
 
             advantages = rtgs - value.detach()
 
@@ -134,7 +134,7 @@ class PPO_agent:
 
                 # print(current_log_prob)
                 ratio = torch.exp(current_log_prob - log_probs)
-                ratio = ratio#.unsqueeze(2)
+                ratio = ratio
 
                 surrogate_loss1 = ratio * advantages
 
@@ -142,11 +142,12 @@ class PPO_agent:
                 surrogate_loss2 = (
                     torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * advantages
                 )
-                # Increase the size of rtgs to be 300 x 15
+                # Increase the size of rtgs to be 300 x 1
 
                 policy_loss = (-torch.min(surrogate_loss1, surrogate_loss2)).mean()
-                #print("Value: ", value)
-                #print("RTGS: ", rtgs)
+                #print("Value: ", value.shape)
+                #print("RTGS: ", rtgs.shape)
+
                 critic_loss = nn.MSELoss()(value, rtgs)
 
                 print("Policy loss step")
