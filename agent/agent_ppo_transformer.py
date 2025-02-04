@@ -40,6 +40,8 @@ map_path_test_2 = os.path.join(project_root, "env/map_v0/map_open_doors_horizont
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #device = torch.device("cpu")
 
+print(f"Device: {device}", flush=True)
+
 # Seed everything for reproducible results
 seed = 2024
 np.random.seed(seed)
