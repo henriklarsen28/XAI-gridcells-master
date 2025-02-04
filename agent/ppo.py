@@ -83,6 +83,9 @@ class PPO_agent:
         self.policy_network.to(self.device)
         self.critic_network.to(self.device)
 
+        self.policy_network = nn.DataParallel(self.policy_network)
+        self.critic_network = nn.DataParallel(self.critic_network)
+
         self.policy_optimizer = torch.optim.Adam(
             self.policy_network.parameters(),
             lr=self.learning_rate,
@@ -102,60 +105,60 @@ class PPO_agent:
 
         while timestep_counter < total_timesteps:
             print("Iteration: ", iteration_counter)
-            obs, actions, log_probs, rtgs, lens, frames = self.rollout(
+            obs_batch, actions_batch, log_probs_batch, rtgs_batch, lens, frames = self.rollout(
                 iteration_counter
             )
 
             
             # Minibatches
-            minibatches = self.generate_minibatches(obs, actions, log_probs, rtgs)
+            #minibatches = self.generate_minibatches(obs, actions, log_probs, rtgs)
 
             timestep_counter += sum(lens)
             iteration_counter += 1
 
-            for obs_batch, actions_batch, log_probs_batch, rtgs_batch in minibatches:
+            #for obs_batch, actions_batch, log_probs_batch, rtgs_batch in minibatches:
 
                 # print("Obs: ", obs, obs.shape)
                 # Calculate the advantages
-                value, _ = self.evaluate(obs_batch, actions_batch)
-                rtgs_batch = rtgs_batch.unsqueeze(1)
+            value, _ = self.evaluate(obs_batch, actions_batch)
+            rtgs_batch = rtgs_batch.unsqueeze(1)
 
-                advantages = rtgs_batch - value.detach()
+            advantages = rtgs_batch - value.detach()
 
-                # Normalize the advantages
-                advantages = (advantages - advantages.mean()) / (
-                    advantages.std() + 1e-10
+            # Normalize the advantages
+            advantages = (advantages - advantages.mean()) / (
+                advantages.std() + 1e-10
+            )
+            for _ in range(self.n_updates_per_iteration):
+                value, current_log_prob = self.evaluate(obs_batch, actions_batch)
+
+                # print(current_log_prob)
+                ratio = torch.exp(current_log_prob - log_probs_batch)
+                ratio = ratio
+
+                surrogate_loss1 = ratio * advantages
+
+                # print("Surrogate loss1: ", surrogate_loss1, surrogate_loss1.shape)
+                surrogate_loss2 = (
+                    torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * advantages
                 )
-                for _ in range(1):
-                    value, current_log_prob = self.evaluate(obs_batch, actions_batch)
+                # Increase the size of rtgs to be 300 x 1
 
-                    # print(current_log_prob)
-                    ratio = torch.exp(current_log_prob - log_probs_batch)
-                    ratio = ratio
+                policy_loss = (-torch.min(surrogate_loss1, surrogate_loss2)).mean()
+                #print("Value: ", value.shape)
+                #print("RTGS: ", rtgs.shape)
 
-                    surrogate_loss1 = ratio * advantages
+                critic_loss = nn.MSELoss()(value, rtgs_batch)
 
-                    # print("Surrogate loss1: ", surrogate_loss1, surrogate_loss1.shape)
-                    surrogate_loss2 = (
-                        torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * advantages
-                    )
-                    # Increase the size of rtgs to be 300 x 1
+                print("Policy loss step")
+                self.policy_network.zero_grad()
+                policy_loss.backward(retain_graph=True)
+                self.policy_optimizer.step()
 
-                    policy_loss = (-torch.min(surrogate_loss1, surrogate_loss2)).mean()
-                    #print("Value: ", value.shape)
-                    #print("RTGS: ", rtgs.shape)
-
-                    critic_loss = nn.MSELoss()(value, rtgs_batch)
-
-                    print("Policy loss step")
-                    self.policy_network.zero_grad()
-                    policy_loss.backward(retain_graph=True)
-                    self.policy_optimizer.step()
-
-                    self.critic_network.zero_grad()
-                    critic_loss.backward()
-                    self.critic_optimizer.step()
-                    print("After")
+                self.critic_network.zero_grad()
+                critic_loss.backward()
+                self.critic_optimizer.step()
+                print("After")
 
             gif = None
             if frames:
