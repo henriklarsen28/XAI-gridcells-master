@@ -197,8 +197,8 @@ def combine_maps(matrix1: np.array, matrix2: np.array):
 
 
 def save_map(matrix: np.array, true_goal: tuple, path: str, folder: str):
-    y = str(true_goal[1])
-    x = str(true_goal[0])
+    x = str(true_goal[1])
+    y = str(true_goal[0])
     path = folder + path + "_" + y + "_" + x + ".csv"
     print("Saving map to", path)
     with open(path, "w") as f:

@@ -570,7 +570,7 @@ class SunburstMazeDiscrete(gym.Env):
         """
 
         if self.is_goal():
-            print("Goal reached!")
+            # print("Goal reached!")
             return self.rewards["is_goal"]
         # Penalize for just rotating in place without moving
         current_pos = self.position
@@ -601,7 +601,7 @@ class SunburstMazeDiscrete(gym.Env):
         reward += self.rewards["penalty_per_step"]# + reward
 
         # Add reward for increasing the number of viewed squares
-        viewed_squares_original = len(self.viewed_squares)
+        '''viewed_squares_original = len(self.viewed_squares)
         self.viewed_squares.update(self.observed_squares_map)
         if viewed_squares_original < len(self.viewed_squares):
             # reward_new_squares = math.exp(len(self.viewed_squares) / self.map_observation_size)/math.exp(1) - 0.3
@@ -609,7 +609,7 @@ class SunburstMazeDiscrete(gym.Env):
             reward_new_squares = (len(self.viewed_squares) - viewed_squares_original) / self.map_observation_size
             reward += reward_new_squares
             print("Reward for viewing new squares: ", reward_new_squares)
-
+'''
         
         if self.is_false_goal():
             return self.rewards["is_false_goal"]

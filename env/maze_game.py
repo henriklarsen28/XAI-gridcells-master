@@ -117,7 +117,7 @@ class Maze:
                         ),
                     )
                 elif env_map[y][x] == 2:
-                    if (x, y) == self.goal_position:
+                    if (y, x) == self.goal_position:
                         # print("Goal position: ", (x, y))
                         pygame.draw.rect(
                             self.win,
