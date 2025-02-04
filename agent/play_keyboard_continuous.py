@@ -2,6 +2,7 @@ import math
 import sys
 import pygame
 import time
+import numpy as np
 
 sys.path.append("..")
 
@@ -70,7 +71,7 @@ def play_with_keyboard():
     }
 
     env = SunburstMazeContinuous(
-        maze_file="../env/map_v0/map_open_doors_vertical.csv",
+        maze_file="../env/random_generated_maps/goal/map_circular_16_18.csv",
         render_mode="human",
         rewards=config["rewards"],
         random_start_position=config["random_start_position"],
@@ -84,7 +85,7 @@ def play_with_keyboard():
     pygame.init()
     
     observation, _ = env.reset()
-    env.position = (2,2)
+    env.position = (5,5)
     env.orientation = 90
     env.render()
     
@@ -101,11 +102,11 @@ def play_with_keyboard():
                     running = False
                     break
                 if event.key == pygame.K_w:
-                    action = (0,1)
+                    action = np.array([0,0.4])
                 elif event.key == pygame.K_a:
-                    action = (-10,0.1)
+                    action = np.array([-0.4,0.1])
                 elif event.key == pygame.K_d:
-                    action = (10,0.1)
+                    action = np.array([0.4,0.1])
             else:
                 action = None
 
