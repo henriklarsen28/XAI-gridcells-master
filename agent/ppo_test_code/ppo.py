@@ -8,7 +8,7 @@ import os
 import sys
 
 # get the path to the project root directory and add it to sys.path
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 
 sys.path.append(project_root)
 
@@ -138,6 +138,10 @@ class PPO:
 		t_so_far = 0 # Timesteps simulated so far
 		i_so_far = 0 # Iterations ran so far
 		while t_so_far < total_timesteps:                                                                       # ALG STEP 2
+
+			# Select a new map every 20 iterations
+			self.env = random_maps(self.env, random_map=True, iteration_counter=i_so_far)
+
 			# Autobots, roll out (just kidding, we're collecting our batch simulations here)
 			batch_obs, batch_acts, batch_log_probs, batch_rtgs, batch_lens, frames = self.rollout(i_so_far)                     # ALG STEP 3
 			print("batch_act", batch_acts)
@@ -281,7 +285,7 @@ class PPO:
 				action, log_prob = self.get_action(obs)
 				obs, rew, terminated, truncated, _ = self.env.step(action)
 				if (
-                    self.render_mode == "rgb_array" and i_so_far % 25 == 0 and len(batch_rews) == 0
+                    self.render_mode == "rgb_array" and i_so_far % 50 == 0 and len(batch_rews) == 0
                 ):  # Create gif on the first episode in the rollout
 					frame = self.env.render()
 					if type(frame) == np.ndarray:
@@ -308,8 +312,9 @@ class PPO:
 			batch_rews.append(ep_rews)
 
 		# Reshape data as tensors in the shape specified in function description, before returning
-		batch_obs = torch.tensor(batch_obs, dtype=torch.float)
-		batch_acts = torch.tensor(batch_acts, dtype=torch.float)
+
+		batch_obs = torch.tensor(np.array(batch_obs), dtype=torch.float)
+		batch_acts = torch.tensor(np.array(batch_acts), dtype=torch.float)
 		batch_log_probs = torch.tensor(batch_log_probs, dtype=torch.float)
 		batch_rtgs = self.compute_rtgs(batch_rews)                                                              # ALG STEP 4
 
@@ -397,12 +402,6 @@ class PPO:
 		# Calculate the log probability for that action
 		log_prob = dist.log_prob(action)
 		# Return the sampled action and the log probability of that action in our distribution
-		action = torch.tensor(action, dtype=torch.float)
-		#log_prob_scaled = log_prob - torch.sum(torch.log(1 - scaled_action.pow(2) + 1e-6), dim=-1)
-
-		#scaled_action, log_prob = self.scale_actions_log_probs(action, log_prob)
-
-		#print("scaled_log_prob", log_prob_scaled)
 		return action.detach().numpy(), log_prob.detach()
 
 	def evaluate(self, batch_obs, batch_acts):

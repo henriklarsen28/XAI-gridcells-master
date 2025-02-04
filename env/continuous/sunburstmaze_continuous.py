@@ -1,18 +1,18 @@
 import copy
 import math
 import random as rd
+import re
 from collections import deque
 
 import gymnasium as gym
 import numpy as np
-import pandas as pd
 import pygame
 from gymnasium import spaces
 
 from utils import calculate_fov_matrix_size, step_angle
 
 from ..file_manager import build_map
-from .maze_game import Maze
+from .maze_game_continuous import Maze
 
 checkpoints = [
     {"coordinates": [(19, 9), (19, 10), (19, 11)], "visited": False},
@@ -46,7 +46,7 @@ class SunburstMazeContinuous(gym.Env):
         ray_length=10,
         number_of_rays=100,
     ):
-        self.map_file = maze_file
+        self.maze_file = maze_file
         self.initial_map = build_map(maze_file)
         self.env_map = copy.deepcopy(self.initial_map)
         self.height = self.env_map.shape[0]
@@ -60,14 +60,14 @@ class SunburstMazeContinuous(gym.Env):
             for x in range(self.width):
                 if self.env_map[y][x] == 0:
                     self.map_observation_size += 1
-        print(
+        """print(
             "height:",
             self.height,
             "width:",
             self.width,
             "map_observation_size:",
             self.map_observation_size,
-        )
+        )"""
 
         self.orientation = 0  # Between 0 and 360 degrees, should probably be radians
         self.velocity_x = 0
@@ -174,6 +174,22 @@ class SunburstMazeContinuous(gym.Env):
         # Get the matrix of marked squares without rendering
         return output
 
+    def extract_goal_coordinates(self):
+        """
+        Extracts the goal coordinates from the maze filename.
+
+        Returns:
+            tuple: The goal coordinates extracted from the maze filename.
+        """
+        # Extract the goal coordinates from the maze filename
+        match = re.search(r"(\d+)_(\d+)\.csv$", self.maze_file)
+        if match:
+            self.goal = (int(match.group(1)), int(match.group(2)))
+        else:
+            self.goal = None
+        #print("Goal:", self.goal, "in maze file:", self.maze_file)
+        return self.goal
+
     def reset(self, seed=None, options=None) -> tuple:
 
         super().reset(seed=seed)
@@ -186,6 +202,7 @@ class SunburstMazeContinuous(gym.Env):
 
         self.env_map = copy.deepcopy(self.initial_map)
         self.position = self.select_start_position()
+        self.goal = self.extract_goal_coordinates()
 
         self.steps_current_episode = 0
 
@@ -199,12 +216,13 @@ class SunburstMazeContinuous(gym.Env):
 
             self.render_maze = Maze(
                 self.render_mode,
-                self.map_file,
+                self.maze_file,
                 self.env_map,
                 self.width,
                 self.height,
                 framerate,
                 self.position,
+                self.goal,
                 self.orientation,
                 self.observed_squares_map,
                 self.wall_rays,
@@ -293,7 +311,20 @@ class SunburstMazeContinuous(gym.Env):
         Returns:
             bool: True if the current position is a goal position, False otherwise.
         """
-        if int(self.env_map[round(self.position[0])][round(self.position[1])]) == 2:
+        if self.position == self.goal:
+            return True
+        return False
+
+    def is_false_goal(self):
+        """
+        Checks if the current position is a goal position.
+        Returns:
+            bool: True if the current position is a goal position, False otherwise.
+        """
+        if (
+            int(self.env_map[self.position[0]][self.position[1]]) == 2
+            and self.position != self.goal
+        ):
             return True
         return False
 
