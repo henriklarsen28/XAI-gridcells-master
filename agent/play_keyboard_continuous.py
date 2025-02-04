@@ -71,7 +71,7 @@ def play_with_keyboard():
     }
 
     env = SunburstMazeContinuous(
-        maze_file="../env/random_generated_maps/goal/map_circular_16_18.csv",
+        maze_file="../env/random_generated_maps/goal/map_circular_4_19.csv",
         render_mode="human",
         rewards=config["rewards"],
         random_start_position=config["random_start_position"],
@@ -85,7 +85,7 @@ def play_with_keyboard():
     pygame.init()
     
     observation, _ = env.reset()
-    env.position = (5,5)
+    print(env.goal)
     env.orientation = 90
     env.render()
     
