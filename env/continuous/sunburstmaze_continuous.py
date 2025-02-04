@@ -311,7 +311,8 @@ class SunburstMazeContinuous(gym.Env):
         Returns:
             bool: True if the current position is a goal position, False otherwise.
         """
-        if self.position == self.goal:
+        int_position = (int(self.position[0]), int(self.position[1]))
+        if int_position == self.goal:
             return True
         return False
 
@@ -321,9 +322,10 @@ class SunburstMazeContinuous(gym.Env):
         Returns:
             bool: True if the current position is a goal position, False otherwise.
         """
+        int_position = (int(self.position[0]), int(self.position[1]))
         if (
             int(self.env_map[self.position[0]][self.position[1]]) == 2
-            and self.position != self.goal
+            and int_position != self.goal
         ):
             return True
         return False
@@ -397,15 +399,6 @@ class SunburstMazeContinuous(gym.Env):
         self.position = (position_y, position_x)
 
         observation = self._get_observation()
-
-        if self.is_goal():
-            return (
-                observation,
-                self.rewards["goal_reached"] + self.reward(),
-                True,
-                True,
-                self._get_info(),
-            )
         """self.past_actions.append(
             (self.position, action, self.q_variance, self.orientation)
         )
@@ -421,7 +414,7 @@ class SunburstMazeContinuous(gym.Env):
         if self.is_goal():
             return (
                 observation,
-                self.rewards["goal_reached"] + reward,
+                self.rewards["is_goal"] + reward,
                 True,
                 True,
                 self._get_info(),

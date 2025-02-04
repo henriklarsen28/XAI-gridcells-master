@@ -83,15 +83,6 @@ class Maze:
         Returns:
         - sprite (Sprite): The selected sprite based on the given orientation.
         """
-        # TODO: Needs to change the sprite based on the orientation in small increments (1 and 1 degree)
-        """if orientation == 0:
-            return self.sprite_up
-        elif orientation == 1:
-            return self.sprite_right
-        elif orientation == 2:
-            return self.sprite_down
-        elif orientation == 3:
-            return self.sprite_left"""
         rect = self.sprite_up.get_rect()
         sprite = pygame.transform.rotate(self.sprite_up, -orientation)
         rotated_rect = sprite.get_rect(center=rect.center)
@@ -124,7 +115,7 @@ class Maze:
                         ),
                     )
                 elif env_map[y][x] == 2:
-                    if (x, y) == self.goal_position:
+                    if (y, x) == self.goal_position:
                         # print("Goal position: ", (x, y))
                         pygame.draw.rect(
                             self.win,
