@@ -83,9 +83,6 @@ class PPO_agent:
         self.policy_network.to(self.device)
         self.critic_network.to(self.device)
 
-        self.policy_network = nn.DataParallel(self.policy_network)
-        self.critic_network = nn.DataParallel(self.critic_network)
-
         self.policy_optimizer = torch.optim.Adam(
             self.policy_network.parameters(),
             lr=self.learning_rate,
@@ -173,7 +170,7 @@ class PPO_agent:
             wandb.log(
                 {
                     "Episode": lens,
-                    "Reward per episode": rtgs.mean().item(),
+                    "Reward per episode": rtgs_batch.mean().item(),
                     "Policy loss": policy_loss.item(),
                     "Critic loss": critic_loss.item(),
                     "Steps done": lens[0],
