@@ -136,6 +136,7 @@ def main(args):
             "penalty_per_step": -0.0002,
             "number_of_squares_visible": 0,
             "goal_in_sight": 0.1,
+			"is_false_goal": -0.01,
 	}
 	fov_config = {
         "fov": math.pi / 1.5,
