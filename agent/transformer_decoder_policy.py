@@ -147,7 +147,7 @@ class TransformerPolicy(nn.Module):
         x_std = torch.exp(self.log_std)
         #x_last = x[:, -1, :]
         #print(x_last.shape)
-        return x, x_std  # , att_weights_list
+        return x, x_std, att_weights_list
 
 
 # device = torch.device("mps" if torch.backends.mps.is_available() else "cpu") # Was faster with cpu??? Loading between cpu and mps is slow maybe
