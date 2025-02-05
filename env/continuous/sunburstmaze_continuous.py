@@ -41,7 +41,6 @@ class SunburstMazeContinuous(gym.Env):
         max_steps_per_episode=200,
         random_start_position=None,
         rewards=None,
-        observation_space=None,
         fov=math.pi / 2,
         ray_length=10,
         number_of_rays=100,
