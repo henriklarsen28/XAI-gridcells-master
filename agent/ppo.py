@@ -1,25 +1,47 @@
 import os
+
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+import random as rd
 from collections import deque
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 import wandb
 from torch import nn
-
-torch.autograd.set_detect_anomaly(True)
-import torch.nn.functional as F
 from transformer_decoder import Transformer
 from transformer_decoder_policy import TransformerPolicy
 
+torch.autograd.set_detect_anomaly(True)
+
 from env import SunburstMazeContinuous
-from utils import (
-    add_to_sequence,
-    create_gif,
-    padding_sequence,
-    padding_sequence_int,
-    state_preprocess_continuous,
-    create_gif,
-)
+from utils import add_to_sequence, create_gif, padding_sequence
+
+map_path_random = os.path.join(project_root, "env/random_generated_maps/goal")
+map_path_random_files = [
+    os.path.join(map_path_random, f)
+    for f in os.listdir(map_path_random)
+    if os.path.isfile(os.path.join(map_path_random, f))
+]
+
+
+def random_maps(
+    env: SunburstMazeContinuous, random_map: bool = False, iteration_counter: int = 0
+):
+    if random_map and iteration_counter % 20 == 0:
+        # Select and load a new random map
+        map_path = rd.choice(map_path_random_files)
+        env = SunburstMazeContinuous(
+            maze_file=map_path,
+            render_mode=env.render_mode,
+            rewards=env.rewards,
+            fov=env.fov,
+            ray_length=env.ray_length,
+            number_of_rays=env.number_of_rays,
+        )
+
+    return env
 
 
 class PPO_agent:
@@ -40,8 +62,7 @@ class PPO_agent:
             os.makedirs(model_path)
 
         self.env = env
-        self.obs_dim = env.observation_space.shape[0]
-        # self.obs_dim = config["observation_size"]
+        self.obs_dim = env.observation_space.n
         self.act_dim = env.action_space.shape[0]
 
         # Hyperparameters
@@ -101,49 +122,44 @@ class PPO_agent:
         iteration_counter = 0
 
         while timestep_counter < total_timesteps:
-            print("Iteration: ", iteration_counter)
-            obs_batch, actions_batch, log_probs_batch, rtgs_batch, lens, frames = self.rollout(
-                iteration_counter
+
+            self.env = random_maps(
+                self.env, random_map=True, iteration_counter=iteration_counter
             )
 
-            
+            print("Iteration: ", iteration_counter)
+            obs_batch, actions_batch, log_probs_batch, rtgs_batch, lens, frames = (
+                self.rollout(iteration_counter)
+            )
+
             # Minibatches
-            #minibatches = self.generate_minibatches(obs, actions, log_probs, rtgs)
+            # minibatches = self.generate_minibatches(obs, actions, log_probs, rtgs)
 
             timestep_counter += sum(lens)
             iteration_counter += 1
 
-            #for obs_batch, actions_batch, log_probs_batch, rtgs_batch in minibatches:
+            # for obs_batch, actions_batch, log_probs_batch, rtgs_batch in minibatches:
 
-                # print("Obs: ", obs, obs.shape)
-                # Calculate the advantages
+            # print("Obs: ", obs, obs.shape)
+            # Calculate the advantages
             value, _ = self.evaluate(obs_batch, actions_batch)
             rtgs_batch = rtgs_batch.unsqueeze(1)
 
             advantages = rtgs_batch - value.detach()
 
             # Normalize the advantages
-            advantages = (advantages - advantages.mean()) / (
-                advantages.std() + 1e-10
-            )
+            advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-10)
             for _ in range(self.n_updates_per_iteration):
                 value, current_log_prob = self.evaluate(obs_batch, actions_batch)
 
-                # print(current_log_prob)
                 ratio = torch.exp(current_log_prob - log_probs_batch)
-                ratio = ratio
 
                 surrogate_loss1 = ratio * advantages
 
-                # print("Surrogate loss1: ", surrogate_loss1, surrogate_loss1.shape)
                 surrogate_loss2 = (
                     torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * advantages
                 )
-                # Increase the size of rtgs to be 300 x 1
-
                 policy_loss = (-torch.min(surrogate_loss1, surrogate_loss2)).mean()
-                #print("Value: ", value.shape)
-                #print("RTGS: ", rtgs.shape)
 
                 critic_loss = nn.MSELoss()(value, rtgs_batch)
 
@@ -179,7 +195,7 @@ class PPO_agent:
                 commit=True,
             )
 
-            if iteration_counter % self.update_frequency == 0:
+            if iteration_counter % self.save_interval == 0:
                 torch.save(
                     self.policy_network.state_dict(),
                     f"./model/transformers/ppo/model_{self.run.name}/policy_network_{iteration_counter}.pth",
@@ -189,7 +205,7 @@ class PPO_agent:
                     f"./model/transformers/ppo/model_{self.run.name}/critic_network_{iteration_counter}.pth",
                 )
 
-    def rollout(self, iteration_counter, render=False):
+    def rollout(self, iteration_counter):
         observations = []
         actions = []
         log_probs = []
@@ -211,21 +227,20 @@ class PPO_agent:
 
             for ep_timestep in range(self.max_steps):
                 timesteps += 1
-                #state = state_preprocess_continuous(state, device=self.device)
                 state_sequence = add_to_sequence(state_sequence, state, self.device)
                 tensor_sequence = torch.stack(list(state_sequence))
                 tensor_sequence = padding_sequence(
                     tensor_sequence, self.sequence_length, self.device
                 )
                 action, log_prob = self.get_action(tensor_sequence)
-                #last_action = action[:,-1,:].cpu().detach().numpy()
 
-                # last_log_prob = log_prob[-1,-1]
                 action = action[0]
                 state, reward, terminated, turnicated, _ = self.env.step(action)
 
                 if (
-                    self.render_mode == "rgb_array" and iteration_counter % 30 == 0 and len(rewards) == 0
+                    self.render_mode == "rgb_array"
+                    and iteration_counter % 30 == 0
+                    and len(rewards) == 0
                 ):  # Create gif on the first episode in the rollout
                     frame = self.env.render()
                     if type(frame) == np.ndarray:
@@ -233,13 +248,6 @@ class PPO_agent:
 
                 if self.render_mode == "human":
                     self.env.render()
-
-                # Reward sequence # TODO: Build a reward sequence for the PPO
-                """reward_sequence = add_to_sequence(reward_sequence, reward, self.device)
-                tensor_reward_sequence = torch.stack(list(reward_sequence))
-                tensor_reward_sequence = padding_sequence(
-                    tensor_reward_sequence, self.sequence_length, self.device
-                )"""
 
                 observations.append(tensor_sequence)
                 actions.append(action)
@@ -262,7 +270,7 @@ class PPO_agent:
         rtgs = self.compute_rtgs(rewards)
 
         # Create a sequence of rtgs
-        #print("Observations: ", obs.shape)
+        # print("Observations: ", obs.shape)
 
         return obs, actions, log_probs, rtgs, lens, frames
 
@@ -292,15 +300,8 @@ class PPO_agent:
                 discounted_reward = reward + discounted_reward * self.gamma
                 rtgs.insert(0, discounted_reward)
 
-
-        rtgs = torch.tensor(rtgs, dtype=torch.float, device=self.device)#.unsqueeze(0)
-        #rtgs = rtgs[0]
-        #print("RTGS: ", rtgs, rtgs.shape)
         # Convert the rewards-to-go into a tensor
-        
-
-        # Pad the rtgs tensor to be the same length as the observations
-        #rtgs = self.pad_rtgs(rtgs)
+        rtgs = torch.tensor(rtgs, dtype=torch.float, device=self.device)
         return rtgs
 
     def pad_rtgs(self, rtgs):
@@ -312,9 +313,13 @@ class PPO_agent:
 
             # If RTG sequence is too short, pad it
             if len(rtg_tensor) < self.sequence_length:
-                padded_rtg = F.pad(rtg_tensor, (self.sequence_length - len(rtg_tensor), 0))  # Left-padding
+                padded_rtg = F.pad(
+                    rtg_tensor, (self.sequence_length - len(rtg_tensor), 0)
+                )  # Left-padding
             else:
-                padded_rtg = rtg_tensor[-self.sequence_length:]  # Truncate from the beginning
+                padded_rtg = rtg_tensor[
+                    -self.sequence_length :
+                ]  # Truncate from the beginning
 
             processed_rtgs.append(padded_rtg)
 
@@ -324,7 +329,7 @@ class PPO_agent:
 
         obs = obs.unsqueeze(0)
 
-        mean, std = self.policy_network(obs)
+        mean, std, _ = self.policy_network(obs)
         dist = torch.distributions.MultivariateNormal(mean, torch.diag_embed(std))
 
         action = dist.sample()
@@ -333,9 +338,9 @@ class PPO_agent:
         return action.cpu().detach().numpy(), log_prob.detach()
 
     def evaluate(self, obs, actions):
-        V = self.critic_network(obs)
+        V, _ = self.critic_network(obs)
 
-        mean, std = self.policy_network(obs)
+        mean, std, _ = self.policy_network(obs)
         dist = torch.distributions.MultivariateNormal(mean, torch.diag_embed(std))
 
         log_prob = dist.log_prob(actions)
@@ -350,7 +355,7 @@ class PPO_agent:
         self.gamma = config["gamma"]
         self.batch_size = config["batch_size"]
         self.mini_batch_size = config["mini_batch_size"]
-        self.update_frequency = config["target_model_update"]
+        self.save_interval = config["save_interval"]
         # self.max_episodes = config["total_episodes"]
         self.max_steps = config["max_steps_per_episode"]
         self.render = config["render"]

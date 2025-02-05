@@ -316,7 +316,7 @@ class SunburstMazeContinuous(gym.Env):
             return True
         return False
 
-    def is_false_goal(self):
+    def is_false_goal(self):#TODO: Make for continuou
         """
         Checks if the current position is a goal position.
         Returns:
@@ -324,7 +324,7 @@ class SunburstMazeContinuous(gym.Env):
         """
         int_position = (int(self.position[0]), int(self.position[1]))
         if (
-            int(self.env_map[self.position[0]][self.position[1]]) == 2
+            int(self.env_map[int_position[0]][int_position[1]]) == 2
             and int_position != self.goal
         ):
             return True
@@ -479,6 +479,9 @@ class SunburstMazeContinuous(gym.Env):
         current_pos = self.position
 
         reward = 0
+
+        if self.is_false_goal():
+            reward += self.rewards["is_false_goal"]
 
         """if self.position not in self.visited_squares:
             self.visited_squares.append(self.position)
