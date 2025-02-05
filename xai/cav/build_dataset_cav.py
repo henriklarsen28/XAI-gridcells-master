@@ -15,7 +15,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.append(project_root)
 
 from agent import DTQN_Agent
-from agent.replay_memory import ReplayMemory
+from agent.dqn.replay_memory import ReplayMemory
 from env import SunburstMazeDiscrete
 from utils.calculate_fov import calculate_fov_matrix_size
 from utils import larger_than_less_than

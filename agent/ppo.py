@@ -225,6 +225,7 @@ class PPO_agent:
             state, _ = self.env.reset()
             done = False
 
+            # TODO: Multiprocess this
             for ep_timestep in range(self.max_steps):
                 timesteps += 1
                 state_sequence = add_to_sequence(state_sequence, state, self.device)
@@ -262,32 +263,18 @@ class PPO_agent:
             rewards.append(torch.tensor(episode_rewards))
 
         print("Timesteps: ", timesteps)
-        # Reshape the data
 
+        # Reshape the data
         obs = torch.stack(observations).to(self.device)
         actions = torch.tensor(actions).to(self.device)
         log_probs = torch.tensor(log_probs).to(self.device)
         rtgs = self.compute_rtgs(rewards)
 
         # Create a sequence of rtgs
-        # print("Observations: ", obs.shape)
 
         return obs, actions, log_probs, rtgs, lens, frames
 
     def compute_rtgs(self, rewards):
-        """rtgs = []  # To store RTG tensors for each episode
-
-        for ep_rewards in rewards:
-            discounted_reward = 0
-            for reward in reversed(ep_rewards):
-                discounted_reward = reward + discounted_reward * self.gamma
-                rtgs.insert(0, discounted_reward)
-        #print("RTGS: ", rtgs, rtgs[0].shape)
-        rtgs = torch.stack(rtgs).to(self.device)
-        #rtgs = torch.unsqueeze(rtgs, 2)
-
-        return rtgs"""
-
         rtgs = []
 
         # Iterate through each episode

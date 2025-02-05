@@ -2,7 +2,7 @@ import os
 import sys
 
 # get the path to the project root directory and add it to sys.path
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 
 sys.path.append(project_root)
 
@@ -17,11 +17,11 @@ import numpy as np
 import pygame
 import torch
 import wandb
-from explain_network import ExplainNetwork, grad_sam
+from agent.explain_network import ExplainNetwork, grad_sam
 from torch.nn.utils.rnn import pad_sequence
 from tqdm import tqdm
 
-from agent.dtqn_agent import DTQN_Agent
+from dtqn_agent import DTQN_Agent
 from env import SunburstMazeDiscrete
 from utils.calculate_fov import calculate_fov_matrix_size
 from utils.sequence_preprocessing import (
@@ -202,17 +202,22 @@ class Model_TrainTest:
                 if render_mode == "human":
                     self.env.render()
 
+                # Unsqueeze the action, new_state, reward and done
                 # Action sequence
                 action_sequence = add_to_sequence(action_sequence, action, device)
                 tensor_action_sequence = torch.stack(list(action_sequence))
-                tensor_action_sequence = padding_sequence_int(
+                tensor_action_sequence = tensor_action_sequence.unsqueeze(1)
+                print(tensor_action_sequence.shape)
+                tensor_action_sequence = padding_sequence(
                     tensor_action_sequence, self.sequence_length, device
                 )
+
 
                 # New state sequence
                 next_state = state_preprocess(next_state, device)
                 new_sequence = add_to_sequence(new_sequence, next_state, device)
                 tensor_new_sequence = torch.stack(list(new_sequence))
+                print(tensor_new_sequence.shape)
                 tensor_new_sequence = padding_sequence(
                     tensor_new_sequence, self.sequence_length, device
                 )
@@ -220,13 +225,15 @@ class Model_TrainTest:
                 # Reward sequence
                 reward_sequence = add_to_sequence(reward_sequence, reward, device)
                 tensor_reward_sequence = torch.stack(list(reward_sequence))
+                tensor_reward_sequence = tensor_reward_sequence.unsqueeze(1)
                 tensor_reward_sequence = padding_sequence(
                     tensor_reward_sequence, self.sequence_length, device
                 )
-
+                
                 # Done sequence
                 done_sequence = add_to_sequence(done_sequence, done, device)
                 tensor_done_sequence = torch.stack(list(done_sequence))
+                tensor_done_sequence = tensor_done_sequence.unsqueeze(1)
                 tensor_done_sequence = padding_sequence(
                     tensor_done_sequence, self.sequence_length, device
                 )
