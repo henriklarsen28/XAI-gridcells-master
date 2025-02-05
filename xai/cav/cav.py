@@ -25,7 +25,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 
 sys.path.append(project_root)
 
-from agent.transformer_decoder_decoupled import Transformer
+from agent.dqn.transformer_decoder_decoupled import Transformer
 from utils.calculate_fov import calculate_fov_matrix_size
 from utils import CAV_dataset
 

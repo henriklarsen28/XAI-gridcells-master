@@ -3,7 +3,7 @@ import sys
 from collections import deque
 
 # get the path to the project root directory and add it to sys.path
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 
 sys.path.append(project_root)
 
@@ -17,7 +17,7 @@ import pygame
 import torch
 import wandb
 from dqn_agent import DQN_Agent
-from explain_network import ExplainNetworkFF
+from agent.explain_network import ExplainNetworkFF
 import random as rd
 #from explain_network import generate_q_values
 from scipy.special import softmax
@@ -108,7 +108,6 @@ class Model_TrainTest:
             render_mode=render_mode,
             max_steps_per_episode=self.max_steps,
             random_start_position=self.random_start_position,
-            random_goal_position=config["random_goal_position"],
             rewards=self.rewards,
             observation_space=self.observation_space,
             fov=self.fov,
@@ -148,7 +147,7 @@ class Model_TrainTest:
         # Create the nessessary directories
         if not os.path.exists("./gifs"):
                     os.makedirs("./gifs")
-        model_path = f"./model/{run.name}"
+        model_path = f"../model/{run.name}"
 
         if not os.path.exists(model_path):
                     os.makedirs(model_path)
@@ -222,18 +221,11 @@ class Model_TrainTest:
 
             if episode < 100 and episode % 10 == 0:
                  # -- based on interval
+
                 self.agent.save(self.save_path + "_" + f"{episode}" + ".pth")
 
                 print("\n~~~~~~Interval Save: Model saved.\n")
                  
-
-
-            # -- based on interval
-            if episode % self.save_interval == 0:
-                self.agent.save(self.save_path + "_" + f"{episode}" + ".pth")
-
-                print("\n~~~~~~Interval Save: Model saved.\n")
-
             wandb.log(
                 {
                     "Episode": episode,
@@ -309,7 +301,7 @@ def get_num_states(map_path):
 if __name__ == "__main__":
     # Parameters:
 
-    train_mode = False
+    train_mode = True
 
     render = True
     render_mode = "human"
@@ -337,7 +329,7 @@ if __name__ == "__main__":
         "train_mode": train_mode,
         "render": render,
         "render_mode": render_mode,
-        "RL_load_path": f"./model/feed_forward/serene-voice-977/sunburst_maze_{map_version}_5000.pth",
+        "RL_load_path": f"../model/feed_forward/serene-voice-977/sunburst_maze_{map_version}_5000.pth",
         "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 0.0005,
@@ -362,6 +354,7 @@ if __name__ == "__main__":
             "max_steps_reached": -0.0025,
             "penalty_per_step": -0.00005,
             "goal_in_sight": 0,
+            "is_false_goal": -0.01,
         },
         # TODO
         "observation_space": {

@@ -1,10 +1,13 @@
+import os
+import sys
+
+# get the path to the project root directory and add it to sys.path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 import numpy as np
 import torch
 from torch import nn, optim
 
-from agent.neural_network_ff_torch import DQN_Network
-
-from .replay_memory import ReplayMemory
+from replay_memory import ReplayMemory
 
 # from agent.transformer_decoder_decoupled import TransformerDQN
 
@@ -43,9 +46,9 @@ class DTQN_Agent:
         transformer_param,
     ):
         if transformer_param["decouple_positional_embedding"]:
-            from agent.transformer_decoder_decoupled import Transformer
+            from transformer_decoder_decoupled import Transformer
         else:
-            from agent.transformer_decoder import Transformer
+            from transformer_decoder import Transformer
 
         # To save the history of network loss
         self.loss_history = []
@@ -160,12 +163,11 @@ class DTQN_Agent:
         states, actions, next_states, rewards, dones = self.replay_memory.sample(
             batch_size
         )
-
         # Sends in the sequence of states, actions, next_states, rewards, and dones
         # For training we will use every q_value in the sequence, but only the last q_value will be used for selecting an action
-        actions = actions.unsqueeze(2)
+        """actions = actions.unsqueeze(2)
         rewards = rewards.unsqueeze(2)
-        dones = dones.unsqueeze(2)
+        dones = dones.unsqueeze(2)"""
         # print(states.shape, actions.shape, next_states.shape, rewards.shape, dones.shape)
         # print(states.shape, actions.shape)
         current_q_values, _ = self.model(states)
