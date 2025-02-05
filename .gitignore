@@ -17,3 +17,14 @@ xai/cav/*.png
 xai/cav/cav_ff/*.pt
 agent/grad_sam/*
 
+
+agent/attention_plot/*
+xai/cav/*.pt
+xai/cav/*.csv
+xai/cav/*.png
+xai/cav/dataset/*
+xai/cav/cav_ff/dataset/*
+
+
+agent/ppo_test_code/gifs/*
+agent/ppo_test_code/wandb/*
