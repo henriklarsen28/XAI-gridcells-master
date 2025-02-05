@@ -37,3 +37,6 @@ agent/ppo_test_code/ppo_critic.pth
 
 agent/dqn/wandb/*
 agent/dqn/gifs/*
+
+agent/ppo/wandb/*
+agent/ppo/gifs/*

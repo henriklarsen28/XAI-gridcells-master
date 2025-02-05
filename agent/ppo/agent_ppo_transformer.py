@@ -2,7 +2,7 @@ import os
 import sys
 
 # get the path to the project root directory and add it to sys.path
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 
 sys.path.append(project_root)
 
@@ -11,15 +11,10 @@ import math
 
 import gymnasium as gym
 import numpy as np
-import pygame
 import torch
-import wandb
-from explain_network import ExplainNetwork, grad_sam
-from tqdm import tqdm
 
-from agent.ppo import PPO_agent
+from ppo import PPO_agent
 from env import SunburstMazeContinuous, SunburstMazeDiscrete
-
 from utils.state_preprocess import state_preprocess
 
 # Define the CSV file path relative to the project root

@@ -147,7 +147,7 @@ class Model_TrainTest:
         # Create the nessessary directories
         if not os.path.exists("./gifs"):
                     os.makedirs("./gifs")
-        model_path = f"../model/{run.name}"
+        model_path = f"../model/feed_forward/{run.name}"
 
         if not os.path.exists(model_path):
                     os.makedirs(model_path)
