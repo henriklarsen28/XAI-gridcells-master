@@ -89,7 +89,7 @@ class Model_TrainTest:
         if not self.train_mode:
             map_path = map_path_test
 
-        """# Define Env
+        # Define Env
         self.env = SunburstMazeContinuous(
             maze_file=map_path,
             render_mode=render_mode,
