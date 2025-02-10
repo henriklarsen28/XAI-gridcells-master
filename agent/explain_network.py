@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 import torch
-from dqn_agent import DQN_Agent
+from .dqn.dqn_agent import DQN_Agent
 from scipy.special import softmax
 
 from env.sunburstmaze_discrete import SunburstMazeDiscrete
