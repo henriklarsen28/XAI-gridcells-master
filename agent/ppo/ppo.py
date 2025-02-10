@@ -95,6 +95,48 @@ def make_envs(env: dict):
     return _init
 
 
+def make_envs(env: dict):
+    """def _init():
+    new_env = SunburstMazeContinuous(
+        maze_file=env.maze_file,
+        render_mode=env.render_mode,
+        rewards=env.rewards,
+        fov=env.fov,
+        ray_length=env.ray_length,
+        number_of_rays=env.number_of_rays,
+    )
+    return new_env"""
+    """new_env = gym.make(
+            "SunburstMazeContinuous-v0",
+            maze_file=env_params["maze_file"],
+            max_episode_steps=env_params["max_steps_per_episode"],
+            render_mode=None,
+            random_start_position=env_params["random_start_position"],
+            rewards=env_params["rewards"],
+            fov=env_params["fov"],
+            ray_length=env_params["ray_length"],
+            number_of_rays=env_params["number_of_rays"],
+        )"""
+    def _init():
+        new_env = gym.make(
+                "SunburstMazeContinuous-v0",
+                maze_file=env.get_wrapper_attr("maze_file"),
+                max_episode_steps=env.get_wrapper_attr("max_steps_per_episode"),
+                render_mode=env.get_wrapper_attr("render_mode"),
+                random_start_position=env.get_wrapper_attr("random_start_position"),
+                rewards=env.get_wrapper_attr("rewards"),
+                fov=env.get_wrapper_attr("fov"),
+                ray_length=env.get_wrapper_attr("ray_length"),
+                number_of_rays=env.get_wrapper_attr("number_of_rays"),
+            )
+        new_env = TimeLimit(
+            new_env,
+            env.get_wrapper_attr("max_steps_per_episode"),
+        )
+        return new_env
+    return _init
+
+
 class PPO_agent:
 
     def __init__(self, env: SunburstMazeContinuous, device, config):
@@ -391,7 +433,7 @@ class PPO_agent:
         # Freeze the env class network
         for param in self.policy_network.env_class.parameters():
             param.requires_grad = False"""
-
+        
     def rollout(self, iteration_counter):
         observations = []
         actions = []
@@ -459,6 +501,19 @@ class PPO_agent:
                 done_list.append(done)
                 if done:
                     break
+
+            """queue = mp.Queue()
+            processes = []
+            for i in range(4):
+                p = mp.Process(target=run_episode, args=(i,self.env, iteration_counter, self.sequence_length, self.device, False, self.policy_network, queue))
+                p.start()
+                processes.append(p)
+
+            for p in processes:
+                p.join()
+
+            print("Processes joined")
+            results = [queue.get() for p in processes]"""
 
             lens.append(ep_timestep + 1)
             rewards.append(torch.tensor(episode_rewards))

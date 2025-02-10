@@ -246,6 +246,7 @@ class SunburstMazeContinuous(gym.Env):
                 self.observed_squares_map,
                 self.wall_rays,
             )
+        print(observation.shape)
         return observation, self._get_info()
 
     def reset_checkpoints(self):
