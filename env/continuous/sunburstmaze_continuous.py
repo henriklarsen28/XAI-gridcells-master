@@ -232,7 +232,6 @@ class SunburstMazeContinuous(gym.Env):
                 self.observed_squares_map,
                 self.wall_rays,
             )
-        print(observation.shape)
         return observation, self._get_info()
 
     def reset_checkpoints(self):
@@ -443,12 +442,6 @@ class SunburstMazeContinuous(gym.Env):
 
         if self.render_mode == "human":
             self.render()
-
-        # print("Observed squares map in step: ", self.observed_squares_map)
-        # print('Number of squares in total', self.height * self.width)
-
-        # print ("Length of viewed squares: ",  len(self.viewed_squares))
-        # print("Proporition of viewed squares: ", len(self.viewed_squares) / self.map_observation_size)
 
         return observation, reward, terminated, False, info
 
