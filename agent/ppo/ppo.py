@@ -1,19 +1,28 @@
 import os
+import sys
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+sys.path.append(project_root)
 
+import multiprocessing as mp
 import random as rd
 from collections import deque
 
+import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
 import wandb
+from gymnasium.vector import AsyncVectorEnv
+from gymnasium.wrappers import TimeLimit
 from torch import nn
 from transformer_decoder import Transformer
 from transformer_decoder_policy import TransformerPolicy
 
 torch.autograd.set_detect_anomaly(True)
+
+from action import evaluate, get_action
+from rollout import run_episode
 
 from env import SunburstMazeContinuous
 from utils import add_to_sequence, create_gif, padding_sequence
@@ -32,16 +41,69 @@ def random_maps(
     if random_map and iteration_counter % 20 == 0:
         # Select and load a new random map
         map_path = rd.choice(map_path_random_files)
-        env = SunburstMazeContinuous(
+        """new_env = SunburstMazeContinuous(
             maze_file=map_path,
             render_mode=env.render_mode,
             rewards=env.rewards,
             fov=env.fov,
             ray_length=env.ray_length,
             number_of_rays=env.number_of_rays,
+        )"""
+        env = gym.make(
+            "SunburstMazeContinuous-v0",
+            maze_file=map_path,
+            max_episode_steps=env.max_steps_per_episode,
+            render_mode=env.render_mode,
+            random_start_position=env.random_start_position,
+            rewards=env.rewards,
+            fov=env.fov,
+            ray_length=env.ray_length,
+            number_of_rays=env.number_of_rays,
         )
-
+        
     return env
+
+
+def make_envs(env: dict):
+    """def _init():
+    new_env = SunburstMazeContinuous(
+        maze_file=env.maze_file,
+        render_mode=env.render_mode,
+        rewards=env.rewards,
+        fov=env.fov,
+        ray_length=env.ray_length,
+        number_of_rays=env.number_of_rays,
+    )
+    return new_env"""
+    """new_env = gym.make(
+            "SunburstMazeContinuous-v0",
+            maze_file=env_params["maze_file"],
+            max_episode_steps=env_params["max_steps_per_episode"],
+            render_mode=None,
+            random_start_position=env_params["random_start_position"],
+            rewards=env_params["rewards"],
+            fov=env_params["fov"],
+            ray_length=env_params["ray_length"],
+            number_of_rays=env_params["number_of_rays"],
+        )"""
+    def _init():
+        new_env = gym.make(
+                "SunburstMazeContinuous-v0",
+                maze_file=env.get_wrapper_attr("maze_file"),
+                max_episode_steps=env.get_wrapper_attr("max_steps_per_episode"),
+                render_mode=env.get_wrapper_attr("render_mode"),
+                random_start_position=env.get_wrapper_attr("random_start_position"),
+                rewards=env.get_wrapper_attr("rewards"),
+                fov=env.get_wrapper_attr("fov"),
+                ray_length=env.get_wrapper_attr("ray_length"),
+                number_of_rays=env.get_wrapper_attr("number_of_rays"),
+            )
+        new_env = TimeLimit(
+            new_env,
+            env.get_wrapper_attr("max_steps_per_episode"),
+        )
+        return new_env
+    return _init
 
 
 class PPO_agent:
@@ -62,7 +124,7 @@ class PPO_agent:
             os.makedirs(model_path)
 
         self.env = env
-        self.obs_dim = env.observation_space.n
+        self.obs_dim = env.observation_space.shape[0]
         self.act_dim = env.action_space.shape[0]
 
         # Hyperparameters
@@ -126,9 +188,9 @@ class PPO_agent:
 
         while timestep_counter < total_timesteps:
 
-            self.env = random_maps(
+            """self.env = random_maps(
                 self.env, random_map=True, iteration_counter=iteration_counter
-            )
+            )"""
 
             print("Iteration: ", iteration_counter)
             obs_batch, actions_batch, log_probs_batch, rtgs_batch, lens, frames = (
@@ -145,7 +207,9 @@ class PPO_agent:
 
             # print("Obs: ", obs, obs.shape)
             # Calculate the advantages
-            value, _ = self.evaluate(obs_batch, actions_batch)
+            value, _ = evaluate(
+                obs_batch, actions_batch, self.policy_network, self.critic_network
+            )
             rtgs_batch = rtgs_batch.unsqueeze(1)
 
             advantages = rtgs_batch - value.detach()
@@ -153,7 +217,9 @@ class PPO_agent:
             # Normalize the advantages
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-10)
             for _ in range(self.n_updates_per_iteration):
-                value, current_log_prob = self.evaluate(obs_batch, actions_batch)
+                value, current_log_prob = evaluate(
+                    obs_batch, actions_batch, self.policy_network, self.critic_network
+                )
 
                 ratio = torch.exp(current_log_prob - log_probs_batch)
 
@@ -170,13 +236,11 @@ class PPO_agent:
                 self.policy_network.zero_grad()
                 policy_loss.backward(retain_graph=True)
                 self.policy_optimizer.step()
-                
 
                 self.critic_network.zero_grad()
                 critic_loss.backward()
                 self.critic_optimizer.step()
                 print("After")
-                
 
             gif = None
             if frames:
@@ -227,6 +291,8 @@ class PPO_agent:
 
         while timesteps < self.batch_size:
             episode_rewards = []
+            #env_params = self.env.get_params()
+            #envs = AsyncVectorEnv([make_envs(self.env) for _ in range(4)])
             state, _ = self.env.reset()
             done = False
 
@@ -234,16 +300,16 @@ class PPO_agent:
             for ep_timestep in range(self.max_steps):
                 timesteps += 1
                 state_sequence = add_to_sequence(state_sequence, state, self.device)
-                tensor_sequence = torch.stack(list(state_sequence))
+                tensor_sequence = torch.stack(list(state_sequence), dim=0)
                 tensor_sequence = padding_sequence(
                     tensor_sequence, self.sequence_length, self.device
                 )
-                action, log_prob = self.get_action(tensor_sequence)
+                action, log_prob = get_action(tensor_sequence, self.policy_network)
                 action = action[0]
                 state, reward, terminated, turnicated, _ = self.env.step(action)
 
                 if (
-                    self.render_mode == "rgb_array"
+                    self.env.render_mode == "rgb_array"
                     and iteration_counter % 30 == 0
                     and len(rewards) == 0
                 ):  # Create gif on the first episode in the rollout
@@ -251,7 +317,7 @@ class PPO_agent:
                     if type(frame) == np.ndarray:
                         frames.append(frame)
 
-                if self.render_mode == "human":
+                if self.env.render_mode == "human":
                     self.env.render()
 
                 observations.append(tensor_sequence)
@@ -262,6 +328,19 @@ class PPO_agent:
                 done = terminated or turnicated
                 if done:
                     break
+
+            """queue = mp.Queue()
+            processes = []
+            for i in range(4):
+                p = mp.Process(target=run_episode, args=(i,self.env, iteration_counter, self.sequence_length, self.device, False, self.policy_network, queue))
+                p.start()
+                processes.append(p)
+
+            for p in processes:
+                p.join()
+
+            print("Processes joined")
+            results = [queue.get() for p in processes]"""
 
             lens.append(ep_timestep + 1)
             rewards.append(torch.tensor(episode_rewards))
@@ -315,28 +394,6 @@ class PPO_agent:
             processed_rtgs.append(padded_rtg)
 
         return torch.stack(processed_rtgs)
-
-    def get_action(self, obs):
-
-        obs = obs.unsqueeze(0)
-
-        mean, std, _ = self.policy_network(obs)
-        dist = torch.distributions.MultivariateNormal(mean, torch.diag_embed(std))
-
-        action = dist.sample()
-        log_prob = dist.log_prob(action)
-
-        return action.cpu().detach().numpy(), log_prob.detach()
-
-    def evaluate(self, obs, actions):
-        V, _ = self.critic_network(obs)
-
-        mean, std, _ = self.policy_network(obs)
-        dist = torch.distributions.MultivariateNormal(mean, torch.diag_embed(std))
-
-        log_prob = dist.log_prob(actions)
-
-        return V, log_prob
 
     def __init_hyperparameters(self, config):
         self.clip_grad_normalization = config["clip_grad_normalization"]

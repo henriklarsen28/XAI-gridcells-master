@@ -40,3 +40,4 @@ agent/dqn/gifs/*
 
 agent/ppo/wandb/*
 agent/ppo/gifs/*
+agent/ppo/model/transformers/ppo/*

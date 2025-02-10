@@ -12,15 +12,14 @@ import math
 import gymnasium as gym
 import numpy as np
 import torch
-
 from ppo import PPO_agent
+
+import env.continuous.register_env as register_env
 from env import SunburstMazeContinuous, SunburstMazeDiscrete
 from utils.state_preprocess import state_preprocess
 
 # Define the CSV file path relative to the project root
-map_path_train = os.path.join(project_root, "env/map_v0/map_closed_doors_left.csv")
-map_path_train_2 = os.path.join(project_root, "env/map_v0/map_open_doors_vertical.csv")
-map_path_train_3 = os.path.join(project_root, "env/map_v0/map_no_doors.csv")
+map_path_train = os.path.join(project_root, "env/random_generated_maps/goal/map_circular_4_19.csv")
 map_path_test = os.path.join(project_root, "env/map_v0/map_open_doors_90_degrees.csv")
 map_path_test_2 = os.path.join(
     project_root, "env/map_v0/map_open_doors_horizontal_v2.csv"
@@ -90,13 +89,12 @@ class Model_TrainTest:
             map_path = map_path_test
 
         # Define Env
-        self.env = SunburstMazeContinuous(
+        """self.env = SunburstMazeContinuous(
             maze_file=map_path,
             render_mode=render_mode,
             max_steps_per_episode=self.max_steps,
             random_start_position=self.random_start_position,
             rewards=self.rewards,
-            observation_space=self.observation_space,
             fov=self.fov,
             ray_length=self.ray_length,
             number_of_rays=self.number_of_rays,
@@ -104,8 +102,19 @@ class Model_TrainTest:
 
         self.env.metadata["render_fps"] = (
             self.render_fps
-        )  # For max frame rate make it 0
-        # self.env = gym.make('Pendulum-v1', render_mode=self.render_mode)
+        )  # For max frame rate make it 0"""
+        print(gym.envs.registry.keys())
+        self.env = gym.make(
+            "SunburstMazeContinuous-v0",
+            maze_file=map_path,
+            max_episode_steps=self.max_steps,
+            render_mode=self.render_mode,
+            random_start_position=self.random_start_position,
+            rewards=self.rewards,
+            fov=self.fov,
+            ray_length=self.ray_length,
+            number_of_rays=self.number_of_rays,
+        )
 
         self.agent = PPO_agent(
             env=self.env,
@@ -161,14 +170,14 @@ if __name__ == "__main__":
         "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 3e-4,
-        "batch_size": 2000,
+        "batch_size": 20,
         "mini_batch_size": 64,
         "optimizer": "adam",
         "gamma": 0.99,
         # "gae_lambda": 0.95,
         "map_path": map_path_train,
         "n_updates_per_iteration": 10,  # hard update of the target model
-        "max_steps_per_episode": 500,
+        "max_steps_per_episode": 5,
         "random_start_position": True,
         "rewards": {
             "is_goal": 2,

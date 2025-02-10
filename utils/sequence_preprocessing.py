@@ -36,7 +36,6 @@ def padding_sequence(sequence: torch.Tensor, max_length, device):
                 ]
             )
     return sequence"""
-    
     seq_len, feature_dim = sequence.shape
 
     if seq_len < max_length:
@@ -44,6 +43,7 @@ def padding_sequence(sequence: torch.Tensor, max_length, device):
         padding = torch.zeros((max_length - seq_len, feature_dim), dtype=torch.float32, device=device)
         # Concatenate padding at the beginning
         sequence = torch.cat([padding, sequence], dim=0)
+
     return sequence
 
 

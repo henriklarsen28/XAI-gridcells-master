@@ -1,3 +1,8 @@
+import os
+import sys
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+sys.path.append(project_root)
+
 import copy
 import math
 import random as rd
@@ -9,10 +14,12 @@ import numpy as np
 import pygame
 from gymnasium import spaces
 
+
+from env.file_manager import build_map
+from env.continuous.maze_game_continuous import Maze
+
 from utils import calculate_fov_matrix_size, step_angle
 
-from ..file_manager import build_map
-from .maze_game_continuous import Maze
 
 checkpoints = [
     {"coordinates": [(19, 9), (19, 10), (19, 11)], "visited": False},
@@ -45,6 +52,7 @@ class SunburstMazeContinuous(gym.Env):
         ray_length=10,
         number_of_rays=100,
     ):
+        super().__init__()
         self.maze_file = maze_file
         self.initial_map = build_map(maze_file)
         self.env_map = copy.deepcopy(self.initial_map)
@@ -72,6 +80,8 @@ class SunburstMazeContinuous(gym.Env):
         self.velocity_x = 0
         self.velocity_y = 0
         self.position = None
+        self.goal = self.extract_goal_coordinates()
+
 
         # Episode step settings
         self.max_steps_per_episode = max_steps_per_episode
@@ -107,7 +117,6 @@ class SunburstMazeContinuous(gym.Env):
         self.observed_red_wall = set()
 
         self.q_variance = 0
-        self.past_actions = deque(maxlen=10)
         # Define the action space. Rotation and acceleration
         self.action_space = spaces.Box(
             low=np.array([-30.0, 0.0]), high=np.array([30.0, 1.0]), dtype=np.float32
@@ -117,8 +126,9 @@ class SunburstMazeContinuous(gym.Env):
         y = self.matrix_size[0]
         x = self.matrix_size[1]
         # Observation space, position y, x and velocity
-        self.observation_space = spaces.Discrete(y * x + 1)
-
+        self.observation_space = gym.spaces.Box(
+            low=0, high=2, shape=(181,), dtype=np.float64  # Adjust shape and range as needed
+        )
     def select_start_position(self) -> tuple:
         """
         Selects the start position for the maze.
@@ -169,7 +179,6 @@ class SunburstMazeContinuous(gym.Env):
         matrix = matrix.flatten()
 
         output = np.array([*matrix, self.orientation / 360])
-
         # Get the matrix of marked squares without rendering
         return output
 
@@ -191,9 +200,7 @@ class SunburstMazeContinuous(gym.Env):
 
     def reset(self, seed=None, options=None) -> tuple:
 
-        super().reset(seed=seed)
-
-        self.past_actions.clear()
+        super().reset(seed=seed, options=options)
 
         # Reset visited and observed squares
         self.visited_squares = []
@@ -201,7 +208,6 @@ class SunburstMazeContinuous(gym.Env):
 
         self.env_map = copy.deepcopy(self.initial_map)
         self.position = self.select_start_position()
-        self.goal = self.extract_goal_coordinates()
 
         self.steps_current_episode = 0
 
@@ -226,6 +232,7 @@ class SunburstMazeContinuous(gym.Env):
                 self.observed_squares_map,
                 self.wall_rays,
             )
+        print(observation.shape)
         return observation, self._get_info()
 
     def reset_checkpoints(self):
@@ -512,7 +519,6 @@ class SunburstMazeContinuous(gym.Env):
                 self.observed_squares_map,
                 self.wall_rays,
                 [],
-                self.past_actions,
             )
 
     def render_rgb_array(self):
@@ -531,6 +537,7 @@ class SunburstMazeContinuous(gym.Env):
         )
         self.render_maze.render_mode = self.render_mode
         return frame
+    
 
     def close(self):  # TODO: Not tested
         if self.window is not None:
