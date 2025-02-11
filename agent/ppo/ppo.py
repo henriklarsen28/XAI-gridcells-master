@@ -52,13 +52,13 @@ def random_maps(
         env = gym.make(
             "SunburstMazeContinuous-v0",
             maze_file=map_path,
-            max_episode_steps=env.max_steps_per_episode,
-            render_mode=env.render_mode,
-            random_start_position=env.random_start_position,
-            rewards=env.rewards,
-            fov=env.fov,
-            ray_length=env.ray_length,
-            number_of_rays=env.number_of_rays,
+            max_episode_steps=env.get_wrapper_attr("max_steps_per_episode"),
+            render_mode=env.get_wrapper_attr("render_mode"),
+            random_start_position=env.get_wrapper_attr("random_start_position"),
+            rewards=env.get_wrapper_attr("rewards"),
+            fov=env.get_wrapper_attr("fov"),
+            ray_length=env.get_wrapper_attr("ray_length"),
+            number_of_rays=env.get_wrapper_attr("number_of_rays"),
         )
         
     return env
