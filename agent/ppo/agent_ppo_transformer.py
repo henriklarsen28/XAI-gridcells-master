@@ -177,7 +177,7 @@ if __name__ == "__main__":
         # "gae_lambda": 0.95,
         "map_path": map_path_train,
         "n_updates_per_iteration": 10,  # hard update of the target model
-        "max_steps_per_episode": 5,
+        "max_steps_per_episode": 500,
         "random_start_position": True,
         "rewards": {
             "is_goal": 2,
