@@ -177,7 +177,7 @@ class Model_TrainTest:
         for episode in range(1, self.max_episodes + 1):
             
             # Count episode number from 1
-            self.env.episode_iterations = episode + 1 
+            self.env.episode_iterations = episode 
 
             state, _ = self.env.reset()
 

@@ -48,19 +48,19 @@ class SunburstMazeDiscrete(gym.Env):
         observation_space=None,
         fov=math.pi / 2,
         ray_length=10,
-        number_of_rays=100,
-        episode_iterations=0,
+        number_of_rays=100
     ):  
-        self.episode_iterations = episode_iterations
-        self.maze_file = maze_file
-        # self.maze_file = get_map(maze_file)
+        self.episode_iterations = 0
         self.random_maps = random_maps
-        if random_maps and episode_iterations % 20 == 0:
+        self.maze_file = maze_file
+
+        if random_maps:
+            self.multiple_map_path = maze_file
             self.maze_file = rd.choice(maze_file)
+
         self.initial_map = build_map(self.maze_file)
         self.env_map = copy.deepcopy(self.initial_map)
 
-        
         self.height = self.env_map.shape[0]
         self.width = self.env_map.shape[1]
         self.random_start_position = random_start_position
@@ -227,8 +227,11 @@ class SunburstMazeDiscrete(gym.Env):
         self.visited_squares = []
         self.viewed_squares = set()
 
+        print("Episode iterations: ", self.episode_iterations)
+        print(rd.choice(self.maze_file))
+
         if self.random_maps and self.episode_iterations % 20 == 0:
-            self.maze_file = get_map(self.map_file)
+            self.maze_file = rd.choice(self.multiple_map_path)
 
         self.initial_map = build_map(self.maze_file)
         self.env_map = copy.deepcopy(self.initial_map)
@@ -259,6 +262,9 @@ class SunburstMazeDiscrete(gym.Env):
                 self.observed_squares_map,
                 self.wall_rays,
             )
+        
+        self.episode_iterations += 1
+
         return observation, self._get_info()
 
     def reset_checkpoints(self):
