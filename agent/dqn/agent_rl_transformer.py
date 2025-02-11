@@ -17,11 +17,11 @@ import numpy as np
 import pygame
 import torch
 import wandb
-from agent.explain_network import ExplainNetwork, grad_sam
+from dtqn_agent import DTQN_Agent
 from torch.nn.utils.rnn import pad_sequence
 from tqdm import tqdm
 
-from dtqn_agent import DTQN_Agent
+from agent.explain_network import ExplainNetwork, grad_sam
 from env import SunburstMazeDiscrete
 from utils.calculate_fov import calculate_fov_matrix_size
 from utils.sequence_preprocessing import (
@@ -109,13 +109,16 @@ class Model_TrainTest:
 
         self.transformer = config["transformer"]
         self.sequence_length = self.transformer["sequence_length"]
+
         map_path = config["map_path_train"]
         if not self.train_mode:
             map_path = config["map_path_test"]
+        self.random_maps = config["random_maps"]
 
         # Define Env
         self.env = SunburstMazeDiscrete(
             maze_file=map_path,
+            random_maps=self.random_maps,
             render_mode=render_mode,
             max_steps_per_episode=self.max_steps,
             random_start_position=self.random_start_position,
@@ -126,6 +129,7 @@ class Model_TrainTest:
             ray_length=self.ray_length,
             number_of_rays=self.number_of_rays,
         )
+
         self.env.metadata["render_fps"] = (
             self.render_fps
         )  # For max frame rate make it 0
@@ -168,8 +172,12 @@ class Model_TrainTest:
 
         self.save_path = model_path + self.save_path
 
+
         # Training loop over episodes
         for episode in range(1, self.max_episodes + 1):
+            
+            # Count episode number from 1
+            self.env.episode_iterations = episode + 1 
 
             state, _ = self.env.reset()
 
@@ -256,6 +264,7 @@ class Model_TrainTest:
 
                 state = next_state
                 total_reward += reward
+
                 steps_done += 1
 
             # Appends for tracking history
@@ -634,11 +643,16 @@ if __name__ == "__main__":
         "train_mode": train_mode,
         "map_path_train": map_path_random_files, # if this is a list it will select a random map from the list
         "map_path_test": map_path_test,
+        "map_path": map_path_test,
+        "random_maps": True,
+        
         "render": render,
         "render_mode": render_mode,
+
         "model_name": "vivid-firebrand-872",
         "RL_load_path": f"./model/transformers/seq_len_45/model_vivid-firebrand-872/sunburst_maze_map_v0_5100.pth",
         "save_path": f"/sunburst_maze_{map_version}",
+
         "loss_function": "mse",
         "learning_rate": 0.0001,
         "batch_size": 128,
@@ -649,11 +663,13 @@ if __name__ == "__main__":
         "epsilon_min": 0.01,
         "discount_factor": 0.88,
         "alpha": 0.1,
-        "map_path": map_path_test,
+        
         "target_model_update": 10,  # hard update of the target model
         "max_steps_per_episode": 300,
+
         "random_start_position": True,
         "random_goal_position": True,
+
         "rewards": {
             "is_goal": 2.5,
             "hit_wall": -0.1,
@@ -666,7 +682,6 @@ if __name__ == "__main__":
 			"is_false_goal": -0.2,
             # and the number of squares viewed (set in the env)
         },
-        # TODO
         "observation_space": {
             "position": True,
             "orientation": True,
@@ -677,11 +692,14 @@ if __name__ == "__main__":
         "save_interval": 100,
         "memory_capacity": 200_000,
         "render_fps": 15,
+
         "num_states": num_states,
+
         "clip_grad_normalization": 3,
         "fov": math.pi / 1.5,
         "ray_length": 20,
         "number_of_rays": 100,
+
         "transformer": {
             "sequence_length": 45,
             "n_embd": 128,
