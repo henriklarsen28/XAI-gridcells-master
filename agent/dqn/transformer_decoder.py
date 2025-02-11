@@ -137,7 +137,7 @@ class Transformer(nn.Module):
             att_weights_list.append(att_weights)
 
         # x = self.blocks(x)
-        x = self.ln_f(x[:,-1])
+        x = self.ln_f(x)
 
         x = self.output(x.to(torch.float32))
         return x, att_weights_list

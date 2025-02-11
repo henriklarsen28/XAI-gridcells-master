@@ -215,7 +215,6 @@ class Model_TrainTest:
                 action_sequence = add_to_sequence(action_sequence, action, device)
                 tensor_action_sequence = torch.stack(list(action_sequence))
                 tensor_action_sequence = tensor_action_sequence.unsqueeze(1)
-                # print(tensor_action_sequence.shape)
                 tensor_action_sequence = padding_sequence(
                     tensor_action_sequence, self.sequence_length, device
                 )
@@ -225,7 +224,6 @@ class Model_TrainTest:
                 next_state = state_preprocess(next_state, device)
                 new_sequence = add_to_sequence(new_sequence, next_state, device)
                 tensor_new_sequence = torch.stack(list(new_sequence))
-                # print(tensor_new_sequence.shape)
                 tensor_new_sequence = padding_sequence(
                     tensor_new_sequence, self.sequence_length, device
                 )
