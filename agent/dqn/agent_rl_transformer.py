@@ -657,15 +657,15 @@ if __name__ == "__main__":
         "random_start_position": True,
         "random_goal_position": True,
         "rewards": {
-            "is_goal": 2,
-            "hit_wall": -0.01,
-            "has_not_moved": -0.005,
+            "is_goal": 2.5,
+            "hit_wall": -0.1,
+            "has_not_moved": -0.05,
             "new_square": 0.0025,
-            "max_steps_reached": -0.025,
-            "penalty_per_step": -0.0002,
+            "max_steps_reached": -0.25,
+            "penalty_per_step": -0.002,
             "number_of_squares_visible": 0,
             "goal_in_sight": 0.1,
-			"is_false_goal": -0.01,
+			"is_false_goal": -0.2,
             # and the number of squares viewed (set in the env)
         },
         # TODO
