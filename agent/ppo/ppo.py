@@ -166,9 +166,6 @@ class PPO_agent:
         self.policy_network.to(self.device)
         self.critic_network.to(self.device)
 
-        self.policy_network = nn.DataParallel(self.policy_network)
-        self.critic_network = nn.DataParallel(self.critic_network)
-
         self.policy_optimizer = torch.optim.Adam(
             self.policy_network.parameters(),
             lr=self.learning_rate,
@@ -188,9 +185,9 @@ class PPO_agent:
 
         while timestep_counter < total_timesteps:
 
-            """self.env = random_maps(
+            self.env = random_maps(
                 self.env, random_map=True, iteration_counter=iteration_counter
-            )"""
+            )
 
             print("Iteration: ", iteration_counter)
             obs_batch, actions_batch, log_probs_batch, rtgs_batch, lens, frames = (
@@ -328,19 +325,6 @@ class PPO_agent:
                 done = terminated or turnicated
                 if done:
                     break
-
-            """queue = mp.Queue()
-            processes = []
-            for i in range(4):
-                p = mp.Process(target=run_episode, args=(i,self.env, iteration_counter, self.sequence_length, self.device, False, self.policy_network, queue))
-                p.start()
-                processes.append(p)
-
-            for p in processes:
-                p.join()
-
-            print("Processes joined")
-            results = [queue.get() for p in processes]"""
 
             lens.append(ep_timestep + 1)
             rewards.append(torch.tensor(episode_rewards))
