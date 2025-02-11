@@ -181,10 +181,10 @@ if __name__ == "__main__":
         "random_start_position": True,
         "rewards": {
             "is_goal": 2,
-            "hit_wall": -0.01,
+            "hit_wall": -0.05,
             "has_not_moved": -0.005,
-            "new_square": 0.0025,
-            "max_steps_reached": -0.025,
+            "new_square": 0.025,
+            "max_steps_reached": -0.25,
             "penalty_per_step": -0.0002,
             "number_of_squares_visible": 0,
             "goal_in_sight": 0.1,
