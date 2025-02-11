@@ -39,6 +39,7 @@ class SunburstMazeDiscrete(gym.Env):
     def __init__(
         self,
         maze_file=None,
+        random_maps=False,
         render_mode=None,
         max_steps_per_episode=200,
         random_start_position=None,
@@ -48,11 +49,18 @@ class SunburstMazeDiscrete(gym.Env):
         fov=math.pi / 2,
         ray_length=10,
         number_of_rays=100,
-    ):
-        self.map_file = maze_file
-        self.maze_file = get_map(maze_file)
+        episode_iterations=0,
+    ):  
+        self.episode_iterations = episode_iterations
+        self.maze_file = maze_file
+        # self.maze_file = get_map(maze_file)
+        self.random_maps = random_maps
+        if random_maps and episode_iterations % 20 == 0:
+            self.maze_file = rd.choice(maze_file)
         self.initial_map = build_map(self.maze_file)
         self.env_map = copy.deepcopy(self.initial_map)
+
+        
         self.height = self.env_map.shape[0]
         self.width = self.env_map.shape[1]
         self.random_start_position = random_start_position
@@ -219,9 +227,12 @@ class SunburstMazeDiscrete(gym.Env):
         self.visited_squares = []
         self.viewed_squares = set()
 
-        self.maze_file = get_map(self.map_file)
+        if self.random_maps and self.episode_iterations % 20 == 0:
+            self.maze_file = get_map(self.map_file)
+
         self.initial_map = build_map(self.maze_file)
         self.env_map = copy.deepcopy(self.initial_map)
+
         self.position = self.select_start_position()
         self.goal = self.extract_goal_coordinates()
 
