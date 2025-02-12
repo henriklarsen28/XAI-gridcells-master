@@ -147,7 +147,7 @@ class TransformerPolicy(nn.Module):
 
         output = self.output(x.to(torch.float32))
         env_class_out = torch.argmax(self.env_class(x))
-        #env_class_out = torch.nn.functional.one_hot(env_class_out, num_classes=3)
+        
         x_std = torch.exp(self.log_std)
         #x_last = x[:, -1, :]
         #print(x_last.shape)

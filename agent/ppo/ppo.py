@@ -158,7 +158,6 @@ class PPO_agent:
         self.device = device
 
         self.env_2_id = env_2_id_dict()
-        print(len(self.env_2_id))
 
         self.policy_network = TransformerPolicy(
             input_dim=self.obs_dim,
@@ -222,7 +221,6 @@ class PPO_agent:
                 frames,
             ) = self.rollout(iteration_counter)
 
-            print(env_classes_batch, env_classes_target_batch)
             # Minibatches
             # minibatches = self.generate_minibatches(obs, actions, log_probs, rtgs)
 
@@ -258,7 +256,7 @@ class PPO_agent:
                 env_class_loss = F.cross_entropy(
                     env_classes_target_batch.float(), env_classes_batch.float()
                 )
-                env_class_loss = env_class_loss/env_class_loss.mean() * 0.1
+                env_class_loss = env_class_loss/env_class_loss.mean() * 0.01
                 policy_loss = policy_loss_ppo + env_class_loss
 
                 critic_loss = nn.MSELoss()(value, rtgs_batch)
