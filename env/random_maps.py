@@ -1,5 +1,6 @@
-import random as rd
 import os
+import random as rd
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -238,7 +239,7 @@ def main():
 
     # delete all files in the folder random_generated_maps/goal
     
-    folder = "random_generated_maps/goal/small"
+    folder = "random_generated_maps/goal/medium"
     for file in os.listdir(folder):
         file_path = os.path.join(folder, file)
         try:
