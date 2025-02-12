@@ -36,7 +36,7 @@ wandb.login()
 # Define the CSV file path relative to the project root
 map_path_train = os.path.join(project_root, "env/map_no_goal/map_closed_doors_left.csv")
 map_path_test = os.path.join(project_root, "env/map_no_goal/map_closed_doors_left.csv")
-map_path_random = os.path.join(project_root, "env/random_generated_maps/goal")
+map_path_random = os.path.join(project_root, "env/random_generated_maps/goal/small")
 map_path_random_files = [os.path.join(map_path_random, f) for f in os.listdir(map_path_random) if os.path.isfile(os.path.join(map_path_random, f))]
 
 device = torch.device("cpu")
