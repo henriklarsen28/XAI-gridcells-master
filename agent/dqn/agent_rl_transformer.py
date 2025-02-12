@@ -270,6 +270,7 @@ class Model_TrainTest:
             # Appends for tracking history
             self.reward_history.append(total_reward)  # episode reward
             total_steps += steps_done
+            false_goal = self.env.false_goal_touched
 
             # Decay epsilon at the end of each episode
             self.agent.update_epsilon()
@@ -299,6 +300,7 @@ class Model_TrainTest:
                     "Reward per episode": total_reward,
                     "Epsilon": self.agent.epsilon,
                     "Steps done": steps_done,
+                    "False goal touched": false_goal,
                     "Gif:": (wandb.Video(gif, fps=4, format="gif") if gif else None),
                 },
                 commit=True,
@@ -665,14 +667,14 @@ if __name__ == "__main__":
         "alpha": 0.1,
         
         "target_model_update": 10,  # hard update of the target model
-        "max_steps_per_episode": 300,
+        "max_steps_per_episode": 10,
 
         "random_start_position": True,
         "random_goal_position": True,
 
         "rewards": {
             "is_goal": 200 / 200,
-            "hit_wall": -0.5 / 200,
+            "hit_wall": 0 / 200,
             "has_not_moved": -0.2 / 200,
             "new_square": 2 / 200,
             "max_steps_reached": -0.5 / 200,

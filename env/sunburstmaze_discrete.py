@@ -92,6 +92,7 @@ class SunburstMazeDiscrete(gym.Env):
 
         self.position = None
         self.goal = None
+        self.false_goal_touched = 0
 
         # Episode step settings
         self.max_steps_per_episode = max_steps_per_episode
@@ -226,9 +227,7 @@ class SunburstMazeDiscrete(gym.Env):
 
         self.visited_squares = []
         self.viewed_squares = set()
-
-        print("Episode iterations: ", self.episode_iterations)
-        print(rd.choice(self.maze_file))
+        self.false_goals_touched = 0
 
         if self.random_maps and self.episode_iterations % 20 == 0:
             self.maze_file = rd.choice(self.multiple_map_path)
@@ -554,6 +553,7 @@ class SunburstMazeDiscrete(gym.Env):
             bool: True if the current position is a goal position, False otherwise.
         """
         if int(self.env_map[self.position[0]][self.position[1]]) == 2 and self.position != self.goal:
+            self.false_goal_touched += 1
             return True
         return False
     
