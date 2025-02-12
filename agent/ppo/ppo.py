@@ -35,6 +35,20 @@ map_path_random_files = [
 ]
 
 
+def env_2_id_dict() -> dict:
+    env_to_id = {}
+    for i, env in enumerate(map_path_random_files):
+        env_to_id[env] = i
+    return env_to_id
+
+
+def id_2_env_dict() -> dict:
+    id_to_env = {}
+    for i, env in enumerate(map_path_random_files):
+        id_to_env[i] = env
+    return id_to_env
+
+
 def random_maps(
     env: SunburstMazeContinuous, random_map: bool = False, iteration_counter: int = 0
 ):
@@ -60,7 +74,7 @@ def random_maps(
             ray_length=env.get_wrapper_attr("ray_length"),
             number_of_rays=env.get_wrapper_attr("number_of_rays"),
         )
-        
+
     return env
 
 
@@ -86,23 +100,25 @@ def make_envs(env: dict):
             ray_length=env_params["ray_length"],
             number_of_rays=env_params["number_of_rays"],
         )"""
+
     def _init():
         new_env = gym.make(
-                "SunburstMazeContinuous-v0",
-                maze_file=env.get_wrapper_attr("maze_file"),
-                max_steps_per_episode=env.get_wrapper_attr("max_steps_per_episode"),
-                render_mode=env.get_wrapper_attr("render_mode"),
-                random_start_position=env.get_wrapper_attr("random_start_position"),
-                rewards=env.get_wrapper_attr("rewards"),
-                fov=env.get_wrapper_attr("fov"),
-                ray_length=env.get_wrapper_attr("ray_length"),
-                number_of_rays=env.get_wrapper_attr("number_of_rays"),
-            )
+            "SunburstMazeContinuous-v0",
+            maze_file=env.get_wrapper_attr("maze_file"),
+            max_steps_per_episode=env.get_wrapper_attr("max_steps_per_episode"),
+            render_mode=env.get_wrapper_attr("render_mode"),
+            random_start_position=env.get_wrapper_attr("random_start_position"),
+            rewards=env.get_wrapper_attr("rewards"),
+            fov=env.get_wrapper_attr("fov"),
+            ray_length=env.get_wrapper_attr("ray_length"),
+            number_of_rays=env.get_wrapper_attr("number_of_rays"),
+        )
         new_env = TimeLimit(
             new_env,
             env.get_wrapper_attr("max_steps_per_episode"),
         )
         return new_env
+
     return _init
 
 
@@ -141,10 +157,14 @@ class PPO_agent:
         self.sequence_length = transformer_param["sequence_length"]  # Replace value
         self.device = device
 
+        self.env_2_id = env_2_id_dict()
+        print(len(self.env_2_id))
+
         self.policy_network = TransformerPolicy(
             input_dim=self.obs_dim,
             output_dim=self.act_dim,
             block_size=self.sequence_length,
+            num_envs=len(self.env_2_id),
             n_embd=n_embd,
             n_head=n_head,
             n_layer=n_layer,
@@ -190,10 +210,19 @@ class PPO_agent:
             )
 
             print("Iteration: ", iteration_counter)
-            obs_batch, actions_batch, log_probs_batch, rtgs_batch, lens, frames = (
-                self.rollout(iteration_counter)
-            )
 
+            (
+                obs_batch,
+                actions_batch,
+                log_probs_batch,
+                env_classes_batch,
+                env_classes_target_batch,
+                rtgs_batch,
+                lens,
+                frames,
+            ) = self.rollout(iteration_counter)
+
+            print(env_classes_batch, env_classes_target_batch)
             # Minibatches
             # minibatches = self.generate_minibatches(obs, actions, log_probs, rtgs)
 
@@ -225,9 +254,16 @@ class PPO_agent:
                 surrogate_loss2 = (
                     torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * advantages
                 )
-                policy_loss = (-torch.min(surrogate_loss1, surrogate_loss2)).mean()
+                policy_loss_ppo = (-torch.min(surrogate_loss1, surrogate_loss2)).mean()
+                env_class_loss = F.cross_entropy(
+                    env_classes_target_batch.float(), env_classes_batch.float()
+                )
+                env_class_loss = env_class_loss/env_class_loss.mean() * 0.1
+                policy_loss = policy_loss_ppo + env_class_loss
 
                 critic_loss = nn.MSELoss()(value, rtgs_batch)
+
+
 
                 print("Policy loss step")
                 self.policy_network.zero_grad()
@@ -253,8 +289,11 @@ class PPO_agent:
                 {
                     "Episode": lens,
                     "Reward per episode": rtgs_batch.mean().item(),
+                    "Policy_ppo loss": policy_loss_ppo.item(),
+                    "Env_class loss": env_class_loss.item(),
                     "Policy loss": policy_loss.item(),
                     "Critic loss": critic_loss.item(),
+                    "Environment": self.env_2_id[self.env.maze_file],
                     "Steps done": lens[0],
                     "Gif:": (wandb.Video(gif, fps=4, format="gif") if gif else None),
                 },
@@ -276,6 +315,8 @@ class PPO_agent:
         actions = []
         log_probs = []
         rewards = []
+        env_classes_pred = []
+        env_classes_target = []
         rtgs = []
         lens = []
         frames = []
@@ -288,8 +329,8 @@ class PPO_agent:
 
         while timesteps < self.batch_size:
             episode_rewards = []
-            #env_params = self.env.get_params()
-            #envs = AsyncVectorEnv([make_envs(self.env) for _ in range(4)])
+            # env_params = self.env.get_params()
+            # envs = AsyncVectorEnv([make_envs(self.env) for _ in range(4)])
             state, _ = self.env.reset()
             done = False
 
@@ -301,7 +342,9 @@ class PPO_agent:
                 tensor_sequence = padding_sequence(
                     tensor_sequence, self.sequence_length, self.device
                 )
-                action, log_prob = get_action(tensor_sequence, self.policy_network)
+                action, log_prob, env_class = get_action(
+                    tensor_sequence, self.policy_network
+                )
                 action = action[0]
                 state, reward, terminated, turnicated, _ = self.env.step(action)
 
@@ -320,6 +363,7 @@ class PPO_agent:
                 observations.append(tensor_sequence)
                 actions.append(action)
                 log_probs.append(log_prob)
+                env_classes_pred.append(env_class)
                 episode_rewards.append(reward)
 
                 done = terminated or turnicated
@@ -335,11 +379,25 @@ class PPO_agent:
         obs = torch.stack(observations).to(self.device)
         actions = torch.tensor(actions).to(self.device)
         log_probs = torch.tensor(log_probs).to(self.device)
+        env_classes_pred = torch.stack(env_classes_pred).to(self.device)
+        env_classes_target = torch.tensor(
+            [self.env_2_id[self.env.maze_file] for _ in range(len(env_classes_pred))],dtype=torch.float32
+        ).to(self.device)
+
         rtgs = self.compute_rtgs(rewards)
 
         # Create a sequence of rtgs
 
-        return obs, actions, log_probs, rtgs, lens, frames
+        return (
+            obs,
+            actions,
+            log_probs,
+            env_classes_pred,
+            env_classes_target,
+            rtgs,
+            lens,
+            frames,
+        )
 
     def compute_rtgs(self, rewards):
         rtgs = []

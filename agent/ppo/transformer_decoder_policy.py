@@ -92,6 +92,7 @@ class TransformerPolicy(nn.Module):
         self,
         input_dim,
         output_dim,
+        num_envs,
         block_size,
         n_embd,
         n_head,
@@ -112,6 +113,8 @@ class TransformerPolicy(nn.Module):
             n_embd, output_dim
         )  # Optional: add hidden layers after the final decoder layer
         self.apply(self.init_weights)
+
+        self.env_class = nn.Linear(n_embd, num_envs)
 
         self.log_std = nn.Parameter(torch.zeros(np.prod(output_dim)))
 
@@ -142,12 +145,13 @@ class TransformerPolicy(nn.Module):
         # x = self.blocks(x)
         x = self.ln_f(x[:,-1])
 
-        x = self.output(x.to(torch.float32))
-
+        output = self.output(x.to(torch.float32))
+        env_class_out = torch.argmax(self.env_class(x))
+        #env_class_out = torch.nn.functional.one_hot(env_class_out, num_classes=3)
         x_std = torch.exp(self.log_std)
         #x_last = x[:, -1, :]
         #print(x_last.shape)
-        return x, x_std, att_weights_list
+        return output, x_std, env_class_out, att_weights_list
 
 
 # device = torch.device("mps" if torch.backends.mps.is_available() else "cpu") # Was faster with cpu??? Loading between cpu and mps is slow maybe
