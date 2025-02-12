@@ -1,5 +1,6 @@
-import random as rd
 import os
+import random as rd
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -233,12 +234,12 @@ def is_reachable(matrix: np.array, goal_position: tuple):
 
 
 def main():
-    env_size = (11, 11)
+    env_size = (15, 15)
     n_goals = 3
 
     # delete all files in the folder random_generated_maps/goal
     
-    folder = "random_generated_maps/goal/small"
+    folder = "random_generated_maps/goal/medium"
     for file in os.listdir(folder):
         file_path = os.path.join(folder, file)
         try:
