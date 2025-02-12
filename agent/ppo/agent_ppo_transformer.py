@@ -107,7 +107,7 @@ class Model_TrainTest:
         self.env = gym.make(
             "SunburstMazeContinuous-v0",
             maze_file=map_path,
-            max_episode_steps=self.max_steps,
+            max_steps_per_episode=self.max_steps,
             render_mode=self.render_mode,
             random_start_position=self.random_start_position,
             rewards=self.rewards,
@@ -115,7 +115,6 @@ class Model_TrainTest:
             ray_length=self.ray_length,
             number_of_rays=self.number_of_rays,
         )
-
         self.agent = PPO_agent(
             env=self.env,
             device=device,
