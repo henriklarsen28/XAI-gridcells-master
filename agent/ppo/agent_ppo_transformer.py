@@ -179,15 +179,15 @@ if __name__ == "__main__":
         "max_steps_per_episode": 500,
         "random_start_position": True,
         "rewards": {
-            "is_goal": 2.5,
-            "hit_wall": -0.01,
+            "is_goal": 3,
+            "hit_wall": -0.001,
             "has_not_moved": -0.005,
             "new_square": 0.0025,
             "max_steps_reached": -0.025,
-            "penalty_per_step": -0.0002,
+            "penalty_per_step": -0.00002,
             "number_of_squares_visible": 0,
             "goal_in_sight": 0.1,
-            "is_false_goal": -0.05,
+            "is_false_goal": -0.01,
             # and the proportion of number of squares viewed (set in the env)
         },
         # TODO
