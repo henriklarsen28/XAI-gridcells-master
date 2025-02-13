@@ -127,7 +127,7 @@ class SunburstMazeContinuous(gym.Env):
         x = self.matrix_size[1]
         # Observation space, position y, x and velocity
         self.observation_space = gym.spaces.Box(
-            low=0, high=2, shape=(181,), dtype=np.float64  # Adjust shape and range as needed
+            low=0, high=2, shape=(y*x+1,), dtype=np.float64  # Adjust shape and range as needed
         )
     def select_start_position(self) -> tuple:
         """
