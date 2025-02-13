@@ -115,6 +115,7 @@ class SunburstMazeContinuous(gym.Env):
         self.observed_squares = set()
         self.observed_squares_map = set()
         self.observed_red_wall = set()
+        self.observed_goals = set()
 
         self.q_variance = 0
         # Define the action space. Rotation and acceleration
@@ -242,6 +243,7 @@ class SunburstMazeContinuous(gym.Env):
         self.observed_squares = set()
         self.wall_rays = set()
         self.observed_squares_map = set()
+        self.observed_goals = set()
 
         agent_angle = math.radians(self.orientation)  # 0, 90, 180, 270
         start_angle = agent_angle - self.half_fov
@@ -256,6 +258,9 @@ class SunburstMazeContinuous(gym.Env):
                 if self.env_map[x][y] == 1:
                     self.wall_rays.add((x, y))
                     break
+
+                """if self.env_map[x][y] == 2:
+                    self.observed_goals.add((x, y))"""
 
                 self.find_relative_position_in_matrix(x, y)
                 self.observed_squares_map.add((x, y))
@@ -272,14 +277,15 @@ class SunburstMazeContinuous(gym.Env):
         x, y = self.position
         x = math.ceil(x)
         y = int(y)
-        marked_x = self.matrix_middle_index + y - y2 - 1
-        marked_y = x - x2 - 1
+        marked_y = self.matrix_middle_index + y - y2 - 2
+        marked_x = x - x2 - 1
 
-        self.observed_squares.add((marked_x, marked_y))
+        self.observed_squares.add((marked_y, marked_x))
+        if self.env_map[x2][y2] == 2:
+            self.observed_goals.add((marked_y, marked_x))
 
     def calculate_fov_matrix(self):
         matrix = np.zeros(calculate_fov_matrix_size(self.ray_length, self.half_fov))
-
         # Create a matrix with the marked squares from the marked_2 set
         for square in self.observed_squares:
             x, y = square
@@ -289,8 +295,13 @@ class SunburstMazeContinuous(gym.Env):
             x, y = square
             matrix[y, x] = -1
 
-        # df = pd.DataFrame(matrix)
-        # df.to_csv("matrix.csv")
+        for square in self.observed_goals:
+            x, y = square
+            matrix[y, x] = 2
+
+        #import pandas as pd
+        #df = pd.DataFrame(matrix)
+        #df.to_csv("matrix.csv")
 
         # if self.orientation == 2 or self.orientation == 3:
         #     matrix = np.rot90(matrix, 2)
