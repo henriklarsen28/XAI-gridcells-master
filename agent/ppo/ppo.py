@@ -258,7 +258,7 @@ class PPO_agent:
                 )
                 policy_loss_ppo = policy_loss_ppo / policy_loss_ppo.mean()
                 env_class_loss = env_class_loss / env_class_loss.mean()
-                policy_loss = policy_loss_ppo + 0.01 * env_class_loss
+                policy_loss = policy_loss_ppo + 0.5 * env_class_loss
 
                 critic_loss = nn.MSELoss()(value, rtgs_batch)
 
