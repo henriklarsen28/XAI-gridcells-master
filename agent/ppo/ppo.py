@@ -129,11 +129,11 @@ class PPO_agent:
         self.config = config
         self.run = wandb.init(project="sunburst-maze-continuous", config=self)
 
-        gif_path = f"./gifs/{self.run.name}"
+        self.gif_path = f"./gifs/{self.run.name}"
 
         # Create the nessessary directories
-        if not os.path.exists(gif_path):
-            os.makedirs(gif_path)
+        if not os.path.exists(self.gif_path):
+            os.makedirs(self.gif_path)
 
         model_path = f"./model/transformers/ppo/model_{self.run.name}"
         if not os.path.exists(model_path):
@@ -256,12 +256,11 @@ class PPO_agent:
                 env_class_loss = F.cross_entropy(
                     env_classes_target_batch.float(), env_classes_batch.float()
                 )
-                env_class_loss = env_class_loss/env_class_loss.mean() * 0.01
-                policy_loss = policy_loss_ppo + env_class_loss
+                policy_loss_ppo = policy_loss_ppo / policy_loss_ppo.mean()
+                env_class_loss = env_class_loss / env_class_loss.mean()
+                policy_loss = policy_loss_ppo + 0.01 * env_class_loss
 
                 critic_loss = nn.MSELoss()(value, rtgs_batch)
-
-
 
                 print("Policy loss step")
                 self.policy_network.zero_grad()
@@ -275,11 +274,9 @@ class PPO_agent:
 
             gif = None
             if frames:
-                if os.path.exists("./gifs") is False:
-                    os.makedirs("./gifs")
 
                 gif = create_gif(
-                    gif_path=f"./gifs/{iteration_counter}.gif", frames=frames
+                    gif_path=f"./{self.gif_path}/{iteration_counter}.gif", frames=frames
                 )
                 frames.clear()
 
@@ -379,7 +376,8 @@ class PPO_agent:
         log_probs = torch.tensor(log_probs).to(self.device)
         env_classes_pred = torch.stack(env_classes_pred).to(self.device)
         env_classes_target = torch.tensor(
-            [self.env_2_id[self.env.maze_file] for _ in range(len(env_classes_pred))],dtype=torch.float32
+            [self.env_2_id[self.env.maze_file] for _ in range(len(env_classes_pred))],
+            dtype=torch.float32,
         ).to(self.device)
 
         rtgs = self.compute_rtgs(rewards)

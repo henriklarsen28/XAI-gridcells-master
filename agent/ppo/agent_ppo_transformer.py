@@ -153,7 +153,7 @@ if __name__ == "__main__":
 
     fov_config = {
         "fov": math.pi / 1.5,
-        "ray_length": 10,
+        "ray_length": 15,
         "number_of_rays": 100,
     }
 
@@ -169,13 +169,13 @@ if __name__ == "__main__":
         "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 3e-4,
-        "batch_size": 2500,
+        "batch_size": 1500,
         "mini_batch_size": 64,
         "optimizer": "adam",
         "gamma": 0.99,
         # "gae_lambda": 0.95,
         "map_path": map_path_train,
-        "n_updates_per_iteration": 10,  # hard update of the target model
+        "n_updates_per_iteration": 7,  # hard update of the target model
         "max_steps_per_episode": 500,
         "random_start_position": True,
         "rewards": {
