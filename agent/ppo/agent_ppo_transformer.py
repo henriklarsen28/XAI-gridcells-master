@@ -176,6 +176,7 @@ if __name__ == "__main__":
         # "gae_lambda": 0.95,
         "map_path": map_path_train,
         "n_updates_per_iteration": 7,  # hard update of the target model
+        "change_env": 100,
         "max_steps_per_episode": 500,
         "random_start_position": True,
         "rewards": {
@@ -197,7 +198,7 @@ if __name__ == "__main__":
             "last_known_steps": 0,
             "salt_and_pepper_noise": 0,
         },
-        "save_interval": 1,
+        "save_interval": 25,
         "render_fps": 5,
         "clip_grad_normalization": 3,
         "clip": 0.2,

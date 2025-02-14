@@ -49,35 +49,6 @@ def id_2_env_dict() -> dict:
     return id_to_env
 
 
-def random_maps(
-    env: SunburstMazeContinuous, random_map: bool = False, iteration_counter: int = 0
-):
-    if random_map and iteration_counter % 20 == 0:
-        # Select and load a new random map
-        map_path = rd.choice(map_path_random_files)
-        """new_env = SunburstMazeContinuous(
-            maze_file=map_path,
-            render_mode=env.render_mode,
-            rewards=env.rewards,
-            fov=env.fov,
-            ray_length=env.ray_length,
-            number_of_rays=env.number_of_rays,
-        )"""
-        env = gym.make(
-            "SunburstMazeContinuous-v0",
-            maze_file=map_path,
-            max_steps_per_episode=env.get_wrapper_attr("max_steps_per_episode"),
-            render_mode=env.get_wrapper_attr("render_mode"),
-            random_start_position=env.get_wrapper_attr("random_start_position"),
-            rewards=env.get_wrapper_attr("rewards"),
-            fov=env.get_wrapper_attr("fov"),
-            ray_length=env.get_wrapper_attr("ray_length"),
-            number_of_rays=env.get_wrapper_attr("number_of_rays"),
-        )
-
-    return env
-
-
 def make_envs(env: dict):
     """def _init():
     new_env = SunburstMazeContinuous(
@@ -204,7 +175,7 @@ class PPO_agent:
 
         while timestep_counter < total_timesteps:
 
-            self.env = random_maps(
+            self.env = self.random_maps(
                 self.env, random_map=True, iteration_counter=iteration_counter
             )
 
@@ -256,7 +227,7 @@ class PPO_agent:
                 env_class_loss = F.cross_entropy(
                     env_classes_target_batch.float(), env_classes_batch.float()
                 )
-                #env_class_loss = env_class_loss
+                # env_class_loss = env_class_loss
                 policy_loss = policy_loss_ppo + 0.0001 * env_class_loss
 
                 critic_loss = nn.MSELoss()(value, rtgs_batch)
@@ -445,6 +416,7 @@ class PPO_agent:
         self.max_steps = config["max_steps_per_episode"]
         self.render = config["render"]
         self.render_mode = config["render_mode"]
+        self.change_env = config["change_env"]
 
     def generate_minibatches(self, obs, actions, log_probs, rtgs):
         minibatches = []
@@ -453,6 +425,37 @@ class PPO_agent:
             minibatches.append((obs[idxs], actions[idxs], log_probs[idxs], rtgs[idxs]))
 
         return minibatches
+
+    def random_maps(
+        self,
+        env: SunburstMazeContinuous,
+        random_map: bool = False,
+        iteration_counter: int = 0,
+    ):
+        if random_map and iteration_counter % self.change_env == 0:
+            # Select and load a new random map
+            map_path = rd.choice(map_path_random_files)
+            """new_env = SunburstMazeContinuous(
+                maze_file=map_path,
+                render_mode=env.render_mode,
+                rewards=env.rewards,
+                fov=env.fov,
+                ray_length=env.ray_length,
+                number_of_rays=env.number_of_rays,
+            )"""
+            env = gym.make(
+                "SunburstMazeContinuous-v0",
+                maze_file=map_path,
+                max_steps_per_episode=env.get_wrapper_attr("max_steps_per_episode"),
+                render_mode=env.get_wrapper_attr("render_mode"),
+                random_start_position=env.get_wrapper_attr("random_start_position"),
+                rewards=env.get_wrapper_attr("rewards"),
+                fov=env.get_wrapper_attr("fov"),
+                ray_length=env.get_wrapper_attr("ray_length"),
+                number_of_rays=env.get_wrapper_attr("number_of_rays"),
+            )
+
+        return env
 
     def load_model(self, policy_path, critic_path):
         self.policy_network.load_state_dict(torch.load(policy_path))
