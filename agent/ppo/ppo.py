@@ -228,7 +228,7 @@ class PPO_agent:
                     env_classes_target_batch.float(), env_classes_batch.float()
                 )
                 # env_class_loss = env_class_loss
-                policy_loss = policy_loss_ppo + 0.0001 * env_class_loss
+                policy_loss = policy_loss_ppo #+ 0.0001 * env_class_loss
 
                 critic_loss = nn.MSELoss()(value, rtgs_batch)
 
