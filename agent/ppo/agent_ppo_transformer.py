@@ -169,7 +169,7 @@ if __name__ == "__main__":
         "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 3e-4,
-        "batch_size": 1500,
+        "batch_size": 2000,
         "mini_batch_size": 64,
         "optimizer": "adam",
         "gamma": 0.99,
@@ -206,11 +206,11 @@ if __name__ == "__main__":
         "ray_length": fov_config["ray_length"],
         "number_of_rays": fov_config["number_of_rays"],
         "transformer": {
-            "sequence_length": 45,
-            "n_embd": 128,
+            "sequence_length": 30,
+            "n_embd": 256,
             "n_head": 8,
             "n_layer": 3,
-            "dropout": 0.3,
+            "dropout": 0.2,
             "decouple_positional_embedding": False,
         },
     }
