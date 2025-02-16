@@ -203,7 +203,7 @@ class PPO_agent:
             # print("Obs: ", obs, obs.shape)
             # Calculate the advantages
             value, _ = evaluate(
-                obs_batch, actions_batch, self.policy_network, self.critic_network
+                obs_batch, actions_batch, self.policy_network, self.critic_network, self.cov_mat
             )
             rtgs_batch = rtgs_batch.unsqueeze(1)
 
@@ -213,7 +213,7 @@ class PPO_agent:
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-10)
             for _ in range(self.n_updates_per_iteration):
                 value, current_log_prob = evaluate(
-                    obs_batch, actions_batch, self.policy_network, self.critic_network
+                    obs_batch, actions_batch, self.policy_network, self.critic_network, self.cov_mat
                 )
 
                 ratio = torch.exp(current_log_prob - log_probs_batch)
@@ -308,7 +308,7 @@ class PPO_agent:
                     tensor_sequence, self.sequence_length, self.device
                 )
                 action, log_prob, env_class = get_action(
-                    tensor_sequence, self.policy_network
+                    tensor_sequence, self.policy_network, self.cov_mat
                 )
                 action = action[0]
                 state, reward, terminated, turnicated, _ = self.env.step(action)
