@@ -7,7 +7,7 @@ def get_action(obs, policy_network, cov_mat):
         obs = obs.unsqueeze(0)
 
     mean, std, env_class, _ = policy_network(obs)
-    dist = torch.distributions.MultivariateNormal(mean, torch.diag_embed(cov_mat))
+    dist = torch.distributions.MultivariateNormal(mean, cov_mat)
 
     action = dist.sample()
     log_prob = dist.log_prob(action)
@@ -19,7 +19,7 @@ def evaluate(obs, actions, policy_network, critic_network, cov_mat):
     V, _ = critic_network(obs)
 
     mean, std, _, _ = policy_network(obs)
-    dist = torch.distributions.MultivariateNormal(mean, torch.diag_embed(cov_mat))
+    dist = torch.distributions.MultivariateNormal(mean, cov_mat)
 
     log_prob = dist.log_prob(actions)
 
