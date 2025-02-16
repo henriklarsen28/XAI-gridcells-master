@@ -193,54 +193,54 @@ class PPO_agent:
             ) = self.rollout(iteration_counter)
 
             # Minibatches
-            # minibatches = self.generate_minibatches(obs, actions, log_probs, rtgs)
+            minibatches = self.generate_minibatches(obs, actions, log_probs, rtgs)
 
             timestep_counter += sum(lens)
             iteration_counter += 1
 
-            # for obs_batch, actions_batch, log_probs_batch, rtgs_batch in minibatches:
+            for obs_batch, actions_batch, log_probs_batch, rtgs_batch in minibatches:
 
             # print("Obs: ", obs, obs.shape)
             # Calculate the advantages
-            value, _ = evaluate(
-                obs_batch, actions_batch, self.policy_network, self.critic_network, self.cov_mat
-            )
-            rtgs_batch = rtgs_batch.unsqueeze(1)
-
-            advantages = rtgs_batch - value.detach()
-
-            # Normalize the advantages
-            advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-10)
-            for _ in range(self.n_updates_per_iteration):
-                value, current_log_prob = evaluate(
+                value, _ = evaluate(
                     obs_batch, actions_batch, self.policy_network, self.critic_network, self.cov_mat
                 )
+                rtgs_batch = rtgs_batch.unsqueeze(1)
 
-                ratio = torch.exp(current_log_prob - log_probs_batch)
+                advantages = rtgs_batch - value.detach()
 
-                surrogate_loss1 = ratio * advantages
+                # Normalize the advantages
+                advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-10)
+                for _ in range(self.n_updates_per_iteration):
+                    value, current_log_prob = evaluate(
+                        obs_batch, actions_batch, self.policy_network, self.critic_network, self.cov_mat
+                    )
 
-                surrogate_loss2 = (
-                    torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * advantages
-                )
-                policy_loss_ppo = (-torch.min(surrogate_loss1, surrogate_loss2)).mean()
-                env_class_loss = F.cross_entropy(
-                    env_classes_target_batch.float(), env_classes_batch.float()
-                )
-                # env_class_loss = env_class_loss
-                policy_loss = policy_loss_ppo #+ 0.0001 * env_class_loss
+                    ratio = torch.exp(current_log_prob - log_probs_batch)
 
-                critic_loss = nn.MSELoss()(value, rtgs_batch)
+                    surrogate_loss1 = ratio * advantages
 
-                print("Policy loss step")
-                self.policy_network.zero_grad()
-                policy_loss.backward(retain_graph=True)
-                self.policy_optimizer.step()
+                    surrogate_loss2 = (
+                        torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * advantages
+                    )
+                    policy_loss_ppo = (-torch.min(surrogate_loss1, surrogate_loss2)).mean()
+                    env_class_loss = F.cross_entropy(
+                        env_classes_target_batch.float(), env_classes_batch.float()
+                    )
+                    # env_class_loss = env_class_loss
+                    policy_loss = policy_loss_ppo #+ 0.0001 * env_class_loss
 
-                self.critic_network.zero_grad()
-                critic_loss.backward()
-                self.critic_optimizer.step()
-                print("After")
+                    critic_loss = nn.MSELoss()(value, rtgs_batch)
+
+                    print("Policy loss step")
+                    self.policy_network.zero_grad()
+                    policy_loss.backward(retain_graph=True)
+                    self.policy_optimizer.step()
+
+                    self.critic_network.zero_grad()
+                    critic_loss.backward()
+                    self.critic_optimizer.step()
+                    print("After")
 
             gif = None
             if frames:
