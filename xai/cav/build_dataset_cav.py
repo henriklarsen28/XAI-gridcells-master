@@ -18,9 +18,9 @@ from agent import DTQN_Agent
 from agent.dqn.replay_memory import ReplayMemory
 from env import SunburstMazeDiscrete
 from utils.calculate_fov import calculate_fov_matrix_size
-from utils import larger_than_less_than
 from utils.sequence_preprocessing import add_to_sequence, padding_sequence
 from utils.state_preprocess import state_preprocess
+from xai.cav.concept_definition import Concepts as con
 
 device = torch.device("cpu")
 fov_config = {
@@ -40,13 +40,13 @@ config = {
     "random_goal_position": True,
     "rewards": {
         "is_goal": 200 / 200,
-        "hit_wall": -0.01 / 200,
+        "hit_wall": -0.05 / 200,
         "has_not_moved": -0.2 / 200,
-        "new_square": 0.4 / 200,
+        "new_square": 0.01 / 200,
         "max_steps_reached": -0.5 / 200,
         "penalty_per_step": -0.01 / 200,
-        "goal_in_sight": 0.5 / 200,
-        "number_of_squares_visible": 0.001 / 200,
+        "goal_in_sight": 0 / 200,
+        "number_of_squares_visible": 0 / 200,
     },
     # TODO
     "observation_space": {
@@ -65,7 +65,7 @@ config = {
     "ray_length": 8,
     "number_of_rays": 100,
     "transformer": {
-        "sequence_length": 45,
+        "sequence_length": 15,
         "n_embd": 128,
         "n_head": 8,
         "n_layer": 3,
@@ -73,8 +73,8 @@ config = {
         "state_dim": num_states,
         "decouple_positional_embedding": False,
     },
+    "grid_length": 4, # 4x4 grid
 }
-
 
 # CAV for stuck in wall -> Sees into wall and tries to move forward
 def save_to_csv(dataset: deque, file_name: str):
@@ -83,76 +83,6 @@ def save_to_csv(dataset: deque, file_name: str):
     df = pd.DataFrame(dataset)
 
     df.to_csv(f"./dataset/{file_name}", index=False)
-
-
-def positive_looking_at_wall(
-    sequence: deque, legal_actions: list, action_sequence: deque
-):
-    # Look at the last 2 states, if the agents last states are the same and the agent is not allowed to move forward the agent is stuck in a wall
-    # The sequence should be added to the CAV positive dataset
-
-    last_action = action_sequence[-1]
-
-    # print("Last action: ", last_action)
-    if len(legal_actions) == 2 and last_action == 0:
-        # Save the observation sequence to the positive dataset
-        # print("Positive stuck in wall")
-        return True
-
-    return False
-
-
-def positive_rotating_stuck(
-    sequence: deque, action_sequence: deque, position_sequence: deque
-):
-
-    # The position is the same over the last 12 states, and the agent is rotating in place
-    # The sequence should be added to the CAV positive dataset
-
-    position_sequence = list(position_sequence)
-    last_12_positions = position_sequence[-12:]
-    if len(set(last_12_positions)) == 1:
-        # Check if the agent is rotating in place
-        action_sequence = list(action_sequence)
-        last_12_actions = set(action_sequence[-12:])
-        if (1 in last_12_actions or 2 in last_12_actions) and 0 not in last_12_actions:
-            # print("Positive rotating stuck")
-            return True
-    return False
-
-
-def positive_goal_in_sight(observation_sequence: deque):
-    # Check if there is a goal in sight
-    # contains a value of 2
-    observation = observation_sequence[-1]
-
-    if 2 in observation:
-        return True
-
-    return False
-
-
-def positive_inside_box(observation_sequence: deque, position: tuple):
-    # Coordinates of the box
-    coordinates = [(4, 5), (4, 15), (10, 5), (10, 15)]
-
-    # Check if the agent is inside the box
-    if larger_than_less_than(
-        position[0], coordinates[0][0], coordinates[2][0]
-    ) and larger_than_less_than(position[1], coordinates[0][1], coordinates[1][1]):
-        print("Positive inside box")
-        print(position)
-        return True
-
-    return False
-
-
-def build_stuck_in_wall_dataset():
-    positive_dataset = deque()
-
-    negative_dataset = deque()
-
-    # Load the dataset
 
 
 def build_csv_dataset():
@@ -172,6 +102,7 @@ def build_csv_dataset():
         fov=config["fov"],
         ray_length=config["ray_length"],
         number_of_rays=config["number_of_rays"],
+        grid_length=config["grid_length"]
     )
 
     env.metadata["render_fps"] = 100
@@ -189,6 +120,8 @@ def build_csv_dataset():
         transformer_param=config["transformer"],
     )
 
+    # create a positive and negative dataset for each concept as type deque for the concepts
+
     # Load the model
     agent.model.load_state_dict(torch.load(model_load_path, map_location=device))
     agent.model.eval()
@@ -196,54 +129,28 @@ def build_csv_dataset():
     # Containing a tuple of observation sequence, legal_actions, position sequence, action sequence
     collected_sequences = run_agent(env, agent)
     # print("Length of collected sequences: ", len(collected_sequences))
-    positive_dataset_wall = deque()
-    negative_dataset_wall = deque()
+    
+    # clear concept datasets
 
-    positive_dataset_rotating = deque()
-    negative_dataset_rotating = deque()
+    grid_pos_to_id = {(0,1):0}
 
-    positive_dataset_goal = deque()
-    negative_dataset_goal = deque()
-
-    positive_dataset_inside_box = deque()
-    negative_dataset_inside_box = deque()
+    grid_observations = {grid_id: deque() for grid_id in set(grid_pos_to_id.values())}
 
     for sequence in collected_sequences:
+
         observation_sequence, legal_actions, position_sequence, action_sequence = (
             sequence
         )
         # print(len(observation_sequence))
         if rd.random() > 0.4:
-            # Check if the agent is stuck in a wall
-            positive_wall = positive_looking_at_wall(
-                observation_sequence, legal_actions, action_sequence
-            )
-            if positive_wall:
-                positive_dataset_wall.append(observation_sequence)
-            else:
-                negative_dataset_wall.append(observation_sequence)
+            # run each function in the concepts list
+            con.positive_looking_at_wall(observation_sequence, legal_actions, action_sequence)
+            con.positive_rotating_stuck(observation_sequence, action_sequence, position_sequence)
+            con.positive_goal_in_sight(observation_sequence)
+            con.positive_inside_box(observation_sequence, position_sequence[-1])
+            con.in_grid_square(observation_sequence, grid_pos_to_id, position_sequence[-1])
 
-            positive_stuck = positive_rotating_stuck(
-                observation_sequence, action_sequence, position_sequence
-            )
-            if positive_stuck:
-                positive_dataset_rotating.append(observation_sequence)
-            else:
-                negative_dataset_rotating.append(observation_sequence)
-            positive_goal = positive_goal_in_sight(observation_sequence)
-            if positive_goal:
-                positive_dataset_goal.append(observation_sequence)
-            else:
-                negative_dataset_goal.append(observation_sequence)
-
-            positive_box = positive_inside_box(
-                observation_sequence, position_sequence[-1]
-            )
-            if positive_box:
-                positive_dataset_inside_box.append(observation_sequence)
-            else:
-                negative_dataset_inside_box.append(observation_sequence)
-
+    '''    
     # Shuffle the datasets
     rd.shuffle(negative_dataset_wall)
     rd.shuffle(negative_dataset_rotating)
@@ -281,6 +188,16 @@ def build_csv_dataset():
     print("Rotating: ", len(positive_dataset_rotating))
     print("Goal: ", len(positive_dataset_goal))
     print("Inside box: ", len(positive_dataset_inside_box))
+    '''
+
+def shuffle_and_trim_datasets():
+    # load datasets from Concept class
+    for dataset in con.datasets:
+        # shuffle the dataset
+        rd.shuffle(dataset)
+        # trim the dataset
+        dataset = dataset[:1500]
+    
 
 
 def split_dataset_into_train_test(

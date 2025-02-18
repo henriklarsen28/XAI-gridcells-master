@@ -115,6 +115,8 @@ class Model_TrainTest:
             map_path = config["map_path_test"]
         self.random_maps = config["random_maps"]
 
+        self.grid_length = config["grid_length"]
+
         # Define Env
         self.env = SunburstMazeDiscrete(
             maze_file=map_path,
@@ -128,6 +130,7 @@ class Model_TrainTest:
             fov=self.fov,
             ray_length=self.ray_length,
             number_of_rays=self.number_of_rays,
+            grid_length=self.grid_length,
         )
 
         self.env.metadata["render_fps"] = (
@@ -173,11 +176,13 @@ class Model_TrainTest:
         self.save_path = model_path + self.save_path
 
 
+
         # Training loop over episodes
         for episode in range(1, self.max_episodes + 1):
             
             # Count episode number from 1
             self.env.episode_iterations = episode 
+            false_goal = 0
 
             state, _ = self.env.reset()
 
@@ -490,7 +495,7 @@ class Model_TrainTest:
         q_val_list = ex_network.generate_q_values(env=self.env, model=self.agent.model)
         self.env.q_values = q_val_list
         # Testing loop over episodes
-        for episode in tqdm(range(1, max_episodes + 1)):
+        for episode in range(1, max_episodes + 1):
             state, _ = self.env.reset(seed=seed)
             done = False
             truncation = False
@@ -502,7 +507,7 @@ class Model_TrainTest:
             while not done and not truncation:
 
                 state = state_preprocess(state, device)
-                sequence = add_to_sequence(sequence, state)
+                sequence = add_to_sequence(sequence, state, device)
                 tensor_sequence = torch.stack(list(sequence))
                 tensor_sequence = padding_sequence(
                     tensor_sequence, self.sequence_length, device
@@ -526,36 +531,11 @@ class Model_TrainTest:
                 # print("Hello", frame)
 
                 next_state_preprosessed = state_preprocess(next_state, device)
-                new_sequence = add_to_sequence(sequence, next_state_preprosessed)
+                new_sequence = add_to_sequence(sequence, next_state_preprosessed, device)
                 tensor_new_sequence = torch.stack(list(new_sequence))
                 tensor_new_sequence = padding_sequence(
-                    tensor_new_sequence, self.sequnence_length
+                    tensor_new_sequence, self.sequence_length, device
                 )
-
-                # block_1 = att_weights_list[0]  # Block 1
-                # block_2 = att_weights_list[1]  # Block 2
-                # block_3 = att_weights_list[2]  # Block 3
-
-                # block = block_3  # Block 2
-                # #gradients = self.agent.calculate_gradients(
-                # #    tensor_sequence, tensor_new_sequence, reward, block=2
-                # #)
-                # # print('gradients', gradients)
-                # step_dicti["step"] = steps_done
-                # step_dicti["position"] = self.env.position
-                # step_dicti["tensors"] = grad_sam(
-                #     block,
-                #     gradients,
-                #     block=2,
-                #     episode=episode,
-                #     step=steps_done,
-                #     rgb_array=None,
-                #     plot=False,
-                # )
-                # step_dicti["is_stuck"] = (
-                #     True if self.env.has_not_moved(self.env.position) else False
-                # )
-                # step_dicti["orientation"] = self.env.orientation
 
                 state = next_state
                 total_reward += reward
@@ -617,15 +597,16 @@ def get_num_states(map_path):
 if __name__ == "__main__":
     # Parameters:
 
-    train_mode = True
+    train_mode = False
 
     render = True
     render_mode = "human"
 
+    map_version = map_path_test.split("/")[-2]
+
     if train_mode:
         render_mode = "rgb_array" if render else None
-
-    map_version = map_path_test.split("/")[-2]
+        map_version = map_path_train.split("/")[-2]
 
     # Read the map file to find the number of states
     # num_states = get_num_states(map_path_train)
@@ -644,7 +625,7 @@ if __name__ == "__main__":
     config = {
         "train_mode": train_mode,
         "map_path_train": map_path_random_files, # if this is a list it will select a random map from the list
-        "map_path_test": map_path_test,
+        "map_path_test": map_path_random_files,
         "map_path": map_path_test,
         "random_maps": True,
         
@@ -652,7 +633,7 @@ if __name__ == "__main__":
         "render_mode": render_mode,
 
         "model_name": "vivid-firebrand-872",
-        "RL_load_path": f"./model/transformers/seq_len_45/model_vivid-firebrand-872/sunburst_maze_map_v0_5100.pth",
+        "RL_load_path": f"./models/model_rose-pyramid-152/sunburst_maze_map_no_goal_5000.pth",
         "save_path": f"/sunburst_maze_{map_version}",
 
         "loss_function": "mse",
@@ -667,14 +648,14 @@ if __name__ == "__main__":
         "alpha": 0.1,
         
         "target_model_update": 10,  # hard update of the target model
-        "max_steps_per_episode": 10,
+        "max_steps_per_episode": 100,
 
         "random_start_position": True,
         "random_goal_position": True,
 
         "rewards": {
             "is_goal": 200 / 200,
-            "hit_wall": 0 / 200,
+            "hit_wall": -0.5 / 200,
             "has_not_moved": -0.2 / 200,
             "new_square": 2 / 200,
             "max_steps_reached": -0.5 / 200,
@@ -701,6 +682,7 @@ if __name__ == "__main__":
         "fov": math.pi / 1.5,
         "ray_length": 20,
         "number_of_rays": 100,
+        "grid_length": 4, # 4x4 grid
 
         "transformer": {
             "sequence_length": 15,
