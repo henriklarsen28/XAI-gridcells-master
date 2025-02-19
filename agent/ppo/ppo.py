@@ -73,50 +73,6 @@ def make_envs(env: dict):
             ray_length=env_params["ray_length"],
             number_of_rays=env_params["number_of_rays"],
         )"""
-
-    def _init():
-        new_env = gym.make(
-            "SunburstMazeContinuous-v0",
-            maze_file=env.get_wrapper_attr("maze_file"),
-            max_steps_per_episode=env.get_wrapper_attr("max_steps_per_episode"),
-            render_mode=env.get_wrapper_attr("render_mode"),
-            random_start_position=env.get_wrapper_attr("random_start_position"),
-            rewards=env.get_wrapper_attr("rewards"),
-            fov=env.get_wrapper_attr("fov"),
-            ray_length=env.get_wrapper_attr("ray_length"),
-            number_of_rays=env.get_wrapper_attr("number_of_rays"),
-        )
-        new_env = TimeLimit(
-            new_env,
-            env.get_wrapper_attr("max_steps_per_episode"),
-        )
-        return new_env
-
-    return _init
-
-
-def make_envs(env: dict):
-    """def _init():
-    new_env = SunburstMazeContinuous(
-        maze_file=env.maze_file,
-        render_mode=env.render_mode,
-        rewards=env.rewards,
-        fov=env.fov,
-        ray_length=env.ray_length,
-        number_of_rays=env.number_of_rays,
-    )
-    return new_env"""
-    """new_env = gym.make(
-            "SunburstMazeContinuous-v0",
-            maze_file=env_params["maze_file"],
-            max_episode_steps=env_params["max_steps_per_episode"],
-            render_mode=None,
-            random_start_position=env_params["random_start_position"],
-            rewards=env_params["rewards"],
-            fov=env_params["fov"],
-            ray_length=env_params["ray_length"],
-            number_of_rays=env_params["number_of_rays"],
-        )"""
     def _init():
         new_env = gym.make(
                 "SunburstMazeContinuous-v0",
@@ -584,8 +540,9 @@ class PPO_agent:
         returns = advantages + values
         
         return advantages, returns
+    """
 
-    """def compute_gae(self, rewards, states, gamma=0.99, lam=0.95):
+    def compute_gae(self, rewards, states, gamma=0.99, lam=0.95):
 
         advantages = torch.zeros_like(
             states[:, 0, 0], dtype=torch.float32, device=self.rollout_device
