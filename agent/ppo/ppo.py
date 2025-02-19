@@ -178,14 +178,16 @@ class PPO_agent:
 
         while timestep_counter < total_timesteps:
 
-            self.env = self.random_maps(
+            """self.env = self.random_maps(
                 self.env, random_map=True, iteration_counter=iteration_counter
-            )
+            )"""
 
             print("Iteration: ", iteration_counter)
 
             # Before rollout move the model to the cpu
+            self.policy_network.device = self.rollout_device
             self.policy_network.to(self.rollout_device)
+            self.critic_network.device = self.rollout_device
             self.critic_network.to(self.rollout_device)
             self.cov_mat = self.cov_mat.to(self.rollout_device)
 
@@ -193,7 +195,6 @@ class PPO_agent:
                 obs_batch,
                 actions_batch,
                 log_probs_batch,
-                env_classes_batch,
                 env_classes_target_batch,
                 rtgs_batch,
                 lens,
@@ -204,7 +205,6 @@ class PPO_agent:
             obs_batch = obs_batch.to(self.train_device)
             actions_batch = actions_batch.to(self.train_device)
             log_probs_batch = log_probs_batch.to(self.train_device)
-            env_classes_batch = env_classes_batch.to(self.train_device)
             env_classes_target_batch = env_classes_target_batch.to(self.train_device)
             rtgs_batch = rtgs_batch.to(self.train_device)
 
@@ -215,80 +215,81 @@ class PPO_agent:
             self.cov_mat = self.cov_mat.to(self.train_device)
 
             # Minibatches
-            minibatches = self.generate_minibatches(
+            """minibatches = self.generate_minibatches(
                 obs_batch,
                 actions_batch,
                 log_probs_batch,
                 env_classes_batch,
                 env_classes_target_batch,
                 rtgs_batch,
-            )
+            )"""
 
             timestep_counter += sum(lens)
             iteration_counter += 1
 
-            for (
+            """for (
                 obs_batch,
                 actions_batch,
                 log_probs_batch,
                 env_classes_batch,
                 env_classes_target_batch,
                 rtgs_batch,
-            ) in minibatches:
+            ) in minibatches:"""
 
-                # print("Obs: ", obs, obs.shape)
-                # Calculate the advantages
-                value, _ = evaluate(
+            # print("Obs: ", obs, obs.shape)
+            # Calculate the advantages
+            value, _, _ = evaluate(
+                obs_batch,
+                actions_batch,
+                self.policy_network,
+                self.critic_network,
+                self.cov_mat,
+            )
+            rtgs_batch = rtgs_batch.unsqueeze(1)
+
+            advantages = rtgs_batch - value.detach()
+
+            # Normalize the advantages
+            advantages = (rtgs_batch - rtgs_batch.mean()) / (rtgs_batch.std() + 1e-10)
+            advantages = rtgs_batch
+            for _ in range(self.n_updates_per_iteration):
+                value, current_log_prob, env_classes_batch = evaluate(
                     obs_batch,
                     actions_batch,
                     self.policy_network,
                     self.critic_network,
                     self.cov_mat,
                 )
-                rtgs_batch = rtgs_batch.unsqueeze(1)
+                entropy = self.compute_entropy(current_log_prob)
 
-                advantages = rtgs_batch - value.detach()
+                ratio = torch.exp(current_log_prob - log_probs_batch)
 
-                # Normalize the advantages
-                advantages = (advantages - advantages.mean()) / (
-                    advantages.std() + 1e-10
+                surrogate_loss1 = ratio * advantages
+
+                surrogate_loss2 = (
+                    torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * advantages
                 )
-                for _ in range(self.n_updates_per_iteration):
-                    value, current_log_prob = evaluate(
-                        obs_batch,
-                        actions_batch,
-                        self.policy_network,
-                        self.critic_network,
-                        self.cov_mat,
-                    )
+                policy_loss_ppo = (-torch.min(surrogate_loss1, surrogate_loss2)).mean()
+                env_class_loss = F.cross_entropy(
+                    env_classes_batch, env_classes_target_batch.float()
+                )
 
-                    ratio = torch.exp(current_log_prob - log_probs_batch)
 
-                    surrogate_loss1 = ratio * advantages
+                policy_loss = policy_loss_ppo - 0.01 * entropy
 
-                    surrogate_loss2 = (
-                        torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * advantages
-                    )
-                    policy_loss_ppo = (
-                        -torch.min(surrogate_loss1, surrogate_loss2)
-                    ).mean()
-                    env_class_loss = F.cross_entropy(
-                        env_classes_target_batch.float(), env_classes_batch.float()
-                    )
-                    # env_class_loss = env_class_loss
-                    policy_loss = policy_loss_ppo  # + 0.0001 * env_class_loss
+                critic_loss = nn.MSELoss()(value, rtgs_batch)
 
-                    critic_loss = nn.MSELoss()(value, rtgs_batch)
+                self.env_network_backprop(env_class_loss)
 
-                    print("Policy loss step")
-                    self.policy_network.zero_grad()
-                    policy_loss.backward(retain_graph=True)
-                    self.policy_optimizer.step()
+                print("Policy loss step")
+                self.policy_network.zero_grad()
+                policy_loss.backward()
+                self.policy_optimizer.step()
 
-                    self.critic_network.zero_grad()
-                    critic_loss.backward()
-                    self.critic_optimizer.step()
-                    print("After")
+                self.critic_network.zero_grad()
+                critic_loss.backward(retain_graph=True)
+                self.critic_optimizer.step()
+                print("After")
 
             gif = None
             if frames:
@@ -323,12 +324,34 @@ class PPO_agent:
                     f"./model/transformers/ppo/model_{self.run.name}/critic_network_{iteration_counter}.pth",
                 )
 
+    def env_network_backprop(self, env_class_loss):
+        # Freeze the rest of the policy network
+        for param in self.policy_network.blocks.parameters():
+            param.requires_grad = False
+        for param in self.policy_network.ln_f.parameters():
+            param.requires_grad = False
+        for param in self.policy_network.output.parameters():
+            param.requires_grad = False
+        for param in self.policy_network.env_class.parameters():
+                param.requires_grad = True
+
+        self.policy_optimizer.zero_grad()
+        env_class_loss.backward(retain_graph=True)
+        self.policy_optimizer.step()
+
+        # Unfreeze the rest of the policy network
+        for param in self.policy_network.parameters():
+            param.requires_grad = True
+
+        # Freeze the env class network
+        for param in self.policy_network.env_class.parameters():
+            param.requires_grad = False
+
     def rollout(self, iteration_counter):
         observations = []
         actions = []
         log_probs = []
         rewards = []
-        env_classes_pred = []
         env_classes_target = []
         rtgs = []
         lens = []
@@ -344,10 +367,13 @@ class PPO_agent:
             episode_rewards = []
             # env_params = self.env.get_params()
             # envs = AsyncVectorEnv([make_envs(self.env) for _ in range(4)])
+
+            # Reset the environment. sNote that obs is short for observation.
+            self.env = self.random_maps(self.env, random_map=True)
+
             state, _ = self.env.reset()
             done = False
 
-            # TODO: Multiprocess this
             for ep_timestep in range(self.max_steps):
                 timesteps += 1
                 state_sequence = add_to_sequence(
@@ -357,7 +383,7 @@ class PPO_agent:
                 tensor_sequence = padding_sequence(
                     tensor_sequence, self.sequence_length, self.rollout_device
                 )
-                action, log_prob, env_class = get_action(
+                action, log_prob = get_action(
                     tensor_sequence, self.policy_network, self.cov_mat
                 )
                 action = action[0]
@@ -378,7 +404,7 @@ class PPO_agent:
                 observations.append(tensor_sequence)
                 actions.append(action)
                 log_probs.append(log_prob)
-                env_classes_pred.append(env_class)
+                env_classes_target.append(torch.nn.functional.one_hot(torch.tensor(self.env_2_id[self.env.maze_file]), num_classes=len(self.env_2_id)))
                 episode_rewards.append(reward)
 
                 done = terminated or turnicated
@@ -394,21 +420,16 @@ class PPO_agent:
         obs = torch.stack(observations).to(self.rollout_device)
         actions = torch.tensor(actions).to(self.rollout_device)
         log_probs = torch.tensor(log_probs).to(self.rollout_device)
-        env_classes_pred = torch.stack(env_classes_pred).to(self.rollout_device)
-        env_classes_target = torch.tensor(
-            [self.env_2_id[self.env.maze_file] for _ in range(len(env_classes_pred))],
-            dtype=torch.float32,
-        ).to(self.rollout_device)
-
+        env_classes_target = torch.stack(env_classes_target).to(self.rollout_device)
         rtgs = self.compute_rtgs(rewards)
-
+        # rtgs = self.compute_gae(rewards, obs, self.gamma, self.gae_lambda)
+        # print(rtgs.shape, actions.shape)
         # Create a sequence of rtgs
 
         return (
             obs,
             actions,
             log_probs,
-            env_classes_pred,
             env_classes_target,
             rtgs,
             lens,
@@ -431,6 +452,28 @@ class PPO_agent:
         # Convert the rewards-to-go into a tensor
         rtgs = torch.tensor(rtgs, dtype=torch.float, device=self.rollout_device)
         return rtgs
+
+    def compute_gae(self, rewards, states, gamma=0.99, lam=0.95):
+        """Computes Generalized Advantage Estimation (GAE)."""
+
+        advantages = torch.zeros_like(
+            states[:, 0, 0], dtype=torch.float32, device=self.rollout_device
+        )
+        last_advantage = 0
+        values, _ = self.critic_network(states)
+        values = values.detach()
+        for ep_rewards in rewards:
+
+            for t in reversed(range(len(ep_rewards))):
+                delta = ep_rewards[t] + gamma * values[t + 1] - values[t]
+                last_advantage = delta + gamma * lam * last_advantage
+                advantages[t] = last_advantage
+
+        advantages = advantages.unsqueeze(1)
+        return advantages
+
+    def compute_entropy(self, log_probs):
+        return torch.mean(-log_probs)
 
     def pad_rtgs(self, rtgs):
 
@@ -461,6 +504,7 @@ class PPO_agent:
         self.learning_rate = config["learning_rate"]
         self.n_updates_per_iteration = config["n_updates_per_iteration"]
         self.gamma = config["gamma"]
+        self.gae_lambda = config["gae_lambda"]
         self.batch_size = config["batch_size"]
         self.mini_batch_size = config["mini_batch_size"]
         self.save_interval = config["save_interval"]
@@ -468,7 +512,6 @@ class PPO_agent:
         self.max_steps = config["max_steps_per_episode"]
         self.render = config["render"]
         self.render_mode = config["render_mode"]
-        self.change_env = config["change_env"]
 
     def generate_minibatches(
         self, obs, actions, log_probs, env_classes, env_classes_target, rtgs
@@ -493,25 +536,19 @@ class PPO_agent:
         self,
         env: SunburstMazeContinuous,
         random_map: bool = False,
-        iteration_counter: int = 0,
     ):
-        if random_map and iteration_counter % self.change_env == 0:
+        if random_map:
             # Select and load a new random map
-            map_path = rd.choice(map_path_random_files)
-            """new_env = SunburstMazeContinuous(
-                maze_file=map_path,
-                render_mode=env.render_mode,
-                rewards=env.rewards,
-                fov=env.fov,
-                ray_length=env.ray_length,
-                number_of_rays=env.number_of_rays,
-            )"""
+            map_path = map_path_random_files[0]
+            map_path_random_files.pop(0)
+            map_path_random_files.append(map_path)
             env = gym.make(
                 "SunburstMazeContinuous-v0",
                 maze_file=map_path,
                 max_steps_per_episode=env.get_wrapper_attr("max_steps_per_episode"),
                 render_mode=env.get_wrapper_attr("render_mode"),
                 random_start_position=env.get_wrapper_attr("random_start_position"),
+                random_goal_position=env.get_wrapper_attr("random_goal_position"),
                 rewards=env.get_wrapper_attr("rewards"),
                 fov=env.get_wrapper_attr("fov"),
                 ray_length=env.get_wrapper_attr("ray_length"),

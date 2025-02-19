@@ -76,6 +76,7 @@ class Model_TrainTest:
 
         self.rewards = config["rewards"]
         self.random_start_position = config["random_start_position"]
+        self.random_goal_position = config["random_goal_position"]
         self.observation_space = config["observation_space"]
 
         self.fov = config["fov"]
@@ -103,13 +104,13 @@ class Model_TrainTest:
         self.env.metadata["render_fps"] = (
             self.render_fps
         )  # For max frame rate make it 0"""
-        print(gym.envs.registry.keys())
         self.env = gym.make(
             "SunburstMazeContinuous-v0",
             maze_file=map_path,
             max_steps_per_episode=self.max_steps,
             render_mode=self.render_mode,
             random_start_position=self.random_start_position,
+            random_goal_position=self.random_goal_position,
             rewards=self.rewards,
             fov=self.fov,
             ray_length=self.ray_length,
@@ -154,7 +155,7 @@ if __name__ == "__main__":
     fov_config = {
         "fov": math.pi / 1.5,
         "ray_length": 15,
-        "number_of_rays": 100,
+        "number_of_rays": 20,
     }
 
     # Parameters
@@ -169,25 +170,25 @@ if __name__ == "__main__":
         "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 3e-4,
-        "batch_size": 8192,
-        "mini_batch_size": 512,
+        "batch_size": 20,
+        "mini_batch_size": 128,
         "optimizer": "adam",
         "gamma": 0.99,
-        # "gae_lambda": 0.95,
+        "gae_lambda": 0.95,
         "map_path": map_path_train,
-        "n_updates_per_iteration": 7,  # hard update of the target model
-        "change_env": 150,
-        "max_steps_per_episode": 500,
+        "n_updates_per_iteration": 10,  # hard update of the target model
+        "max_steps_per_episode": 20,
         "random_start_position": True,
+        "random_goal_position": False,
         "rewards": {
-            "is_goal": 3,
-            "hit_wall": -0.001,
+            "is_goal": 10,
+            "hit_wall": -0.00002,
             "has_not_moved": -0.005,
             "new_square": 0.0,
             "max_steps_reached": -0.025,
             "penalty_per_step": -0.00002,
             "number_of_squares_visible": 0,
-            "goal_in_sight": 0.1,
+            "goal_in_sight": 0.01,
             "is_false_goal": -0.01,
             # and the proportion of number of squares viewed (set in the env)
         },
@@ -206,10 +207,10 @@ if __name__ == "__main__":
         "ray_length": fov_config["ray_length"],
         "number_of_rays": fov_config["number_of_rays"],
         "transformer": {
-            "sequence_length": 30,
-            "n_embd": 256,
-            "n_head": 8,
-            "n_layer": 3,
+            "sequence_length": 20,
+            "n_embd": 128,
+            "n_head": 4,
+            "n_layer": 2,
             "dropout": 0.2,
             "decouple_positional_embedding": False,
         },

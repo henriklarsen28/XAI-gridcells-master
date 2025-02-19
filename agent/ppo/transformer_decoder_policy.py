@@ -114,7 +114,11 @@ class TransformerPolicy(nn.Module):
         )  # Optional: add hidden layers after the final decoder layer
         self.apply(self.init_weights)
 
-        self.env_class = nn.Linear(n_embd, num_envs)
+        self.env_class = nn.Sequential(
+            nn.Linear(n_embd, 64),
+            nn.ReLU(),
+            nn.Linear(64, num_envs),
+        )
 
         self.log_std = nn.Parameter(torch.zeros(np.prod(output_dim)))
 
@@ -143,14 +147,14 @@ class TransformerPolicy(nn.Module):
             att_weights_list.append(att_weights)
 
         # x = self.blocks(x)
-        x = self.ln_f(x[:,-1])
+        x = self.ln_f(x)
 
         output = self.output(x.to(torch.float32))
-        env_class_out = torch.argmax(self.env_class(x))
-        
+        env_class_out = self.env_class(x[:, -1, :])
+        env_class_out = F.gumbel_softmax(env_class_out, tau=1, hard=True)
         x_std = torch.exp(self.log_std)
         #x_last = x[:, -1, :]
-        #print(x_last.shape)
+        output = output[:, -1, :]
         return output, x_std, env_class_out, att_weights_list
 
 

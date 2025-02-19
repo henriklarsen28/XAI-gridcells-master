@@ -47,6 +47,7 @@ class SunburstMazeContinuous(gym.Env):
         render_mode=None,
         max_steps_per_episode=200,
         random_start_position=None,
+        random_goal_position=None,
         rewards=None,
         fov=math.pi / 2,
         ray_length=10,
@@ -59,6 +60,7 @@ class SunburstMazeContinuous(gym.Env):
         self.height = self.env_map.shape[0]
         self.width = self.env_map.shape[1]
         self.random_start_position = random_start_position
+        self.random_goal_position = random_goal_position
         self.rewards = rewards
         self.render_mode = render_mode
 
@@ -80,7 +82,7 @@ class SunburstMazeContinuous(gym.Env):
         self.velocity_x = 0
         self.velocity_y = 0
         self.position = None
-        self.goal = self.extract_goal_coordinates()
+        self.goal = self.goal_position() if self.random_goal_position else self.extract_goal_coordinates()
 
 
         # Episode step settings
@@ -130,6 +132,19 @@ class SunburstMazeContinuous(gym.Env):
         self.observation_space = gym.spaces.Box(
             low=0, high=2, shape=(y*x+1,), dtype=np.float64  # Adjust shape and range as needed
         )
+
+    def goal_position(self):
+        for y in range(self.height):
+            for x in range(self.width):
+                if self.env_map[y][x] == 2:
+                    if self.random_goal_position is True:
+                        self.env_map[y][x] = 0
+                        position = self.random_position()
+                        self.env_map[position[0]][position[1]] = 2
+                        return position
+                    return (y, x)
+        return None
+    
     def select_start_position(self) -> tuple:
         """
         Selects the start position for the maze.
@@ -137,11 +152,9 @@ class SunburstMazeContinuous(gym.Env):
         Returns:
             tuple: The coordinates of the selected start position.
         """
-
-        if self.random_start_position is True:
+        if self.random_start_position:
             position = self.random_position()
             self.orientation = rd.randint(0, 360)
-            self.orientation = 0
         else:
             # position = (10, 13)
             position = (self.height - 2, 10)  # Bottom left for the small maze
