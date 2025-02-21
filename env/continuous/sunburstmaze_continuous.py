@@ -325,10 +325,10 @@ class SunburstMazeContinuous(gym.Env):
 
         return matrix
 
-    def is_collision(self, x, y):
+    def is_collision(self, y, x):
         # Convert continuous coordinates to grid indices
-        grid_x = math.floor(x)
-        grid_y = math.floor(y)
+        grid_x = round(x)
+        grid_y = round(y)
         # Check if the agent is out of bounds or hits a wall
         if grid_x < 0 or grid_x >= self.width or grid_y < 0 or grid_y >= self.height:
             return True
@@ -345,13 +345,14 @@ class SunburstMazeContinuous(gym.Env):
             return True
         return False
 
-    def is_false_goal(self):#TODO: Make for continuou
+    def is_false_goal(self):
         """
         Checks if the current position is a goal position.
         Returns:
             bool: True if the current position is a goal position, False otherwise.
         """
         int_position = (int(self.position[0]), int(self.position[1]))
+
         if (
             int(self.env_map[int_position[0]][int_position[1]]) == 2
             and int_position != self.goal
@@ -416,16 +417,9 @@ class SunburstMazeContinuous(gym.Env):
         position_y = self.position[0] + self.velocity_y
         position_x = self.position[1] + self.velocity_x
 
-        if self.is_collision(position_x, position_y):
-            return (
-                self._get_observation(),
-                self.rewards["hit_wall"],
-                False,
-                False,
-                self._get_info(),
-            )
-
-        self.position = (position_y, position_x)
+        # Keep the old position if the new position is invalid
+        if not self.is_collision(position_y, position_x):
+            self.position = (position_y, position_x)
 
         observation = self._get_observation()
         """self.past_actions.append(
@@ -435,15 +429,13 @@ class SunburstMazeContinuous(gym.Env):
         # Used if the action is invalid
 
         reward = self.reward()
-        observation = None
 
-        terminated = self.view_of_maze_complete()
         info = self._get_info()
 
         if self.is_goal():
             return (
                 observation,
-                self.rewards["is_goal"] + reward,
+                self.rewards["is_goal"],
                 True,
                 True,
                 self._get_info(),
@@ -451,7 +443,6 @@ class SunburstMazeContinuous(gym.Env):
 
         if self.steps_current_episode >= self.max_steps_per_episode:
             print("Reached max steps")
-            self.steps_current_episode = 0
             return (
                 observation,
                 self.rewards["max_steps_reached"],
@@ -462,17 +453,12 @@ class SunburstMazeContinuous(gym.Env):
 
         self.steps_current_episode += 1
         # Updated values
-        observation = self._get_observation()
+        #observation = self._get_observation()
 
         if self.render_mode == "human":
             self.render()
 
-        return observation, reward, terminated, False, info
-
-    def view_of_maze_complete(self):
-        if len(self.viewed_squares) == self.map_observation_size:
-            return True
-        return False
+        return observation, reward, False, False, info
 
     def has_not_moved(self, position):
         # Only keep the last 50 moves
@@ -499,9 +485,13 @@ class SunburstMazeContinuous(gym.Env):
         """
 
         # Penalize for just rotating in place without moving
-        current_pos = self.position
+
 
         reward = 0
+
+        if self.is_collision(self.position[0], self.position[1]):
+            reward += self.rewards["hit_wall"]
+
 
         if self.is_false_goal():
             reward += self.rewards["is_false_goal"]

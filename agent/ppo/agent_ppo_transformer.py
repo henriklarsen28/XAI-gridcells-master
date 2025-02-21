@@ -155,7 +155,7 @@ if __name__ == "__main__":
     fov_config = {
         "fov": math.pi / 1.5,
         "ray_length": 15,
-        "number_of_rays": 20,
+        "number_of_rays": 40,
     }
 
     # Parameters
@@ -170,26 +170,26 @@ if __name__ == "__main__":
         "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 3e-4,
-        "batch_size": 20,
+        "batch_size": 2500,
         "mini_batch_size": 128,
         "optimizer": "adam",
         "gamma": 0.99,
-        "gae_lambda": 0.95,
+        "gae_lambda": 0.90,
         "map_path": map_path_train,
         "n_updates_per_iteration": 10,  # hard update of the target model
-        "max_steps_per_episode": 20,
+        "max_steps_per_episode": 400,
         "random_start_position": True,
         "random_goal_position": False,
         "rewards": {
             "is_goal": 10,
-            "hit_wall": -0.00002,
+            "hit_wall": -0.002,
             "has_not_moved": -0.005,
             "new_square": 0.0,
             "max_steps_reached": -0.025,
             "penalty_per_step": -0.00002,
             "number_of_squares_visible": 0,
             "goal_in_sight": 0.01,
-            "is_false_goal": -0.01,
+            "is_false_goal": -0.001,
             # and the proportion of number of squares viewed (set in the env)
         },
         # TODO

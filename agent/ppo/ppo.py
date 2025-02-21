@@ -16,8 +16,9 @@ import wandb
 from gymnasium.vector import AsyncVectorEnv
 from gymnasium.wrappers import TimeLimit
 from torch import nn
-from transformer_decoder import Transformer
-from transformer_decoder_policy import TransformerPolicy
+from gated_transformer_decoder import Transformer
+from gated_transformer_decoder_policy import TransformerPolicy
+from attention_pooling import AttentionPooling
 
 torch.autograd.set_detect_anomaly(True)
 
@@ -154,6 +155,9 @@ class PPO_agent:
             device=self.rollout_device,
         )
 
+        """self.policy_attention_pooling = AttentionPooling(
+            hidden_dim=self.act_dim,"""
+
         self.policy_network.to(self.rollout_device)
         self.critic_network.to(self.rollout_device)
 
@@ -251,7 +255,7 @@ class PPO_agent:
 
             # Normalize the advantages
             advantages = (rtgs_batch - rtgs_batch.mean()) / (rtgs_batch.std() + 1e-10)
-            advantages = rtgs_batch
+            #advantages = rtgs_batch
             for _ in range(self.n_updates_per_iteration):
                 value, current_log_prob, env_classes_batch = evaluate(
                     obs_batch,
@@ -279,12 +283,15 @@ class PPO_agent:
 
                 critic_loss = nn.MSELoss()(value, rtgs_batch)
 
-                self.env_network_backprop(env_class_loss)
+
 
                 print("Policy loss step")
                 self.policy_network.zero_grad()
                 policy_loss.backward()
                 self.policy_optimizer.step()
+
+                #self.env_network_backprop(env_class_loss)
+
 
                 self.critic_network.zero_grad()
                 critic_loss.backward(retain_graph=True)
@@ -340,7 +347,11 @@ class PPO_agent:
         self.policy_optimizer.step()
 
         # Unfreeze the rest of the policy network
-        for param in self.policy_network.parameters():
+        for param in self.policy_network.blocks.parameters():
+            param.requires_grad = True
+        for param in self.policy_network.ln_f.parameters():
+            param.requires_grad = True
+        for param in self.policy_network.output.parameters():
             param.requires_grad = True
 
         # Freeze the env class network
@@ -422,7 +433,8 @@ class PPO_agent:
         log_probs = torch.tensor(log_probs).to(self.rollout_device)
         env_classes_target = torch.stack(env_classes_target).to(self.rollout_device)
         rtgs = self.compute_rtgs(rewards)
-        # rtgs = self.compute_gae(rewards, obs, self.gamma, self.gae_lambda)
+        #rtgs = self.compute_gae(rewards, obs, self.gamma, self.gae_lambda)
+        #print(rtgs, rtgs.shape)
         # print(rtgs.shape, actions.shape)
         # Create a sequence of rtgs
 
@@ -475,28 +487,6 @@ class PPO_agent:
     def compute_entropy(self, log_probs):
         return torch.mean(-log_probs)
 
-    def pad_rtgs(self, rtgs):
-
-        processed_rtgs = []
-
-        for i in range(len(rtgs)):
-            rtg_tensor = torch.tensor(
-                rtgs[:i], dtype=torch.float32, device=self.rollout_device
-            )
-
-            # If RTG sequence is too short, pad it
-            if len(rtg_tensor) < self.sequence_length:
-                padded_rtg = F.pad(
-                    rtg_tensor, (self.sequence_length - len(rtg_tensor), 0)
-                )  # Left-padding
-            else:
-                padded_rtg = rtg_tensor[
-                    -self.sequence_length :
-                ]  # Truncate from the beginning
-
-            processed_rtgs.append(padded_rtg)
-
-        return torch.stack(processed_rtgs)
 
     def __init_hyperparameters(self, config):
         self.clip_grad_normalization = config["clip_grad_normalization"]
