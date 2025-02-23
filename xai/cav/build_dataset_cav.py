@@ -1,5 +1,6 @@
 import ast
 import copy
+import json
 import math
 import os
 import random as rd
@@ -20,12 +21,12 @@ from env import SunburstMazeDiscrete
 from utils.calculate_fov import calculate_fov_matrix_size
 from utils.sequence_preprocessing import add_to_sequence, padding_sequence
 from utils.state_preprocess import state_preprocess
-from xai.cav.concept_definition import Concepts as con
+from xai.cav.concept_definition import Concepts
 
 device = torch.device("cpu")
 fov_config = {
     "fov": math.pi / 1.5,
-    "ray_length": 8,
+    "ray_length": 20,
     "number_of_rays": 100,
 }
 
@@ -33,20 +34,28 @@ half_fov = fov_config["fov"] / 2
 matrix_size = calculate_fov_matrix_size(fov_config["ray_length"], half_fov)
 num_states = matrix_size[0] * matrix_size[1]
 
-# Parameters
+ # Parameters
 config = {
+    "model_path": "../../agent/dqn/models/",
+    "model_name": "model_rose-pyramid-152",
+    "model_episodes": [400, 2500, 5000],
+
+    "env_name": "map_circular_4_5",
+    "env_path": "../../env/random_generated_maps/goal/medium/map_circular_4_5.csv",
+
     "max_steps_per_episode": 250,
     "random_start_position": True,
-    "random_goal_position": True,
+    "random_goal_position": False,
     "rewards": {
         "is_goal": 200 / 200,
-        "hit_wall": -0.05 / 200,
+        "hit_wall": -0.5 / 200,
         "has_not_moved": -0.2 / 200,
-        "new_square": 0.01 / 200,
+        "new_square": 2 / 200,
         "max_steps_reached": -0.5 / 200,
         "penalty_per_step": -0.01 / 200,
         "goal_in_sight": 0 / 200,
         "number_of_squares_visible": 0 / 200,
+        "is_false_goal": 0 / 200,
     },
     # TODO
     "observation_space": {
@@ -54,7 +63,7 @@ config = {
         "orientation": True,
         "steps_to_goal": False,
         "last_known_steps": 0,
-        "salt_and_pepper_noise": 0.2,
+        "salt_and_pepper_noise": 0,
     },
     "save_interval": 100,
     "memory_capacity": 200_000,
@@ -62,8 +71,10 @@ config = {
     "num_states": num_states,
     "clip_grad_normalization": 3,
     "fov": math.pi / 1.5,
-    "ray_length": 8,
+    "ray_length": 20,
     "number_of_rays": 100,
+    "grid_length": 4, # 4x4 grid
+
     "transformer": {
         "sequence_length": 15,
         "n_embd": 128,
@@ -73,30 +84,24 @@ config = {
         "state_dim": num_states,
         "decouple_positional_embedding": False,
     },
-    "grid_length": 4, # 4x4 grid
-}
 
-# CAV for stuck in wall -> Sees into wall and tries to move forward
-def save_to_csv(dataset: deque, file_name: str):
-    dataset = [[state.tolist() for state in sequence] for sequence in dataset]
-    # Convert from list of tensors to list of numpy arrays
-    df = pd.DataFrame(dataset)
-
-    df.to_csv(f"./dataset/{file_name}", index=False)
+    "cav": {
+        "dataset_max_length" : 1500
+    }
+    
+    }
 
 
-def build_csv_dataset():
+def build_csv_dataset(model_paths: str):
     # Load early agent data
-    env_path = "../../env/map_v0/map_open_doors_90_degrees.csv"
-    model_load_path = "../../agent/model/transformers/model_vivid-firebrand-872/sunburst_maze_map_v0_400.pth"
 
     epsilon = 0.2
 
     env = SunburstMazeDiscrete(
-        maze_file=env_path,
+        maze_file=config["env_path"],
         render_mode="human",
         random_start_position=config["random_start_position"],
-        random_goal_position=config["random_goal_position"],
+        # random_goal_position=config["random_goal_position"],
         rewards=config["rewards"],
         observation_space=config["observation_space"],
         fov=config["fov"],
@@ -120,21 +125,22 @@ def build_csv_dataset():
         transformer_param=config["transformer"],
     )
 
-    # create a positive and negative dataset for each concept as type deque for the concepts
+    con = Concepts(
+        grid_pos_to_id=env.env_grid,
+    )
+
+    # clear the datasets in the concept class
+    con.clear_datasets()
+    # con.grid_pos_to_id = env.env_grid
 
     # Load the model
+    model_load_path = model_paths[0]
     agent.model.load_state_dict(torch.load(model_load_path, map_location=device))
     agent.model.eval()
-
+    print("Using model: ", model_load_path)
     # Containing a tuple of observation sequence, legal_actions, position sequence, action sequence
-    collected_sequences = run_agent(env, agent)
+    collected_sequences = run_agent(env, agent, model_paths)
     # print("Length of collected sequences: ", len(collected_sequences))
-    
-    # clear concept datasets
-
-    grid_pos_to_id = {(0,1):0}
-
-    grid_observations = {grid_id: deque() for grid_id in set(grid_pos_to_id.values())}
 
     for sequence in collected_sequences:
 
@@ -143,87 +149,105 @@ def build_csv_dataset():
         )
         # print(len(observation_sequence))
         if rd.random() > 0.4:
-            # run each function in the concepts list
-            con.positive_looking_at_wall(observation_sequence, legal_actions, action_sequence)
-            con.positive_rotating_stuck(observation_sequence, action_sequence, position_sequence)
-            con.positive_goal_in_sight(observation_sequence)
-            con.positive_inside_box(observation_sequence, position_sequence[-1])
-            con.in_grid_square(observation_sequence, grid_pos_to_id, position_sequence[-1])
-
-    '''    
-    # Shuffle the datasets
-    rd.shuffle(negative_dataset_wall)
-    rd.shuffle(negative_dataset_rotating)
-    rd.shuffle(negative_dataset_goal)
-    rd.shuffle(positive_dataset_inside_box)
-
-    # Trim the negative datasets
-
-    negative_dataset_wall = list(negative_dataset_wall)
-    negative_dataset_rotating = list(negative_dataset_rotating)
-    negative_dataset_goal = list(negative_dataset_goal)
-    negative_dataset_inside_box = list(negative_dataset_inside_box)
-
-    dataset_length = max(min(len(positive_dataset_goal), 1500), 1500)
-
-    negative_dataset_wall = negative_dataset_wall[:dataset_length]
-    negative_dataset_rotating = negative_dataset_rotating[:dataset_length]
-    negative_dataset_goal = negative_dataset_goal[:dataset_length]
-    negative_dataset_inside_box = negative_dataset_inside_box[:dataset_length]
-
-    # Save the datasets to csv files
-    save_to_csv(positive_dataset_wall, "positive_wall.csv")
-    save_to_csv(negative_dataset_wall, "negative_wall.csv")
-
-    save_to_csv(positive_dataset_rotating, "positive_rotating.csv")
-    save_to_csv(negative_dataset_rotating, "negative_rotating.csv")
-
-    save_to_csv(positive_dataset_goal, "positive_goal.csv")
-    save_to_csv(negative_dataset_goal, "negative_goal.csv")
-
-    save_to_csv(positive_dataset_inside_box, "positive_inside_box.csv")
-    save_to_csv(negative_dataset_inside_box, "negative_inside_box.csv")
-
-    print("Wall: ", len(positive_dataset_wall))
-    print("Rotating: ", len(positive_dataset_rotating))
-    print("Goal: ", len(positive_dataset_goal))
-    print("Inside box: ", len(positive_dataset_inside_box))
-    '''
-
-def shuffle_and_trim_datasets():
-    # load datasets from Concept class
-    for dataset in con.datasets:
-        # shuffle the dataset
-        rd.shuffle(dataset)
-        # trim the dataset
-        dataset = dataset[:1500]
-    
+            # con.looking_at_wall(observation_sequence, legal_actions, action_sequence)
+            # con.rotating_stuck(observation_sequence, action_sequence, position_sequence)
+            # con.goal_in_sight(observation_sequence)
+            # con.inside_box(observation_sequence, position_sequence[-1])
+            con.in_grid_square(observation_sequence, position_sequence[-1])
 
 
+    for key, val in con.datasets.items():
+        filename = key
+        if isinstance(val, dict):
+            for sub_key, sub_val in val.items():
+                if sub_val:
+                    filename = str(key) + '_' + str(sub_key)
+                    data_preprocessed = shuffle_and_trim_datasets(sub_val)
+                    save_to_csv(data_preprocessed, filename)
+        else:
+            if val:
+                data_preprocessed = shuffle_and_trim_datasets(val)
+                save_to_csv(data_preprocessed, filename)
+
+    save_config()
+
+def shuffle_and_trim_datasets(dataset: deque):
+    max_length = config["cav"]["dataset_max_length"]
+    # shuffle the dataset
+    data = list(dataset)
+    rd.shuffle(data)
+    # trim the dataset
+    if len(data) >= max_length:
+        data = data[:max_length]
+    return data
+
+
+#TODO: fix dataset path
 def split_dataset_into_train_test(
-    dataset: deque, ratio: float = 0.8, concept: str = ""
-):
-    # Split the dataset into a training and test set
-    train_size = int(len(dataset) * ratio)
-    train_dataset = dataset[:train_size]
-    test_dataset = dataset[train_size:]
+    dataset_path: str, ratio: float = 0.8
+):  
+    for file in dataset_path:
+        concept = file
+        # Split the dataset into a training and test set
+        train_size = int(len(file) * ratio)
+        train_dataset = file[:train_size]
+        test_dataset = file[train_size:]
 
-    train = [
-        [torch.tensor(ast.literal_eval(state)) for state in states]
-        for _, states in train_dataset.iterrows()
-    ]
-    test = [
-        [torch.tensor(ast.literal_eval(state)) for state in states]
-        for _, states in test_dataset.iterrows()
-    ]
+        train = [
+            [torch.tensor(ast.literal_eval(state)) for state in states]
+            for _, states in train_dataset.iterrows()
+        ]
+        test = [
+            [torch.tensor(ast.literal_eval(state)) for state in states]
+            for _, states in test_dataset.iterrows()
+        ]
 
-    save_to_csv(train, f"{concept}_train.csv")
-    save_to_csv(test, f"{concept}_test.csv")
+        save_to_csv(train, f"{dataset_path}{concept}_train.csv")
+        save_to_csv(test, f"{concept}_test.csv")
 
     return train_dataset, test_dataset
 
 
-def run_agent(env: SunburstMazeDiscrete, agent: DTQN_Agent):
+def save_to_csv(dataset: list, file_name: str):
+    data = [[state.tolist() for state in sequence] for sequence in dataset]
+    # Convert from list of tensors to list of numpy arrays
+    df = pd.DataFrame(data)
+
+    path = f"./dataset/{config["model_name"]}/{config["env_name"]}"
+    if os.path.exists(path) == False:
+        os.makedirs(path)
+
+    df.to_csv(f"{path}/{file_name}.csv", index=False)
+
+def save_config():
+    path = f"./dataset/{config["model_name"]}/{config["env_name"]}"
+    if os.path.exists(path) == False:
+        os.makedirs(path)
+    with open(os.path.join(path, "config.json"), "w") as f:
+        json.dump(config, f, indent=4)
+
+def find_model_files(base_path: str, ep_ids: list):
+
+    # find the model file that ends with a specific number followed by '.pth'
+    try:
+        files = os.listdir(base_path)
+    except FileNotFoundError:
+        print(f"Directory {base_path} does not exist.")
+        return None
+
+    ep_ids = sorted(ep_ids, reverse=False)
+
+    model_files = []
+
+    for num in ep_ids:
+        for file in files:
+            if file.endswith(f"{num}.pth"):
+                path = os.path.join(base_path, file)
+                model_files.append(path)
+    return model_files
+    
+
+def run_agent(env: SunburstMazeDiscrete, agent: DTQN_Agent, models: list):
 
     collected_sequences = deque()
 
@@ -238,14 +262,16 @@ def run_agent(env: SunburstMazeDiscrete, agent: DTQN_Agent):
 
         # Load new model when the episode is larger than 60
         if episode == 60:
-            model_load_path = "../../agent/model/transformers/model_vivid-firebrand-872/sunburst_maze_map_v0_2500.pth"
+            model_load_path = models[1]
+            print("Using model: ", model_load_path)
             agent.model.load_state_dict(
                 torch.load(model_load_path, map_location=device)
             )
             agent.model.eval()
 
         if episode == 90:
-            model_load_path = "../../agent/model/transformers/model_vivid-firebrand-872/sunburst_maze_map_v0_5200.pth"
+            model_load_path = models[2]
+            print("Using model: ", model_load_path)
             agent.model.load_state_dict(
                 torch.load(model_load_path, map_location=device)
             )
@@ -296,31 +322,36 @@ def run_agent(env: SunburstMazeDiscrete, agent: DTQN_Agent):
 
     return copy.deepcopy(collected_sequences)
 
+def build_random_dataset(file_path):
+    # load and concatenate all CSV files
+    files = [os.path.join(file_path, f) for f in os.listdir(file_path) if f.endswith('.csv')]
+    dataset = pd.concat([pd.read_csv(f) for f in files])
+    
+    # shuffle and sample the dataset
+    random_sample = dataset.sample(n=1500, frac=None, random_state=42).reset_index(drop=True)
+    
+    # Split into positive and negative
+    half = len(random_sample) // 2  # Use integer division directly
+    random_positive = random_sample.iloc[:half]
+    random_negative = random_sample.iloc[half:]
+
+    random_positive.to_csv(f"{os.path.join('./dataset/', config["model_name"], config["env_name"], 'random_positive.csv')}")
+    random_negative.to_csv(f"{os.path.join('./dataset/', config["model_name"], config["env_name"], 'random_negative.csv')}")
 
 def main():
-    # build_csv_dataset()
+    model_path = os.path.join(config["model_path"], config["model_name"])
+    model_files = find_model_files(model_path, config["model_episodes"])
+    dataset_path = os.path.join('./dataset/', config["model_name"], config["env_name"])
 
-    # Load the datasets
-    positive_wall = pd.read_csv("./dataset/positive_wall.csv")
-    negative_wall = pd.read_csv("./dataset/negative_wall.csv")
+    build_csv_dataset(model_files)
+    build_random_dataset(dataset_path)
 
-    positive_rotating = pd.read_csv("./dataset/positive_rotating.csv")
-    negative_rotating = pd.read_csv("./dataset/negative_rotating.csv")
+    # split_dataset_into_train_test(dataset_path, ratio = 0.8)
 
-    positive_goal = pd.read_csv("./dataset/positive_goal.csv")
-    negative_goal = pd.read_csv("./dataset/negative_goal.csv")
-
-    random = pd.concat([negative_goal, positive_goal, negative_rotating, positive_rotating, negative_wall, positive_wall])
-    random = random.sample(frac=1, random_state=42).reset_index(drop=True)
-
-    random = random.sample(1500, random_state=42)
-    # Split into positive and negative
-    half = int(len(random) / 2)
-    positive_random = random.iloc[:half]
-    negative_random = random.iloc[half:]
+    '''
 
     split_dataset_into_train_test(positive_random, ratio=0.8, concept="random_positive")
-    split_dataset_into_train_test(negative_random, ratio=0.8, concept="random_negative")
+    split_dataset_into_train_test(negative_random, ratio=0.8, concept="random_negative")'''
 
     # Split the datasets into training and test sets
 

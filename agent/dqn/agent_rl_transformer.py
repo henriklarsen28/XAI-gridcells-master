@@ -651,7 +651,7 @@ if __name__ == "__main__":
         "max_steps_per_episode": 100,
 
         "random_start_position": True,
-        "random_goal_position": True,
+        "random_goal_position": False,
 
         "rewards": {
             "is_goal": 200 / 200,
@@ -686,7 +686,6 @@ if __name__ == "__main__":
 
         "transformer": {
             "sequence_length": 15,
-            "n_embd": 128,
             "n_embd": 128,
             "n_head": 8,
             "n_layer": 3,

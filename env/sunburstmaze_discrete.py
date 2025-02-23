@@ -225,7 +225,7 @@ class SunburstMazeDiscrete(gym.Env):
             self.goal = (int(match.group(1)), int(match.group(2)))
         else:
             self.goal = None
-        print("Goal:", self.goal, "in maze file:", self.maze_file)
+        # print("Goal:", self.goal, "in maze file:", self.maze_file)
         return self.goal
 
     def reset(self, seed=None, options=None) -> tuple:
@@ -553,7 +553,7 @@ class SunburstMazeDiscrete(gym.Env):
             bool: True if the current position is a goal position, False otherwise.
         """
         if int(self.env_map[self.position[0]][self.position[1]]) == 2 and self.position == self.goal:
-            print("Correct goal reached!")
+            # print("Correct goal reached!")
             return True
         return False
     
@@ -647,10 +647,6 @@ class SunburstMazeDiscrete(gym.Env):
             reward += reward_new_squares
             print("Reward for viewing new squares: ", reward_new_squares)
 '''
-        
-        if self.is_false_goal():
-            return self.rewards["is_false_goal"]
-
         
         if self.is_false_goal():
             return self.rewards["is_false_goal"]
