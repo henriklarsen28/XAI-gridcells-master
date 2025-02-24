@@ -16,9 +16,10 @@ import wandb
 from gymnasium.vector import AsyncVectorEnv
 from gymnasium.wrappers import TimeLimit
 from torch import nn
-from gated_transformer_decoder import Transformer
-from gated_transformer_decoder_policy import TransformerPolicy
+from transformer_decoder import Transformer
+from transformer_decoder_policy import TransformerPolicy
 from attention_pooling import AttentionPooling
+#from gated_transformer_decoder_combined import Transformer
 
 torch.autograd.set_detect_anomaly(True)
 
@@ -155,11 +156,31 @@ class PPO_agent:
             device=self.rollout_device,
         )
 
+        """self.network = Transformer(
+            input_dim=self.obs_dim,
+            output_dim=self.act_dim,
+            num_envs=len(self.env_2_id),
+            block_size=self.sequence_length,
+            n_embd=n_embd,
+            n_head=n_head,
+            n_layer=n_layer,
+            dropout=dropout,
+            device=self.rollout_device,
+        )"""
+
+
+
         """self.policy_attention_pooling = AttentionPooling(
             hidden_dim=self.act_dim,"""
 
+
         self.policy_network.to(self.rollout_device)
         self.critic_network.to(self.rollout_device)
+        
+        """self.policy_optimizer = torch.optim.Adam(
+            self.network.parameters(),
+            lr=self.learning_rate,
+        )"""
 
         self.policy_optimizer = torch.optim.Adam(
             self.policy_network.parameters(),
@@ -189,10 +210,10 @@ class PPO_agent:
             print("Iteration: ", iteration_counter)
 
             # Before rollout move the model to the cpu
-            self.policy_network.device = self.rollout_device
+            """self.policy_network.device = self.rollout_device
             self.policy_network.to(self.rollout_device)
             self.critic_network.device = self.rollout_device
-            self.critic_network.to(self.rollout_device)
+            self.critic_network.to(self.rollout_device)"""
             self.cov_mat = self.cov_mat.to(self.rollout_device)
 
             (
@@ -201,31 +222,32 @@ class PPO_agent:
                 log_probs_batch,
                 env_classes_target_batch,
                 rtgs_batch,
+                rewards_batch,
+                dones_batch,
                 lens,
                 frames,
             ) = self.rollout(iteration_counter)
 
             # After rollout move the model to the device
-            obs_batch = obs_batch.to(self.train_device)
+            """obs_batch = obs_batch.to(self.train_device)
             actions_batch = actions_batch.to(self.train_device)
             log_probs_batch = log_probs_batch.to(self.train_device)
             env_classes_target_batch = env_classes_target_batch.to(self.train_device)
-            rtgs_batch = rtgs_batch.to(self.train_device)
+            rtgs_batch = rtgs_batch.to(self.train_device)"""
 
-            self.policy_network.device = self.train_device
+            """self.policy_network.device = self.train_device
             self.policy_network.to(self.train_device)
             self.critic_network.device = self.train_device
-            self.critic_network.to(self.train_device)
+            self.critic_network.to(self.train_device)"""
             self.cov_mat = self.cov_mat.to(self.train_device)
 
             # Minibatches
             """minibatches = self.generate_minibatches(
-                obs_batch,
-                actions_batch,
-                log_probs_batch,
-                env_classes_batch,
-                env_classes_target_batch,
-                rtgs_batch,
+                obs,
+                actions,
+                log_probs,
+                env_classes_target,
+                rtgs,
             )"""
 
             timestep_counter += sum(lens)
@@ -235,13 +257,12 @@ class PPO_agent:
                 obs_batch,
                 actions_batch,
                 log_probs_batch,
-                env_classes_batch,
                 env_classes_target_batch,
                 rtgs_batch,
             ) in minibatches:"""
 
-            # print("Obs: ", obs, obs.shape)
-            # Calculate the advantages
+                # print("Obs: ", obs, obs.shape)
+                # Calculate the advantages
             value, _, _ = evaluate(
                 obs_batch,
                 actions_batch,
@@ -249,13 +270,29 @@ class PPO_agent:
                 self.critic_network,
                 self.cov_mat,
             )
+            print(value, value.shape)
+
+            # Normalize rewards
+            all_rewards = np.concatenate(rewards_batch)
+            mean = np.mean(all_rewards)
+            std = np.std(all_rewards) + 1e-8
+            rewards_batch = [(np.array(rewards) - mean) / std for rewards in rewards_batch]
+
+            rewards_batch = list(rewards_batch)
+
+            advantages, returns = self.compute_gae(rewards_batch, value, dones_batch)
+
             rtgs_batch = rtgs_batch.unsqueeze(1)
 
-            advantages = rtgs_batch - value.detach()
+            #print("RTGS: ", rtgs_batch, rtgs_batch.shape)
+            #print("Value: ", value, value.shape)
+
+            #advantages = rtgs_batch - value.detach()
 
             # Normalize the advantages
-            advantages = (rtgs_batch - rtgs_batch.mean()) / (rtgs_batch.std() + 1e-10)
             #advantages = rtgs_batch
+
+            #advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
             for _ in range(self.n_updates_per_iteration):
                 value, current_log_prob, env_classes_batch = evaluate(
                     obs_batch,
@@ -264,6 +301,8 @@ class PPO_agent:
                     self.critic_network,
                     self.cov_mat,
                 )
+
+
                 entropy = self.compute_entropy(current_log_prob)
 
                 ratio = torch.exp(current_log_prob - log_probs_batch)
@@ -278,23 +317,34 @@ class PPO_agent:
                     env_classes_batch, env_classes_target_batch.float()
                 )
 
-
-                policy_loss = policy_loss_ppo - 0.01 * entropy
+                policy_loss = policy_loss_ppo - 0.015 * entropy
 
                 critic_loss = nn.MSELoss()(value, rtgs_batch)
 
 
+                #loss = policy_loss + 0.5 * critic_loss
+                # Normalize the gradients
+                
+                
 
                 print("Policy loss step")
-                self.policy_network.zero_grad()
+                self.policy_optimizer.zero_grad()
                 policy_loss.backward()
+                torch.nn.utils.clip_grad_norm_(
+                    self.policy_network.parameters(), self.clip_grad_normalization
+                )
                 self.policy_optimizer.step()
 
                 #self.env_network_backprop(env_class_loss)
+                #self.network.zero_grad()
+                #loss.backward(retain_graph=True)
+                #self.policy_optimizer.step()
 
-
-                self.critic_network.zero_grad()
+                self.critic_optimizer.zero_grad()
                 critic_loss.backward(retain_graph=True)
+                torch.nn.utils.clip_grad_norm_(
+                    self.critic_network.parameters(), self.clip_grad_normalization
+                )
                 self.critic_optimizer.step()
                 print("After")
 
@@ -330,9 +380,13 @@ class PPO_agent:
                     self.critic_network.state_dict(),
                     f"./model/transformers/ppo/model_{self.run.name}/critic_network_{iteration_counter}.pth",
                 )
+                """torch.save(
+                    self.network.state_dict(),
+                    f"./model/transformers/ppo/model_{self.run.name}/network_{iteration_counter}.pth",
+                )"""
 
     def env_network_backprop(self, env_class_loss):
-        # Freeze the rest of the policy network
+        """# Freeze the rest of the policy network
         for param in self.policy_network.blocks.parameters():
             param.requires_grad = False
         for param in self.policy_network.ln_f.parameters():
@@ -356,7 +410,7 @@ class PPO_agent:
 
         # Freeze the env class network
         for param in self.policy_network.env_class.parameters():
-            param.requires_grad = False
+            param.requires_grad = False"""
 
     def rollout(self, iteration_counter):
         observations = []
@@ -365,6 +419,7 @@ class PPO_agent:
         rewards = []
         env_classes_target = []
         rtgs = []
+        dones = []
         lens = []
         frames = []
 
@@ -376,6 +431,7 @@ class PPO_agent:
 
         while timesteps < self.batch_size:
             episode_rewards = []
+            done_list = []
             # env_params = self.env.get_params()
             # envs = AsyncVectorEnv([make_envs(self.env) for _ in range(4)])
 
@@ -417,13 +473,16 @@ class PPO_agent:
                 log_probs.append(log_prob)
                 env_classes_target.append(torch.nn.functional.one_hot(torch.tensor(self.env_2_id[self.env.maze_file]), num_classes=len(self.env_2_id)))
                 episode_rewards.append(reward)
+                
 
                 done = terminated or turnicated
+                done_list.append(done)
                 if done:
                     break
 
             lens.append(ep_timestep + 1)
             rewards.append(torch.tensor(episode_rewards))
+            dones.append(done_list)
 
         print("Timesteps: ", timesteps)
 
@@ -432,6 +491,8 @@ class PPO_agent:
         actions = torch.tensor(actions).to(self.rollout_device)
         log_probs = torch.tensor(log_probs).to(self.rollout_device)
         env_classes_target = torch.stack(env_classes_target).to(self.rollout_device)
+
+        
         rtgs = self.compute_rtgs(rewards)
         #rtgs = self.compute_gae(rewards, obs, self.gamma, self.gae_lambda)
         #print(rtgs, rtgs.shape)
@@ -444,6 +505,8 @@ class PPO_agent:
             log_probs,
             env_classes_target,
             rtgs,
+            rewards,
+            dones,
             lens,
             frames,
         )
@@ -464,9 +527,27 @@ class PPO_agent:
         # Convert the rewards-to-go into a tensor
         rtgs = torch.tensor(rtgs, dtype=torch.float, device=self.rollout_device)
         return rtgs
+    
+    def compute_gae(self, rewards, values, dones):
+        advantages = []
+        gae = 0  # Initialize the GAE value
+        values_extended = torch.cat([values, torch.zeros((1, values.shape[1]), device=values.device)])
 
-    def compute_gae(self, rewards, states, gamma=0.99, lam=0.95):
-        """Computes Generalized Advantage Estimation (GAE)."""
+        # Iterate through episodes in reverse order
+        for ep_rews, ep_dones in zip(reversed(rewards), reversed(dones)):
+            for t in reversed(range(len(ep_rews))):
+                delta = ep_rews[t] + self.gamma * values_extended[t + 1] * (1 - ep_dones[t]) - values[t]
+                gae = delta + self.gamma * self.gae_lambda * (1 - ep_dones[t]) * gae
+                advantages.insert(0, gae)
+
+        advantages = torch.tensor(advantages, dtype=torch.float, device=self.rollout_device)
+
+        # Compute value targets as advantages + value estimates
+        returns = advantages + values
+        
+        return advantages, returns
+
+    """def compute_gae(self, rewards, states, gamma=0.99, lam=0.95):
 
         advantages = torch.zeros_like(
             states[:, 0, 0], dtype=torch.float32, device=self.rollout_device
@@ -482,7 +563,7 @@ class PPO_agent:
                 advantages[t] = last_advantage
 
         advantages = advantages.unsqueeze(1)
-        return advantages
+        return advantages"""
 
     def compute_entropy(self, log_probs):
         return torch.mean(-log_probs)
@@ -504,7 +585,7 @@ class PPO_agent:
         self.render_mode = config["render_mode"]
 
     def generate_minibatches(
-        self, obs, actions, log_probs, env_classes, env_classes_target, rtgs
+        self, obs, actions, log_probs, env_classes_target, rtgs
     ):
         minibatches = []
         for _ in range(self.n_updates_per_iteration):
@@ -514,7 +595,6 @@ class PPO_agent:
                     obs[idxs],
                     actions[idxs],
                     log_probs[idxs],
-                    env_classes[idxs],
                     env_classes_target[idxs],
                     rtgs[idxs],
                 )

@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
+import numpy as np
+from attention_pooling import AttentionPooling  
 
 torch.manual_seed(1337)
 
@@ -121,6 +123,7 @@ class Transformer(nn.Module):
         self,
         input_dim,
         output_dim,
+        num_envs,
         block_size,
         n_embd,
         n_head,
@@ -141,8 +144,21 @@ class Transformer(nn.Module):
             n_embd, output_dim
         )  # Optional: add hidden layers after the final decoder layer"""
 
+        self.att_pooling_policy = AttentionPooling(n_embd)
+        self.att_pooling_critic = AttentionPooling(n_embd)
+
         self.output_policy = FeedForward_Final(n_embd, dropout, output_dim)
         self.output_critic = FeedForward_Final(n_embd, dropout, 1)
+
+
+        self.env_class = nn.Sequential(
+            nn.Linear(n_embd, 64),
+            nn.ReLU(),
+            nn.Linear(64, num_envs),
+        )
+
+        self.log_std = nn.Parameter(torch.zeros(np.prod(output_dim)))
+
         self.apply(self.init_weights)
 
     def init_weights(self, module):
@@ -172,11 +188,26 @@ class Transformer(nn.Module):
         # x = self.blocks(x)
         x = self.ln_f(x)
 
-        policy = self.output_policy(x.to(torch.float32))
-        print("Policy", policy)
-        value = self.output_critic(x.to(torch.float32))
-        print("Value", value)
-        return policy, value, att_weights_list
+        policy_pool = self.att_pooling_policy(x)
+        critic_pool = self.att_pooling_critic(x)
+
+        policy = self.output_policy(policy_pool.to(torch.float32))
+        
+        value = self.output_critic(critic_pool.to(torch.float32))
+
+        std = torch.exp(self.log_std)
+
+
+        env_class_out = self.env_class(policy_pool)
+        env_class_out = F.gumbel_softmax(env_class_out, tau=1, hard=True)
+        
+
+        #policy = policy
+        #value = value[:, -1, :]
+        """print("Policy", policy)
+        print("Value", value)"""
+
+        return policy, value, std, env_class_out, att_weights_list
 
 
 # device = torch.device("mps" if torch.backends.mps.is_available() else "cpu") # Was faster with cpu??? Loading between cpu and mps is slow maybe
