@@ -163,11 +163,11 @@ def build_csv_dataset(model_paths: str):
                 if sub_val:
                     filename = str(key) + '_' + str(sub_key)
                     data_preprocessed = shuffle_and_trim_datasets(sub_val)
-                    save_to_csv(data_preprocessed, filename)
+                    save_to_csv(data_preprocessed, filename, path = f"./dataset/{config["model_name"]}/{config["env_name"]}/raw_data")
         else:
             if val:
                 data_preprocessed = shuffle_and_trim_datasets(val)
-                save_to_csv(data_preprocessed, filename)
+                save_to_csv(data_preprocessed, filename, path = f"./dataset/{config["model_name"]}/{config["env_name"]}/raw_data")
 
     save_config()
 
@@ -181,17 +181,24 @@ def shuffle_and_trim_datasets(dataset: deque):
         data = data[:max_length]
     return data
 
-
-#TODO: fix dataset path
 def split_dataset_into_train_test(
     dataset_path: str, ratio: float = 0.8
-):  
-    for file in dataset_path:
-        concept = file
+): 
+    # check if the folder 'train' and 'test' exists in the dataset path, if not create them
+    train_dir = os.path.join(dataset_path, "train")
+    test_dir = os.path.join(dataset_path, "test")
+
+    raw_data_dir = os.path.join(dataset_path, "raw_data")
+    
+    print("Splitting dataset into training and test set")
+    # walk through the dataset path directory
+    for file in os.listdir(raw_data_dir):
+        file_path = os.path.join(raw_data_dir, file)
+        dataset = pd.read_csv(file_path)
         # Split the dataset into a training and test set
-        train_size = int(len(file) * ratio)
-        train_dataset = file[:train_size]
-        test_dataset = file[train_size:]
+        train_size = int(len(dataset) * ratio)
+        train_dataset = dataset[:train_size]
+        test_dataset = dataset[train_size:]
 
         train = [
             [torch.tensor(ast.literal_eval(state)) for state in states]
@@ -202,18 +209,15 @@ def split_dataset_into_train_test(
             for _, states in test_dataset.iterrows()
         ]
 
-        save_to_csv(train, f"{dataset_path}{concept}_train.csv")
-        save_to_csv(test, f"{concept}_test.csv")
+        filename = os.path.splitext(file)[0]
+        save_to_csv(train, f"{filename}_train", train_dir)
+        save_to_csv(test, f"{filename}_test", test_dir)
 
-    return train_dataset, test_dataset
 
-
-def save_to_csv(dataset: list, file_name: str):
+def save_to_csv(dataset: list, file_name: str, path: str):
     data = [[state.tolist() for state in sequence] for sequence in dataset]
     # Convert from list of tensors to list of numpy arrays
     df = pd.DataFrame(data)
-
-    path = f"./dataset/{config["model_name"]}/{config["env_name"]}"
     if os.path.exists(path) == False:
         os.makedirs(path)
 
@@ -245,6 +249,23 @@ def find_model_files(base_path: str, ep_ids: list):
                 path = os.path.join(base_path, file)
                 model_files.append(path)
     return model_files
+
+def build_random_dataset(file_path):
+    # load and concatenate all CSV files
+    print("Building random dataset")
+    files = [os.path.join(file_path, f) for f in os.listdir(file_path) if f.endswith('.csv')]
+    dataset = pd.concat([pd.read_csv(f) for f in files])
+    
+    # shuffle and sample the dataset
+    random_sample = dataset.sample(n=1500, frac=None, random_state=42).reset_index(drop=True)
+    
+    # Split into positive and negative
+    half = len(random_sample) // 2  # Use integer division directly
+    random_positive = random_sample.iloc[:half]
+    random_negative = random_sample.iloc[half:]
+
+    random_positive.to_csv(f"{os.path.join('./dataset/', config["model_name"], config["env_name"], 'random_positive.csv')}")
+    random_negative.to_csv(f"{os.path.join('./dataset/', config["model_name"], config["env_name"], 'random_negative.csv')}")
     
 
 def run_agent(env: SunburstMazeDiscrete, agent: DTQN_Agent, models: list):
@@ -322,47 +343,14 @@ def run_agent(env: SunburstMazeDiscrete, agent: DTQN_Agent, models: list):
 
     return copy.deepcopy(collected_sequences)
 
-def build_random_dataset(file_path):
-    # load and concatenate all CSV files
-    files = [os.path.join(file_path, f) for f in os.listdir(file_path) if f.endswith('.csv')]
-    dataset = pd.concat([pd.read_csv(f) for f in files])
-    
-    # shuffle and sample the dataset
-    random_sample = dataset.sample(n=1500, frac=None, random_state=42).reset_index(drop=True)
-    
-    # Split into positive and negative
-    half = len(random_sample) // 2  # Use integer division directly
-    random_positive = random_sample.iloc[:half]
-    random_negative = random_sample.iloc[half:]
-
-    random_positive.to_csv(f"{os.path.join('./dataset/', config["model_name"], config["env_name"], 'random_positive.csv')}")
-    random_negative.to_csv(f"{os.path.join('./dataset/', config["model_name"], config["env_name"], 'random_negative.csv')}")
-
 def main():
     model_path = os.path.join(config["model_path"], config["model_name"])
     model_files = find_model_files(model_path, config["model_episodes"])
     dataset_path = os.path.join('./dataset/', config["model_name"], config["env_name"])
 
     build_csv_dataset(model_files)
-    build_random_dataset(dataset_path)
-
-    # split_dataset_into_train_test(dataset_path, ratio = 0.8)
-
-    '''
-
-    split_dataset_into_train_test(positive_random, ratio=0.8, concept="random_positive")
-    split_dataset_into_train_test(negative_random, ratio=0.8, concept="random_negative")'''
-
-    # Split the datasets into training and test sets
-
-    # split_dataset_into_train_test(positive_wall, ratio=0.8, concept="wall_positive")
-    # split_dataset_into_train_test(negative_wall, ratio=0.8, concept="wall_negative")
-
-    # split_dataset_into_train_test(positive_rotating, ratio=0.8, concept="rotating_positive")
-    # split_dataset_into_train_test(negative_rotating, ratio=0.8, concept="rotating_negative")
-
-    # split_dataset_into_train_test(positive_goal, ratio=0.8, concept="goal_positive")
-    # split_dataset_into_train_test(negative_goal, ratio=0.8, concept="goal_negative")
+    build_random_dataset(dataset_path + "/raw_data")
+    split_dataset_into_train_test(dataset_path, ratio = 0.8)
 
 
 if __name__ == "__main__":
