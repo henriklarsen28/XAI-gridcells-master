@@ -385,7 +385,12 @@ class PPO:
             [self.env_2_id[self.env.maze_file] for _ in range(len(env_classes_pred))],
             dtype=torch.float32,
         ).to(self.device)
-        batch_rtgs = self.compute_rtgs(batch_rews)  # ALG STEP 4
+        # Normalize rewards
+        all_rewards = np.concatenate(batch_rews)
+        mean = np.mean(all_rewards)
+        std = np.std(all_rewards) + 1e-8
+        batch_rewards = [(np.array(rewards) - mean) / std for rewards in batch_rews]
+        batch_rtgs = self.compute_rtgs(batch_rewards)  # ALG STEP 4
 
         # Log the episodic returns and episodic lengths in this batch.
         self.logger["batch_rews"] = batch_rews

@@ -128,8 +128,7 @@ class PPO_agent:
         n_layer = transformer_param["n_layer"]  # Number of decoder layers
         dropout = transformer_param["dropout"]  # Dropout probability
         self.sequence_length = transformer_param["sequence_length"]  # Replace value
-        self.train_device = device
-        self.rollout_device = torch.device("cpu")
+        self.device = device
 
         self.env_2_id = env_2_id_dict()
 
@@ -142,7 +141,7 @@ class PPO_agent:
             n_head=n_head,
             n_layer=n_layer,
             dropout=dropout,
-            device=self.rollout_device,
+            device=self.device,
         )
 
         self.critic_network = Transformer(
@@ -153,7 +152,7 @@ class PPO_agent:
             n_head=n_head,
             n_layer=n_layer,
             dropout=dropout,
-            device=self.rollout_device,
+            device=self.device,
         )
 
         """self.network = Transformer(
@@ -174,8 +173,8 @@ class PPO_agent:
             hidden_dim=self.act_dim,"""
 
 
-        self.policy_network.to(self.rollout_device)
-        self.critic_network.to(self.rollout_device)
+        self.policy_network.to(self.device)
+        self.critic_network.to(self.device)
         
         """self.policy_optimizer = torch.optim.Adam(
             self.network.parameters(),
@@ -192,9 +191,9 @@ class PPO_agent:
         )
 
         self.cov_var = torch.full(size=(self.act_dim,), fill_value=0.5).to(
-            self.train_device
+            self.device
         )
-        self.cov_mat = torch.diag(self.cov_var).to(self.train_device)
+        self.cov_mat = torch.diag(self.cov_var).to(self.device)
 
     def learn(self, total_timesteps):
 
@@ -203,18 +202,8 @@ class PPO_agent:
 
         while timestep_counter < total_timesteps:
 
-            """self.env = self.random_maps(
-                self.env, random_map=True, iteration_counter=iteration_counter
-            )"""
-
             print("Iteration: ", iteration_counter)
 
-            # Before rollout move the model to the cpu
-            """self.policy_network.device = self.rollout_device
-            self.policy_network.to(self.rollout_device)
-            self.critic_network.device = self.rollout_device
-            self.critic_network.to(self.rollout_device)"""
-            self.cov_mat = self.cov_mat.to(self.rollout_device)
 
             (
                 obs_batch,
@@ -228,18 +217,7 @@ class PPO_agent:
                 frames,
             ) = self.rollout(iteration_counter)
 
-            # After rollout move the model to the device
-            """obs_batch = obs_batch.to(self.train_device)
-            actions_batch = actions_batch.to(self.train_device)
-            log_probs_batch = log_probs_batch.to(self.train_device)
-            env_classes_target_batch = env_classes_target_batch.to(self.train_device)
-            rtgs_batch = rtgs_batch.to(self.train_device)"""
-
-            """self.policy_network.device = self.train_device
-            self.policy_network.to(self.train_device)
-            self.critic_network.device = self.train_device
-            self.critic_network.to(self.train_device)"""
-            self.cov_mat = self.cov_mat.to(self.train_device)
+        
 
             # Minibatches
             """minibatches = self.generate_minibatches(
@@ -272,22 +250,22 @@ class PPO_agent:
             )
             print(value, value.shape)
 
-            # Normalize rewards
+            """# Normalize rewards
             all_rewards = np.concatenate(rewards_batch)
             mean = np.mean(all_rewards)
             std = np.std(all_rewards) + 1e-8
             rewards_batch = [(np.array(rewards) - mean) / std for rewards in rewards_batch]
 
-            rewards_batch = list(rewards_batch)
+            rewards_batch = list(rewards_batch)"""
 
-            advantages, returns = self.compute_gae(rewards_batch, value, dones_batch)
+            #advantages, returns = self.compute_gae(rewards_batch, value, dones_batch)
 
             rtgs_batch = rtgs_batch.unsqueeze(1)
 
             #print("RTGS: ", rtgs_batch, rtgs_batch.shape)
             #print("Value: ", value, value.shape)
 
-            #advantages = rtgs_batch - value.detach()
+            advantages = rtgs_batch - value.detach()
 
             # Normalize the advantages
             #advantages = rtgs_batch
@@ -317,7 +295,7 @@ class PPO_agent:
                     env_classes_batch, env_classes_target_batch.float()
                 )
 
-                policy_loss = policy_loss_ppo - 0.015 * entropy
+                policy_loss = policy_loss_ppo - 0.01 * entropy
 
                 critic_loss = nn.MSELoss()(value, rtgs_batch)
 
@@ -341,7 +319,7 @@ class PPO_agent:
                 #self.policy_optimizer.step()
 
                 self.critic_optimizer.zero_grad()
-                critic_loss.backward(retain_graph=True)
+                critic_loss.backward()
                 torch.nn.utils.clip_grad_norm_(
                     self.critic_network.parameters(), self.clip_grad_normalization
                 )
@@ -355,6 +333,8 @@ class PPO_agent:
                     gif_path=f"./{self.gif_path}/{iteration_counter}.gif", frames=frames
                 )
                 frames.clear()
+            
+            lens = np.array(lens)
 
             wandb.log(
                 {
@@ -365,7 +345,7 @@ class PPO_agent:
                     "Policy loss": policy_loss.item(),
                     "Critic loss": critic_loss.item(),
                     "Environment": self.env_2_id[self.env.maze_file],
-                    "Steps done": lens[0],
+                    "Steps done": lens.mean(),
                     "Gif:": (wandb.Video(gif, fps=4, format="gif") if gif else None),
                 },
                 commit=True,
@@ -444,11 +424,11 @@ class PPO_agent:
             for ep_timestep in range(self.max_steps):
                 timesteps += 1
                 state_sequence = add_to_sequence(
-                    state_sequence, state, self.rollout_device
+                    state_sequence, state, self.device
                 )
                 tensor_sequence = torch.stack(list(state_sequence), dim=0)
                 tensor_sequence = padding_sequence(
-                    tensor_sequence, self.sequence_length, self.rollout_device
+                    tensor_sequence, self.sequence_length, self.device
                 )
                 action, log_prob = get_action(
                     tensor_sequence, self.policy_network, self.cov_mat
@@ -487,12 +467,15 @@ class PPO_agent:
         print("Timesteps: ", timesteps)
 
         # Reshape the data
-        obs = torch.stack(observations).to(self.rollout_device)
-        actions = torch.tensor(actions).to(self.rollout_device)
-        log_probs = torch.tensor(log_probs).to(self.rollout_device)
-        env_classes_target = torch.stack(env_classes_target).to(self.rollout_device)
-
-        
+        obs = torch.stack(observations).to(self.device)
+        actions = torch.tensor(actions).to(self.device)
+        log_probs = torch.tensor(log_probs).to(self.device)
+        env_classes_target = torch.stack(env_classes_target).to(self.device)
+        """all_rewards = np.concatenate(rewards)
+        mean = np.mean(all_rewards)
+        std = np.std(all_rewards) + 1e-8
+        batch_rewards = [(np.array(rewards) - mean) / std for rewards in rewards]
+        """
         rtgs = self.compute_rtgs(rewards)
         #rtgs = self.compute_gae(rewards, obs, self.gamma, self.gae_lambda)
         #print(rtgs, rtgs.shape)
@@ -525,7 +508,7 @@ class PPO_agent:
                 rtgs.insert(0, discounted_reward)
 
         # Convert the rewards-to-go into a tensor
-        rtgs = torch.tensor(rtgs, dtype=torch.float, device=self.rollout_device)
+        rtgs = torch.tensor(rtgs, dtype=torch.float, device=self.device)
         return rtgs
     
     def compute_gae(self, rewards, values, dones):
@@ -540,7 +523,7 @@ class PPO_agent:
                 gae = delta + self.gamma * self.gae_lambda * (1 - ep_dones[t]) * gae
                 advantages.insert(0, gae)
 
-        advantages = torch.tensor(advantages, dtype=torch.float, device=self.rollout_device)
+        advantages = torch.tensor(advantages, dtype=torch.float, device=self.device)
 
         # Compute value targets as advantages + value estimates
         returns = advantages + values
