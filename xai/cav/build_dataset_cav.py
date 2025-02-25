@@ -182,23 +182,28 @@ def shuffle_and_trim_datasets(dataset: deque):
     return data
 
 def split_dataset_into_train_test(
-    dataset_path: str, ratio: float = 0.8
+    dataset_path: str, dataset_subfolder = '', ratio: float = 0.8
 ): 
     # check if the folder 'train' and 'test' exists in the dataset path, if not create them
-    train_dir = os.path.join(dataset_path, "train")
-    test_dir = os.path.join(dataset_path, "test")
+    train_dir = os.path.join(dataset_path, "train" if not dataset_subfolder == '' else dataset_subfolder)
+    test_dir = os.path.join(dataset_path, "test" if not dataset_subfolder == '' else dataset_subfolder)
 
-    raw_data_dir = os.path.join(dataset_path, "raw_data")
+    raw_data_dir = os.path.join(dataset_path, dataset_subfolder)
     
     print("Splitting dataset into training and test set")
     # walk through the dataset path directory
     for file in os.listdir(raw_data_dir):
         file_path = os.path.join(raw_data_dir, file)
+        # check if the file is a csv file
+        if not file.endswith(".csv"):
+            continue
         dataset = pd.read_csv(file_path)
         # Split the dataset into a training and test set
         train_size = int(len(dataset) * ratio)
         train_dataset = dataset[:train_size]
         test_dataset = dataset[train_size:]
+
+        print('train dataset', train_dataset)
 
         train = [
             [torch.tensor(ast.literal_eval(state)) for state in states]
@@ -264,8 +269,8 @@ def build_random_dataset(file_path):
     random_positive = random_sample.iloc[:half]
     random_negative = random_sample.iloc[half:]
 
-    random_positive.to_csv(f"{os.path.join('./dataset/', config["model_name"], config["env_name"], 'random_positive.csv')}")
-    random_negative.to_csv(f"{os.path.join('./dataset/', config["model_name"], config["env_name"], 'random_negative.csv')}")
+    random_positive.to_csv(f"{os.path.join('./dataset/', config["model_name"], config["env_name"], 'random.csv')}", index=False)
+    random_negative.to_csv(f"{os.path.join('./dataset/', config["model_name"], config["env_name"], 'random_negative.csv')}", index=False)
     
 
 def run_agent(env: SunburstMazeDiscrete, agent: DTQN_Agent, models: list):
@@ -349,8 +354,8 @@ def main():
     dataset_path = os.path.join('./dataset/', config["model_name"], config["env_name"])
 
     build_csv_dataset(model_files)
-    build_random_dataset(dataset_path + "/raw_data")
-    split_dataset_into_train_test(dataset_path, ratio = 0.8)
+    #build_random_dataset(dataset_path + "/raw_data")
+    #split_dataset_into_train_test(dataset_path, ratio = 0.8)
 
 
 if __name__ == "__main__":

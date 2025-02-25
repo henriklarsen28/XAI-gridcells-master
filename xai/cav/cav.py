@@ -25,9 +25,9 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 
 sys.path.append(project_root)
 
-from agent.dqn.transformer_decoder_decoupled import Transformer
-from utils.calculate_fov import calculate_fov_matrix_size
+from agent.dqn.transformer_decoder import Transformer
 from utils import CAV_dataset
+from utils.calculate_fov import calculate_fov_matrix_size
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
@@ -81,14 +81,15 @@ def get_activations(
 
     if embedding:
         q_value = get_embedding_activations(model, input)
+        #print('q val type', q_value[0])
         return q_value
 
     block_int = int(block_name.split("_")[-1])
 
     block = model.blocks[block_int]
     block.register_forward_hook(get_activation(block_name))
-    q_value = model(input)
-
+    q_value, _ = model(input)
+    print("Block activations")
     return q_value
 
 
@@ -96,7 +97,9 @@ def get_embedding_activations(model: Transformer, input):
 
     embedding = model.token_embedding
     embedding.register_forward_hook(get_activation("embedding"))
-    q_value = model(input)
+    q_value, _ = model(input)
+    print("Embedding activations")
+    #print('q val', q_value.size())
     return q_value
 
 
@@ -111,7 +114,7 @@ def create_activation_dataset(
 
     fov_config = {
         "fov": math.pi / 1.5,
-        "ray_length": 8,
+        "ray_length": 20,
         "number_of_rays": 100,
     }
     half_fov = fov_config["fov"] / 2
@@ -119,7 +122,7 @@ def create_activation_dataset(
     num_states = matrix_size[0] * matrix_size[1]
     num_states += 4
 
-    sequence_length = 45
+    sequence_length = 15
     n_embd = 128
     n_head = 8
     n_layer = 3
@@ -142,11 +145,12 @@ def create_activation_dataset(
     model = model.to(device)
 
     # Load the model
-    model.load_state_dict(torch.load(model_path, map_location=device))
+    model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
     model.eval()
     episode_number = model_path.split("_")[-1].split(".")[0]
     # Read the dataset
     dataset = pd.read_csv(dataset_path)
+    print("reading dataset:", dataset_path)
     # print(dataset.head(10))
     sequences = [
         [torch.tensor(ast.literal_eval(state)) for state in states]
@@ -168,6 +172,7 @@ def create_activation_dataset(
 
     assert isinstance(activation, torch.Tensor), "Activation must be a tensor"
 
+
     return activation, q_val[:, :, action_index]
 
 
@@ -186,15 +191,18 @@ class CAV:
     def read_dataset(
         self,
         concept,
+        dataset_directory_train,
+        dataset_directory_test,
         model_path,
         block,
         embedding: bool = False,
         sensitivity: bool = True,
         action_index: int = 0,
     ):
+        
 
         positive, q_values_positive = create_activation_dataset(
-            f"./dataset/{concept}_positive_train.csv",
+            f"{dataset_directory_train}/{concept}_train.csv",
             model_path,
             block,
             embedding=embedding,
@@ -202,9 +210,10 @@ class CAV:
             action_index=action_index,
         )
         assert isinstance(positive, torch.Tensor), "Positive must be a tensor"
+        
 
         negative, q_values_negative = create_activation_dataset(
-            f"./dataset/{concept}_negative_train.csv",
+            f"{dataset_directory_train}/{concept}_negative_train.csv",
             model_path,
             block,
             embedding=embedding,
@@ -214,7 +223,7 @@ class CAV:
         assert isinstance(negative, torch.Tensor), "Negative must be a tensor"
 
         positive_test, q_values_positive_test = create_activation_dataset(
-            f"./dataset/{concept}_positive_test.csv",
+            f"{dataset_directory_test}/{concept}_test.csv",
             model_path,
             block,
             embedding=embedding,
@@ -224,7 +233,7 @@ class CAV:
         assert isinstance(positive_test, torch.Tensor), "Positive_test must be a tensor"
 
         negative_test, q_values_negative_test = create_activation_dataset(
-            f"./dataset/{concept}_negative_test.csv",
+            f"{dataset_directory_test}/{concept}_negative_test.csv",
             model_path,
             block,
             embedding=embedding,
@@ -322,6 +331,8 @@ class CAV:
     def calculate_cav(
         self,
         concept: str,
+        dataset_directory_train: str,
+        dataset_directory_test: str,
         model_dir: str,
         sensitivity: bool = False,
         action_index: int = 0,
@@ -345,7 +356,14 @@ class CAV:
                 q_values_positive_test,
                 q_values_negative_test,
             ) = self.read_dataset(
-                concept, model_path, 0, True, sensitivity, action_index=action_index
+                    concept=concept,
+                    dataset_directory_train=dataset_directory_train,
+                    dataset_directory_test=dataset_directory_test,
+                    model_path=model_path,
+                    block = 0,
+                    embedding=True,
+                    sensitivity=sensitivity,
+                    action_index=action_index,
             )
 
             cav = self.calculate_single_cav(
@@ -375,11 +393,13 @@ class CAV:
                     q_values_positive_test,
                     q_values_negative_test,
                 ) = self.read_dataset(
-                    concept,
-                    model_path,
-                    block - 1,
-                    False,
-                    sensitivity,
+                    concept=concept,
+                    dataset_directory_train=dataset_directory_train,
+                    dataset_directory_test=dataset_directory_test,
+                    model_path=model_path,
+                    block = block - 1,
+                    embedding=False,
+                    sensitivity=sensitivity,
                     action_index=action_index,
                 )
 
@@ -402,8 +422,8 @@ class CAV:
                         episode_number,
                     )
         # Save the CAV list
-        torch.save(self.cav_list, f"./cav_list_{concept}.pt")
-        torch.save(self.tcav_list, f"./tcav_list_{concept}.pt")
+        torch.save(self.cav_list, f"./results/cav/cav_list_{concept}.pt")
+        # torch.save(self.tcav_list, f"./results/tcav/tcav_list_{concept}.pt")
 
     def calculate_sensitivity(
         self, activations: torch.Tensor, network_output: torch.Tensor, cav: np.ndarray
@@ -448,7 +468,7 @@ class CAV:
         self.tcav_list.append((block, episode_number, tcav))
 
     def load_cav(self, concept: str):
-        cav_list = torch.load(f"./cav_list_{concept}.pt")
+        cav_list = torch.load(f"./results/cav/cav_list_{concept}.pt")
         return cav_list
 
     def plot_cav(self, concept: str, tcav: bool = False):
@@ -457,7 +477,7 @@ class CAV:
             self.cav_list = self.load_cav(concept)
         print(self.cav_list[0])
 
-        self.plot(concept, self.cav_list, f"cav_{concept}")
+        self.plot(concept, self.cav_list, f"results/plots/cav_{concept}")
 
     def plot_tcav(self, concept: str, action: int = 0):
 
@@ -524,7 +544,7 @@ class CAV:
         fig.colorbar(surf, ax=ax, label="Accuracy")
 
         plt.savefig(f"./{name}_action_{action}.png")
-        plt.show()
+        # plt.show()
 
 
 class Analysis:
@@ -552,29 +572,88 @@ class Analysis:
     def get_tcav(self):
         return self.total_tcav
 
+def get_positive_negative_data(concept: str, datapath: str):
+    negative_files = []
+    positive_file = None
+
+    print('Datapath:', datapath)
+    for file in os.listdir(datapath):
+        file_path = os.path.join(datapath, file)
+        if file.startswith(concept):
+            positive_file = file_path
+            print('Positive file:', positive_file)
+        else:
+            negative_files.append(file_path)
+
+    if positive_file is None:
+        raise FileNotFoundError("Positive file not found")
+    
+    pos_df = pd.read_csv(positive_file)
+    
+    # Determine sample size: at least 1500 lines or the length of the positive file content, whichever is greater
+    sample_size = max(1500, len(pos_df))
+
+    # Aggregate negative file content and then sample
+    neg_dfs = []
+    for neg_file in negative_files:
+        neg_df = pd.read_csv(neg_file)
+        neg_dfs.append(neg_df)
+
+    negative_df = pd.concat(neg_dfs)
+    negative_df = negative_df.sample(sample_size)
+    
+    return negative_df
+
+def grid_observation_dataset(model_name: str, concept:str):
+    for i in range(15):
+        concept = "grid_observations_" + str(i)
+        negative_file_test = f"./dataset/{model_name}/map_circular_4_5/test/{concept}_negative_test.csv"
+        negative_file_train = f"./dataset/{model_name}/map_circular_4_5/train/{concept}_negative_train.csv"
+
+        if not os.path.exists(negative_file_test):
+            negative_file_test = get_positive_negative_data(concept, datapath = f"dataset/{model_name}/map_circular_4_5/test")
+            negative_file_test.to_csv(f"./dataset/{model_name}/map_circular_4_5/test/{concept}_negative_test.csv", index=False)
+        
+        if not os.path.exists(negative_file_train):
+            negative_file_train = get_positive_negative_data(concept, datapath = f"dataset/{model_name}/map_circular_4_5/train")
+            negative_file_train.to_csv(f"./dataset/{model_name}/map_circular_4_5/train/{concept}_negative_train.csv", index=False)
+
 
 def main():
-    cav = CAV()
-    model_load_path = "../../agent/model/transformers/model_vivid-firebrand-872"
-    concept = "goal"
+    
+    model_name ="model_rose-pyramid-152"
+    model_load_path = f"../../agent/dqn/models/{model_name}"
+    dataset_directory_train = "./dataset/model_rose-pyramid-152/map_circular_4_5/train"
+    dataset_directory_test = "./dataset/model_rose-pyramid-152/map_circular_4_5/test"
+    dataset_directory_random = "./dataset/model_rose-pyramid-152/map_circular_4_5"
+    # concept = "goal"
     # positive_file = "dataset/positive_wall_activations.pt"
     # negative_file = "dataset/negative_wall_activations.pt"
 
-    """for action in range(1):
-        average = 1
-        pass
-        analysis = Analysis(average)
-        for _ in range(average):
-            cav = CAV()
-            cav.calculate_cav(concept, model_load_path, sensitivity=False, action_index=action)
-            cav.plot_cav(concept)
-            #tcav = cav.tcav_list
-            #analysis.add_total_tcav_scores(tcav)
-        
-    
-    cav_list = torch.load(f"./cav_list_{concept}.pt")
-    cav.cav_list = cav_list
-    cav.plot_cav(concept)"""
+    # grid_observation_dataset(model_name)
+    concept = "random"
+    cav = CAV()
+    cav.calculate_cav(concept, dataset_directory_random, dataset_directory_random, model_load_path, sensitivity=False)
+    cav.plot_cav(concept)
+
+    '''for i in range(15):
+        concept = f"grid_observations_{i}"
+        # grid_observation_dataset(model_name, concept)
+        # cav = CAV()
+        for action in range(1):
+            average = 1
+            pass
+            analysis = Analysis(average)
+            for _ in range(average):
+                cav = CAV()
+                cav.calculate_cav(concept, dataset_directory_random, dataset_directory_random, model_load_path, sensitivity=False, action_index=action)
+                cav.plot_cav(concept)'''
+                #tcav = cav.tcav_list
+                #analysis.add_total_tcav_scores(tcav)
+
+    #cav_list = torch.load(f"./cav_list_{concept}.pt")
+    #cav.cav_list = cav_list
+    #cav.plot_cav(concept)
 
     # analysis.calculate_average_tcav()
     # total_tcav = analysis.get_tcav()
@@ -585,7 +664,7 @@ def main():
     # cav.tcav_list = total_tcav
 
     # cav.plot_tcav(concept, action=action)
-    total_tcav0 = torch.load("tcav_list_goal_action_0.pt")
+    '''total_tcav0 = torch.load("tcav_list_goal_action_0.pt")
     total_tcav1 = torch.load("tcav_list_goal_action_1.pt")
     total_tcav2 = torch.load("tcav_list_goal_action_2.pt")
 
@@ -600,9 +679,9 @@ def main():
             ) / 3
     cav.tcav_list = average_tcav
 
-    cav.plot_tcav(concept, action=0)
-    # cav.calculate_random_cav("goal", model_load_path)
-    # cav.plot_cav("random")
+    cav.plot_tcav(concept, action=0)'''
+    #cav.calculate_cav("goal", model_load_path)
+    #cav.plot_cav("random")
 
 
 if __name__ == "__main__":
