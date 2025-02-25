@@ -16,8 +16,8 @@ import wandb
 from gymnasium.vector import AsyncVectorEnv
 from gymnasium.wrappers import TimeLimit
 from torch import nn
-from transformer_decoder import Transformer
-from transformer_decoder_policy import TransformerPolicy
+from gated_transformer_decoder import Transformer
+from gated_transformer_decoder_policy import TransformerPolicy
 from attention_pooling import AttentionPooling
 #from gated_transformer_decoder_combined import Transformer
 
@@ -295,7 +295,7 @@ class PPO_agent:
                     env_classes_batch, env_classes_target_batch.float()
                 )
 
-                policy_loss = policy_loss_ppo - 0.01 * entropy
+                policy_loss = policy_loss_ppo - 0.015 * entropy
 
                 critic_loss = nn.MSELoss()(value, rtgs_batch)
 
