@@ -40,5 +40,5 @@ agent/dqn/gifs/*
 
 agent/ppo/wandb/*
 agent/ppo/gifs/*
-agent/ppo/model/transformers/ppo/*
+agent/ppo/model/*
 agent/ppo_test_code/models/*
