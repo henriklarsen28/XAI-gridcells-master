@@ -22,7 +22,7 @@ class Concepts:
 
             'positive_dataset_inside_box' : deque(),
             'negative_dataset_inside_box' : deque(),
-
+            
             'grid_observations' : {grid_id: deque() for grid_id in set(self.grid_pos_to_id.values())}
         }
 
