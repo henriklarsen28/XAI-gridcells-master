@@ -93,7 +93,7 @@ class FeedForward_Final(nn.Module):
             nn.ReLU(),
             nn.Linear(2 * n_embd, 2 * n_embd),
             nn.ReLU(),
-            nn.Linear(2 * n_embd, action_dim)        )
+            nn.Linear(2 * n_embd, action_dim))
 
     def forward(self, x):
         return self.net(x)

@@ -167,6 +167,7 @@ class TransformerPolicy(nn.Module):
         x_std = torch.exp(self.log_std)
         #x_last = x[:, -1, :]
         #output = output[:, -1, :]
+        output = torch.tanh(output)
         return output, x_std, env_class_out, att_weights_list
 
 

@@ -180,6 +180,7 @@ class TransformerPolicy(nn.Module):
         env_class_out = self.env_class(x[:, -1, :])
         env_class_out = F.gumbel_softmax(env_class_out, tau=1, hard=True)
         x_std = torch.exp(self.log_std)
+        #x = F.tanh(x)
         #x_last = x[:, -1, :]
         #output = output[:, -1, :]
         return output, x_std, env_class_out, att_weights_list

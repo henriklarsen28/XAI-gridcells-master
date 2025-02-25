@@ -410,7 +410,7 @@ def is_reachable(matrix: np.array, goal_position: tuple):
 
 
 def main():
-    env_size = (21, 21)
+    env_size = (13, 13)
     n_goals = 3
 
     # delete all files in the folder random_generated_maps/goal

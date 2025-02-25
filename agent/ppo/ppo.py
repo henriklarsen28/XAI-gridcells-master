@@ -270,7 +270,7 @@ class PPO_agent:
             # Normalize the advantages
             #advantages = rtgs_batch
 
-            #advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+            advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
             for _ in range(self.n_updates_per_iteration):
                 value, current_log_prob, env_classes_batch = evaluate(
                     obs_batch,
