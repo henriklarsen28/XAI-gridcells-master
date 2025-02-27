@@ -19,7 +19,9 @@ from env import SunburstMazeContinuous, SunburstMazeDiscrete
 from utils.state_preprocess import state_preprocess
 
 # Define the CSV file path relative to the project root
-map_path_train = os.path.join(project_root, "env/random_generated_maps/goal/map_circular_4_19.csv")
+map_path_train = os.path.join(
+    project_root, "env/random_generated_maps/goal/large/map_circular_4_19.csv"
+)
 map_path_test = os.path.join(project_root, "env/map_v0/map_open_doors_90_degrees.csv")
 map_path_test_2 = os.path.join(
     project_root, "env/map_v0/map_open_doors_horizontal_v2.csv"
@@ -63,28 +65,21 @@ class Model_TrainTest:
         self.train_mode = config["train_mode"]
         self.policy_load_path = config["policy_load_path"]
         self.critic_load_path = config["critic_load_path"]
-        self.save_path = config["save_path"]
+        # self.save_path = config["save_path"]
         self.save_interval = config["save_interval"]
 
-        self.clip_grad_normalization = config["clip_grad_normalization"]
-        self.learning_rate = config["learning_rate"]
-        self.gamma = config["gamma"]
         self.max_steps = config["max_steps_per_episode"]
-        self.render = config["render"]
         self.render_mode = config["render_mode"]
         self.render_fps = config["render_fps"]
 
         self.rewards = config["rewards"]
         self.random_start_position = config["random_start_position"]
         self.random_goal_position = config["random_goal_position"]
-        self.observation_space = config["observation_space"]
 
         self.fov = config["fov"]
         self.ray_length = config["ray_length"]
         self.number_of_rays = config["number_of_rays"]
 
-        self.transformer = config["transformer"]
-        self.sequence_length = self.transformer["sequence_length"]
         map_path = map_path_train
         if not self.train_mode:
             map_path = map_path_test
@@ -167,29 +162,36 @@ if __name__ == "__main__":
         "model_name": "vivid-firebrand-872",
         "policy_load_path": f"./model/transformers/seq_len_45/model_vivid-firebrand-872/sunburst_maze_map_v0_5100.pth",
         "critic_load_path": "/model/transformers/ppo/model_vivid-firebrand-872/sunburst_maze_map_v0_5100.pth",
-        "save_path": f"/sunburst_maze_{map_version}",
+        # "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 3e-4,
-        "batch_size": 2500,
-        "mini_batch_size": 256,
+        "batch_size": 2000,
+        #"mini_batch_size": 750,
+        "n_mini_batches": 4,
         "optimizer": "adam",
-        "gamma": 0.99,
-        "gae_lambda": 0.95,
+        "PPO": {
+            "gamma": 0.99,
+            "gae_lambda": 0.95,
+            "n_updates_per_iteration": 8,  # hard update of the target model
+            "clip": 0.2,
+            "clip_grad_normalization": 0.5,
+            "policy_kl_range": 0.0008,
+            "policy_params": 5,
+        },
         "map_path": map_path_train,
-        "n_updates_per_iteration": 10,  # hard update of the target model
-        "max_steps_per_episode": 5,
+        "max_steps_per_episode": 500,
         "random_start_position": True,
         "random_goal_position": False,
         "rewards": {
-            "is_goal": 2,
-            "hit_wall": -0.00001,
-            "has_not_moved": -0.00002,
+            "is_goal": 10,
+            "hit_wall": -0.001,
+            "has_not_moved": -0.005,
             "new_square": 0.0,
-            "max_steps_reached": -0.00002,
+            "max_steps_reached": -0.025,
             "penalty_per_step": -0.00002,
             "number_of_squares_visible": 0,
-            "goal_in_sight": 0,
-            "is_false_goal": 0,
+            "goal_in_sight": 0.001,
+            "is_false_goal": -0.01,
             # and the proportion of number of squares viewed (set in the env)
         },
         # TODO
@@ -201,19 +203,18 @@ if __name__ == "__main__":
         },
         "save_interval": 25,
         "render_fps": 5,
-        "clip_grad_normalization": 2.5,
-        "clip": 0.2,
         "fov": fov_config["fov"],
         "ray_length": fov_config["ray_length"],
         "number_of_rays": fov_config["number_of_rays"],
         "transformer": {
-            "sequence_length": 10,
+            "sequence_length": 20,
             "n_embd": 196,
             "n_head": 4,
-            "n_layer": 2,
+            "n_layer": 3,
             "dropout": 0.2,
             "decouple_positional_embedding": False,
         },
+        "entropy": {"coefficient": 0.03, "min": 0.0001, "step": 100_000},
     }
 
     # Run

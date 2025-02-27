@@ -28,7 +28,7 @@ from torch.optim import Adam
 
 from env import SunburstMazeContinuous
 
-map_path_random = os.path.join(project_root, "env/random_generated_maps/goal")
+map_path_random = os.path.join(project_root, "env/random_generated_maps/goal/large")
 map_path_random_files = [
     os.path.join(map_path_random, f)
     for f in os.listdir(map_path_random)
@@ -63,6 +63,7 @@ def random_maps(
             maze_file=map_path,
             render_mode=env.render_mode,
             rewards=env.rewards,
+            max_steps_per_episode=env.max_steps_per_episode,
             random_start_position=env.random_start_position,
             fov=env.fov,
             ray_length=env.ray_length,
@@ -386,11 +387,11 @@ class PPO:
             dtype=torch.float32,
         ).to(self.device)
         # Normalize rewards
-        all_rewards = np.concatenate(batch_rews)
+        """all_rewards = np.concatenate(batch_rews)
         mean = np.mean(all_rewards)
         std = np.std(all_rewards) + 1e-8
-        batch_rewards = [(np.array(rewards) - mean) / std for rewards in batch_rews]
-        batch_rtgs = self.compute_rtgs(batch_rewards)  # ALG STEP 4
+        batch_rewards = [(np.array(rewards) - mean) / std for rewards in batch_rews]"""
+        batch_rtgs = self.compute_rtgs(batch_rews)  # ALG STEP 4
 
         # Log the episodic returns and episodic lengths in this batch.
         self.logger["batch_rews"] = batch_rews

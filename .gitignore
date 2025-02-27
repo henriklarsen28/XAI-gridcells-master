@@ -42,3 +42,4 @@ agent/ppo/wandb/*
 agent/ppo/gifs/*
 agent/ppo/model/*
 agent/ppo_test_code/models/*
+agent/ppo_test_code/ppo.py
