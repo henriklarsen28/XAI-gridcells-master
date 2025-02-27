@@ -85,21 +85,8 @@ class Model_TrainTest:
             map_path = map_path_test
 
         # Define Env
-        """self.env = SunburstMazeContinuous(
-            maze_file=map_path,
-            render_mode=render_mode,
-            max_steps_per_episode=self.max_steps,
-            random_start_position=self.random_start_position,
-            rewards=self.rewards,
-            fov=self.fov,
-            ray_length=self.ray_length,
-            number_of_rays=self.number_of_rays,
-        )
-
-        self.env.metadata["render_fps"] = (
-            self.render_fps
-        )  # For max frame rate make it 0"""
-        self.env = gym.make(
+        
+        """self.env = gym.make(
             "SunburstMazeContinuous-v0",
             maze_file=map_path,
             max_steps_per_episode=self.max_steps,
@@ -110,7 +97,8 @@ class Model_TrainTest:
             fov=self.fov,
             ray_length=self.ray_length,
             number_of_rays=self.number_of_rays,
-        )
+        )"""
+        self.env = gym.make("Pendulum-v1", render_mode=self.render_mode)
         self.agent = PPO_agent(
             env=self.env,
             device=device,
@@ -165,7 +153,7 @@ if __name__ == "__main__":
         # "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 3e-4,
-        "batch_size": 2250,
+        "batch_size": 1500,
         #"mini_batch_size": 750,
         "n_mini_batches": 4,
         "optimizer": "adam",
@@ -183,7 +171,7 @@ if __name__ == "__main__":
         "random_start_position": True,
         "random_goal_position": False,
         "rewards": {
-            "is_goal": 3,
+            "is_goal": 1,
             "hit_wall": -0.001,
             "has_not_moved": -0.005,
             "new_square": 0.0,
@@ -209,12 +197,12 @@ if __name__ == "__main__":
         "transformer": {
             "sequence_length": 20,
             "n_embd": 196,
-            "n_head": 4,
+            "n_head": 6,
             "n_layer": 3,
             "dropout": 0.2,
             "decouple_positional_embedding": False,
         },
-        "entropy": {"coefficient": 0.03, "min": 0.0001, "step": 100_000},
+        "entropy": {"coefficient": 0.03, "min": 0.0001, "step": 10_000},
     }
 
     # Run

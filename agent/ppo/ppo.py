@@ -478,12 +478,13 @@ class PPO_agent:
                 observations.append(tensor_sequence)
                 actions.append(action)
                 log_probs.append(log_prob)
-                env_classes_target.append(
+                """env_classes_target.append(
                     torch.nn.functional.one_hot(
                         torch.tensor(self.env_2_id[self.env.maze_file]),
                         num_classes=len(self.env_2_id),
                     )
-                )
+                )"""
+                env_classes_target.append(torch.tensor([1,0,0], dtype=torch.float32))
                 episode_rewards.append(reward)
 
                 done = terminated or turnicated
