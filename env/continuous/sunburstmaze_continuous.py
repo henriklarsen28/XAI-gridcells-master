@@ -44,6 +44,7 @@ class SunburstMazeContinuous(gym.Env):
         fov=math.pi / 2,
         ray_length=10,
         number_of_rays=100,
+        grid_length=4
     ):
         self.maze_file = maze_file
         self.initial_map = build_map(maze_file)
