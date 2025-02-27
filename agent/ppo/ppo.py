@@ -205,10 +205,10 @@ class PPO_agent:
                 actions_batch,
                 log_probs_batch,
                 env_classes_target_batch,
-                value,
-                advantages,
-                returns_batch,
-                rewads_mean,
+                _, #value
+                _, #advantages,
+                rtgs_batch, #returns_batch,
+                _, #rewads_mean,
                 lens,
                 frames,
             ) = self.rollout(iteration_counter)
@@ -219,9 +219,9 @@ class PPO_agent:
                 actions_batch,
                 log_probs_batch,
                 env_classes_target_batch,
-                value,
-                advantages,
-                returns_batch,
+                #value,
+                # advantages,
+                rtgs_batch,
             )
 
             timestep_counter += sum(lens)
@@ -232,20 +232,18 @@ class PPO_agent:
                 actions_batch,
                 log_probs_batch,
                 env_classes_target_batch,
-                value,
-                advantages,
-                returns_batch,
+                rtgs_batch,
             ) in minibatches:
 
                 # print("Obs: ", obs, obs.shape)
                 # Calculate the advantages
-                """value, _, _, _ = evaluate(
+                value, _, _, _ = evaluate(
                     obs_batch,
                     actions_batch,
                     self.policy_network,
                     self.critic_network,
                     self.cov_mat,
-                )"""
+                )
                 # print(value, value.shape)
 
                 """# Normalize rewards
@@ -263,7 +261,7 @@ class PPO_agent:
                 # print("RTGS: ", rtgs_batch, rtgs_batch.shape)
                 # print("Value: ", value, value.shape)
 
-                # advantages = rtgs_batch - value.detach()
+                advantages = rtgs_batch - value.clone().detach()
 
                 # Normalize the advantages
                 # advantages = rtgs_batch
@@ -292,9 +290,6 @@ class PPO_agent:
 
                     surrogate_loss1 = ratio * advantages
 
-                    surrogate_loss2 = (
-                        torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * advantages
-                    )
                     """policy_loss_ppo = (
                         -torch.min(surrogate_loss1, surrogate_loss2)
                     ).mean()"""
@@ -317,15 +312,15 @@ class PPO_agent:
                     policy_loss = policy_loss_ppo.mean() - self.entorpy_coefficient * entropy
                     # print("Kl",kl_div, "Entropy", entropy)
 
-                    value_clipped = value + torch.clamp(
-                        value_new - value,
+                    value_clipped = value.detach() + torch.clamp(
+                        value_new - value.detach(),
                         -self.config["PPO"]["clip"],
                         self.config["PPO"]["clip"],
                     )
 
                     critic_loss = torch.max(
-                        nn.MSELoss()(value_new, returns_batch),
-                        nn.MSELoss()(value_clipped, returns_batch),
+                        nn.MSELoss()(value_new, rtgs_batch),
+                        nn.MSELoss()(value_clipped, rtgs_batch),
                     )
 
                     # loss = policy_loss + 0.5 * critic_loss
@@ -366,8 +361,8 @@ class PPO_agent:
             wandb.log(
                 {
                     "Episode": lens,
-                    "Returns per episode": returns_batch.mean().item(),
-                    "Rewards mean": rewads_mean,
+                    "Rewards per episode": rtgs_batch.mean().item(),
+                    #"Rewards mean": rewads_mean,
                     "Policy_ppo loss": policy_loss_ppo.mean().item(),
                     "Env_class loss": env_class_loss.item(),
                     "Policy loss": policy_loss.item(),
@@ -524,11 +519,11 @@ class PPO_agent:
         env_classes_target = torch.stack(env_classes_target).to(self.device)
         all_rewards = np.concatenate(rewards)
         rewards_mean = np.mean(all_rewards)
-        # rtgs = self.compute_rtgs(rewards)
+        rtgs = self.compute_rtgs(rewards)
         # rtgs = None
-        advantages, returns, value = self.compute_gae(
-            rewards, episode_observations, dones
-        )
+        #advantages, returns, value = self.compute_gae(
+        #    rewards, episode_observations, dones
+        #)
         # print(rtgs, rtgs.shape)
         # print(rtgs.shape, actions.shape)
         # Create a sequence of rtgs
@@ -538,9 +533,9 @@ class PPO_agent:
             actions,
             log_probs,
             env_classes_target,
-            value,
-            advantages,
-            returns,
+            None, #value,
+            None, # advantages,
+            rtgs,
             rewards_mean,
             lens,
             frames,
@@ -676,7 +671,7 @@ class PPO_agent:
         self.entorpy_coefficient = max(self.entropy_min, self.entorpy_coefficient)
 
     def generate_minibatches(
-        self, obs, actions, log_probs, env_classes_target, values, advantages, returns
+        self, obs, actions, log_probs, env_classes_target, returns
     ):
         minibatches = []
 
@@ -692,8 +687,8 @@ class PPO_agent:
                         actions[mini_batch_indices],
                         log_probs[mini_batch_indices],
                         env_classes_target[mini_batch_indices],
-                        values[mini_batch_indices],
-                        advantages[mini_batch_indices],
+                        #values[mini_batch_indices],
+                        #advantages[mini_batch_indices],
                         returns[mini_batch_indices],
                     )
                 )

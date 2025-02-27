@@ -165,7 +165,7 @@ if __name__ == "__main__":
         # "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 3e-4,
-        "batch_size": 2000,
+        "batch_size": 2250,
         #"mini_batch_size": 750,
         "n_mini_batches": 4,
         "optimizer": "adam",
@@ -183,7 +183,7 @@ if __name__ == "__main__":
         "random_start_position": True,
         "random_goal_position": False,
         "rewards": {
-            "is_goal": 10,
+            "is_goal": 3,
             "hit_wall": -0.001,
             "has_not_moved": -0.005,
             "new_square": 0.0,
