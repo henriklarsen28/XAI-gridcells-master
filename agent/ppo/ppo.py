@@ -569,7 +569,7 @@ class PPO_agent:
         returns = []
         values = []
 
-        for ep_rewards, ep_obs, ep_dones in reversed(zip(rewards, obs, dones)):
+        for ep_rewards, ep_obs, ep_dones in reversed(list(zip(rewards, obs, dones))):
             ep_obs = torch.stack(ep_obs).to(self.device)
             ep_values, _ = self.critic_network(ep_obs)
             ep_len = len(ep_rewards)
