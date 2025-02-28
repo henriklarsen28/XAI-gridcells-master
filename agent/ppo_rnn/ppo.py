@@ -13,19 +13,13 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import wandb
-from attention_pooling import AttentionPooling
-from gated_transformer_decoder import Transformer
-from gated_transformer_decoder_policy import TransformerPolicy
-from gymnasium.vector import AsyncVectorEnv
-from gymnasium.wrappers import TimeLimit
+from rnn import RNN
 from torch import nn
+from torch.distributions import MultivariateNormal
 
 # from gated_transformer_decoder_combined import Transformer
 
 torch.autograd.set_detect_anomaly(True)
-
-from action import evaluate, get_action, kl_divergence
-from rollout import run_episode
 
 from env import SunburstMazeContinuous
 from utils import add_to_sequence, create_gif, padding_sequence
@@ -87,10 +81,10 @@ def make_envs(env: dict):
             ray_length=env.get_wrapper_attr("ray_length"),
             number_of_rays=env.get_wrapper_attr("number_of_rays"),
         )
-        new_env = TimeLimit(
+        """new_env = TimeLimit(
             new_env,
             env.get_wrapper_attr("max_steps_per_episode"),
-        )
+        )"""
         return new_env
 
     return _init
@@ -133,25 +127,20 @@ class PPO_agent:
 
         self.env_2_id = env_2_id_dict()
 
-        self.policy_network = TransformerPolicy(
+        self.policy_network = RNN(
             input_dim=self.obs_dim,
+            hidden_dim=128,
             output_dim=self.act_dim,
-            block_size=self.sequence_length,
-            num_envs=len(self.env_2_id),
-            n_embd=n_embd,
-            n_head=n_head,
-            n_layer=n_layer,
+            num_layers=5,
             dropout=dropout,
             device=self.device,
         )
 
-        self.critic_network = Transformer(
+        self.critic_network = RNN(
             input_dim=self.obs_dim,
+            hidden_dim=128,
             output_dim=1,
-            block_size=self.sequence_length,
-            n_embd=n_embd,
-            n_head=n_head,
-            n_layer=n_layer,
+            num_layers=5,
             dropout=dropout,
             device=self.device,
         )
@@ -227,129 +216,118 @@ class PPO_agent:
             timestep_counter += sum(lens)
             iteration_counter += 1
 
-            for (
+            """for (
                 obs_batch,
                 actions_batch,
                 log_probs_batch,
                 env_classes_target_batch,
                 rtgs_batch,
-            ) in minibatches:
+            ) in minibatches:"""
 
-                # print("Obs: ", obs, obs.shape)
-                # Calculate the advantages
-                value, _, _, _ = evaluate(
-                    obs_batch,
-                    actions_batch,
-                    self.policy_network,
-                    self.critic_network,
-                    self.cov_mat,
+            # print("Obs: ", obs, obs.shape)
+            # Calculate the advantages
+            value, _ = self.evaluate(obs_batch, actions_batch)
+            # print(value, value.shape)
+
+            """# Normalize rewards
+            all_rewards = np.concatenate(rewards_batch)
+            mean = np.mean(all_rewards)
+            std = np.std(all_rewards) + 1e-8
+            rewards_batch = [(np.array(rewards) - mean) / std for rewards in rewards_batch]
+
+            rewards_batch = list(rewards_batch)"""
+
+            # advantages, returns = self.compute_gae(rewards_batch, value, dones_batch)
+
+            # rtgs_batch = rtgs_batch.unsqueeze(1)
+
+            # print("RTGS: ", rtgs_batch, rtgs_batch.shape)
+            # print("Value: ", value, value.shape)
+
+            advantages = rtgs_batch - value.clone().detach()
+
+            # Normalize the advantages
+            # advantages = rtgs_batch
+
+            advantages = (advantages - advantages.mean()) / (
+                advantages.std() + 1e-8
+            )
+            for _ in range(self.n_updates_per_iteration):
+                value_new, current_log_prob = (
+                    self.evaluate(obs_batch, actions_batch)
                 )
-                # print(value, value.shape)
 
-                """# Normalize rewards
-                all_rewards = np.concatenate(rewards_batch)
-                mean = np.mean(all_rewards)
-                std = np.std(all_rewards) + 1e-8
-                rewards_batch = [(np.array(rewards) - mean) / std for rewards in rewards_batch]
+                """kl_div = kl_divergence(
+                    obs_batch, actions_batch, self.policy_network, self.cov_mat
+                )"""
 
-                rewards_batch = list(rewards_batch)"""
-
-                # advantages, returns = self.compute_gae(rewards_batch, value, dones_batch)
-
-                # rtgs_batch = rtgs_batch.unsqueeze(1)
-
-                # print("RTGS: ", rtgs_batch, rtgs_batch.shape)
-                # print("Value: ", value, value.shape)
-
-                advantages = rtgs_batch - value.clone().detach()
-
-                # Normalize the advantages
-                # advantages = rtgs_batch
-
-                advantages = (advantages - advantages.mean()) / (
-                    advantages.std() + 1e-8
+                ratio = torch.exp(
+                    torch.clamp(
+                        current_log_prob - log_probs_batch, min=-20.0, max=5.0
+                    )
                 )
-                for _ in range(self.n_updates_per_iteration):
-                    value_new, current_log_prob, entropy, env_classes_batch = evaluate(
-                        obs_batch,
-                        actions_batch,
-                        self.policy_network,
-                        self.critic_network,
-                        self.cov_mat,
-                    )
 
-                    kl_div = kl_divergence(
-                        obs_batch, actions_batch, self.policy_network, self.cov_mat
-                    )
+                surrogate_loss1 = ratio * advantages
+                surrogate_loss2 = (
+                    torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * advantages
+                )
 
-                    ratio = torch.exp(
-                        torch.clamp(
-                            current_log_prob - log_probs_batch, min=-20.0, max=5.0
-                        )
-                    )
+                policy_loss_ppo = -(
+                    torch.min(surrogate_loss1, surrogate_loss2)
+                ).mean()
+                """env_class_loss = F.cross_entropy(
+                    env_classes_batch, env_classes_target_batch.float()
+                )"""
 
-                    surrogate_loss1 = ratio * advantages
-                    surrogate_loss2 = (
-                        torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * advantages
-                    )
+                """policy_loss = (
+                    policy_loss_ppo
+                    + self.policy_params * kl_div
+                    - self.entorpy_coefficient * entropy
+                )"""
 
-                    policy_loss_ppo = -(
-                        torch.min(surrogate_loss1, surrogate_loss2)
-                    ).mean()
-                    env_class_loss = F.cross_entropy(
-                        env_classes_batch, env_classes_target_batch.float()
-                    )
+                """policy_loss_ppo = -torch.where(
+                    (kl_div >= self.kl_range)
+                    & (surrogate_loss1 > advantages),
+                    surrogate_loss1 - self.policy_params * kl_div,
+                    surrogate_loss1 - self.kl_range,
+                )"""
 
-                    """policy_loss = (
-                        policy_loss_ppo
-                        + self.policy_params * kl_div
-                        - self.entorpy_coefficient * entropy
-                    )"""
-                    
-                    """policy_loss_ppo = -torch.where(
-                        (kl_div >= self.kl_range)
-                        & (surrogate_loss1 > advantages),
-                        surrogate_loss1 - self.policy_params * kl_div,
-                        surrogate_loss1 - self.kl_range,
-                    )"""
+                policy_loss = (
+                    policy_loss_ppo  # - self.entorpy_coefficient * entropy
+                )
+                # print("Kl",kl_div, "Entropy", entropy)
 
-                    policy_loss = (
-                        policy_loss_ppo# - self.entorpy_coefficient * entropy
-                    )
-                    # print("Kl",kl_div, "Entropy", entropy)
+                """value_clipped = value.detach() + torch.clamp(
+                    value_new - value.detach(),
+                    -self.config["PPO"]["clip"],
+                    self.config["PPO"]["clip"],
+                )"""
 
-                    """value_clipped = value.detach() + torch.clamp(
-                        value_new - value.detach(),
-                        -self.config["PPO"]["clip"],
-                        self.config["PPO"]["clip"],
-                    )"""
+                critic_loss = nn.MSELoss()(value_new, rtgs_batch)
 
-                    critic_loss = nn.MSELoss()(value_new, rtgs_batch)
+                # loss = policy_loss + 0.5 * critic_loss
+                # Normalize the gradients
 
-                    # loss = policy_loss + 0.5 * critic_loss
-                    # Normalize the gradients
+                print("Policy loss step")
+                self.policy_optimizer.zero_grad()
+                policy_loss.backward(retain_graph=True)
+                torch.nn.utils.clip_grad_norm_(
+                    self.policy_network.parameters(), self.clip_grad_normalization
+                )
+                self.policy_optimizer.step()
 
-                    print("Policy loss step")
-                    self.policy_optimizer.zero_grad()
-                    policy_loss.backward(retain_graph=True)
-                    torch.nn.utils.clip_grad_norm_(
-                        self.policy_network.parameters(), self.clip_grad_normalization
-                    )
-                    self.policy_optimizer.step()
+                # self.env_network_backprop(env_class_loss)
+                # self.network.zero_grad()
+                # loss.backward(retain_graph=True)
+                # self.policy_optimizer.step()
 
-                    # self.env_network_backprop(env_class_loss)
-                    # self.network.zero_grad()
-                    # loss.backward(retain_graph=True)
-                    # self.policy_optimizer.step()
-
-                    self.critic_optimizer.zero_grad()
-                    critic_loss.backward(retain_graph=True)
-                    torch.nn.utils.clip_grad_norm_(
-                        self.critic_network.parameters(), self.clip_grad_normalization
-                    )
-                    self.critic_optimizer.step()
-                    print("After")
-                    self.entorpy_coefficient_decay()
+                self.critic_optimizer.zero_grad()
+                critic_loss.backward(retain_graph=True)
+                torch.nn.utils.clip_grad_norm_(
+                    self.critic_network.parameters(), self.clip_grad_normalization
+                )
+                self.critic_optimizer.step()
+                self.entorpy_coefficient_decay()
 
             gif = None
             if frames:
@@ -367,14 +345,14 @@ class PPO_agent:
                     "Rewards per episode": rtgs_batch.mean().item(),
                     # "Rewards mean": rewads_mean,
                     "Policy_ppo loss": policy_loss_ppo.mean().item(),
-                    "Env_class loss": env_class_loss.item(),
+                    #"Env_class loss": env_class_loss.item(),
                     "Policy loss": policy_loss.item(),
                     "Critic loss": critic_loss.item(),
                     # "Environment": self.env_2_id[self.env.maze_file],
                     "Steps done": lens.mean(),
-                    "Entropy": entropy.item(),
+                    #"Entropy": entropy.item(),
                     "Entropy coefficient": self.entorpy_coefficient,
-                    "KL divergence": kl_div.item(),
+                    #"KL divergence": kl_div.item(),
                     "Gif:": (wandb.Video(gif, fps=4, format="gif") if gif else None),
                 },
                 commit=True,
@@ -459,9 +437,7 @@ class PPO_agent:
                 tensor_sequence = padding_sequence(
                     tensor_sequence, self.sequence_length, self.device
                 )
-                action, log_prob = get_action(
-                    tensor_sequence, self.policy_network, self.cov_mat
-                )
+                action, log_prob = self.get_action(tensor_sequence)
                 action = action[0]
                 state, reward, terminated, turnicated, _ = self.env.step(action)
 
@@ -605,43 +581,73 @@ class PPO_agent:
         values = values.flatten()
 
         return advantages, returns, values
-        """ # Iterate through episodes in reverse order
-        for ep_rews, ep_dones in zip(reversed(rewards), reversed(dones)):
-            for t in reversed(range(len(ep_rews))):
-                delta = (
-                    ep_rews[t]
-                    + self.gamma * values_extended[t + 1] * (1 - ep_dones[t])
-                    - values[t]
-                )
-                gae = delta + self.gamma * self.gae_lambda * (1 - ep_dones[t]) * gae
-                advantages.insert(0, gae)
+
+    def get_action(self, obs):
         """
-        advantages = torch.tensor(advantages, dtype=torch.float, device=self.device)
+        Queries an action from the actor network, should be called from rollout.
 
-        # Compute value targets as advantages + value estimates
-        returns = advantages + values
+        Parameters:
+                obs - the observation at the current timestep
 
-        return advantages, returns
+        Return:
+                action - the action to take, as a numpy array
+                log_prob - the log probability of the selected action in the distribution
+        """
 
-    """
+        if len(obs.shape) == 2:
+            obs = obs.unsqueeze(0)
+        # Query the actor network for a mean action
+        mean = self.policy_network(obs)
 
-    def compute_gae(self, rewards, states, gamma=0.99, lam=0.95):
+        # Create a distribution with the mean action and std from the covariance matrix above.
+        # For more information on how this distribution works, check out Andrew Ng's lecture on it:
+        # https://www.youtube.com/watch?v=JjB58InuTqM
+        dist = MultivariateNormal(mean, self.cov_mat)
 
-        advantages = torch.zeros_like(
-            states[:, 0, 0], dtype=torch.float32, device=self.rollout_device
-        )
-        last_advantage = 0
-        values, _ = self.critic_network(states)
-        values = values.detach()
-        for ep_rewards in rewards:
+        # Sample an action from the distribution
+        action = dist.sample()
 
-            for t in reversed(range(len(ep_rewards))):
-                delta = ep_rewards[t] + gamma * values[t + 1] - values[t]
-                last_advantage = delta + gamma * lam * last_advantage
-                advantages[t] = last_advantage
+        # Calculate the log probability for that action
+        log_prob = dist.log_prob(action)
+        # Return the sampled action and the log probability of that action in our distribution
+        action = torch.tensor(action, dtype=torch.float)
+        # log_prob_scaled = log_prob - torch.sum(torch.log(1 - scaled_action.pow(2) + 1e-6), dim=-1)
 
-        advantages = advantages.unsqueeze(1)
-        return advantages"""
+        # scaled_action, log_prob = self.scale_actions_log_probs(action, log_prob)
+
+        # print("scaled_log_prob", log_prob_scaled)
+        return action.detach().numpy(), log_prob.detach()
+
+    def evaluate(self, batch_obs, batch_acts):
+        """
+        Estimate the values of each observation, and the log probs of
+        each action in the most recent batch with the most recent
+        iteration of the actor network. Should be called from learn.
+
+        Parameters:
+                batch_obs - the observations from the most recently collected batch as a tensor.
+                                        Shape: (number of timesteps in batch, dimension of observation)
+                batch_acts - the actions from the most recently collected batch as a tensor.
+                                        Shape: (number of timesteps in batch, dimension of action)
+
+        Return:
+                V - the predicted values of batch_obs
+                log_probs - the log probabilities of the actions taken in batch_acts given batch_obs
+        """
+        # Query critic network for a value V for each batch_obs. Shape of V should be same as batch_rtgs
+        V = self.critic_network(batch_obs).squeeze()
+
+        # Calculate the log probabilities of batch actions using most recent actor network.
+        # This segment of code is similar to that in get_action()
+        mean = self.policy_network(batch_obs)
+        dist = MultivariateNormal(mean, self.cov_mat)
+        log_probs = dist.log_prob(batch_acts)
+
+        # _ , log_probs = self.scale_actions_log_probs(batch_acts, log_probs)
+
+        # Return the value vector V of each observation in the batch
+        # and log probabilities log_probs of each action in the batch
+        return V, log_probs
 
     def compute_entropy(self, log_probs):
         return torch.mean(-log_probs)

@@ -25,7 +25,7 @@ def padding_sequence(sequence: torch.Tensor, max_length, device):
     """
     Pad the sequence with zeros to the max_length
     """
-    """last_state = sequence[-1] #TODO: Pad with 0 in the beginning
+    last_state = sequence[-1] #TODO: Pad with 0 in the beginning
     if len(sequence) < max_length:
         for _ in range(max_length - len(sequence)):
             sequence = torch.cat(
@@ -36,8 +36,8 @@ def padding_sequence(sequence: torch.Tensor, max_length, device):
                     ).unsqueeze(0),
                 ]
             )
-    return sequence"""
-    seq_len, feature_dim = sequence.shape
+    return sequence
+    """seq_len, feature_dim = sequence.shape
 
     if seq_len < max_length:
         # Create zero padding tensor of shape [padding_len, feature_dim]
@@ -45,7 +45,7 @@ def padding_sequence(sequence: torch.Tensor, max_length, device):
         # Concatenate padding at the beginning
         sequence = torch.cat([padding, sequence], dim=0)
 
-    return sequence
+    return sequence"""
 
 
 
