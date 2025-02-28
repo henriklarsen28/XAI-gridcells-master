@@ -205,10 +205,10 @@ class PPO_agent:
                 actions_batch,
                 log_probs_batch,
                 env_classes_target_batch,
-                _, #value
-                _, #advantages,
-                rtgs_batch, #returns_batch,
-                _, #rewads_mean,
+                _,  # value
+                _,  # advantages,
+                rtgs_batch,  # returns_batch,
+                _,  # rewads_mean,
                 lens,
                 frames,
             ) = self.rollout(iteration_counter)
@@ -219,7 +219,7 @@ class PPO_agent:
                 actions_batch,
                 log_probs_batch,
                 env_classes_target_batch,
-                #value,
+                # value,
                 # advantages,
                 rtgs_batch,
             )
@@ -289,10 +289,13 @@ class PPO_agent:
                     )
 
                     surrogate_loss1 = ratio * advantages
+                    surrogate_loss2 = (
+                        torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * advantages
+                    )
 
-                    """policy_loss_ppo = (
-                        -torch.min(surrogate_loss1, surrogate_loss2)
-                    ).mean()"""
+                    policy_loss_ppo = -(
+                        torch.min(surrogate_loss1, surrogate_loss2)
+                    ).mean()
                     env_class_loss = F.cross_entropy(
                         env_classes_batch, env_classes_target_batch.float()
                     )
@@ -302,26 +305,26 @@ class PPO_agent:
                         + self.policy_params * kl_div
                         - self.entorpy_coefficient * entropy
                     )"""
-                    policy_loss_ppo = -torch.where(
+                    
+                    """policy_loss_ppo = -torch.where(
                         (kl_div >= self.kl_range)
                         & (surrogate_loss1 > advantages),
                         surrogate_loss1 - self.policy_params * kl_div,
                         surrogate_loss1 - self.kl_range,
-                    )
+                    )"""
 
-                    policy_loss = policy_loss_ppo.mean() - self.entorpy_coefficient * entropy
+                    policy_loss = (
+                        policy_loss_ppo - self.entorpy_coefficient * entropy
+                    )
                     # print("Kl",kl_div, "Entropy", entropy)
 
-                    value_clipped = value.detach() + torch.clamp(
+                    """value_clipped = value.detach() + torch.clamp(
                         value_new - value.detach(),
                         -self.config["PPO"]["clip"],
                         self.config["PPO"]["clip"],
-                    )
+                    )"""
 
-                    critic_loss = torch.max(
-                        nn.MSELoss()(value_new, rtgs_batch),
-                        nn.MSELoss()(value_clipped, rtgs_batch),
-                    )
+                    critic_loss = nn.MSELoss()(value_new, rtgs_batch)
 
                     # loss = policy_loss + 0.5 * critic_loss
                     # Normalize the gradients
@@ -362,12 +365,12 @@ class PPO_agent:
                 {
                     "Episode": lens,
                     "Rewards per episode": rtgs_batch.mean().item(),
-                    #"Rewards mean": rewads_mean,
+                    # "Rewards mean": rewads_mean,
                     "Policy_ppo loss": policy_loss_ppo.mean().item(),
                     "Env_class loss": env_class_loss.item(),
                     "Policy loss": policy_loss.item(),
                     "Critic loss": critic_loss.item(),
-                    #"Environment": self.env_2_id[self.env.maze_file],
+                    # "Environment": self.env_2_id[self.env.maze_file],
                     "Steps done": lens.mean(),
                     "Entropy": entropy.item(),
                     "Entropy coefficient": self.entorpy_coefficient,
@@ -444,7 +447,7 @@ class PPO_agent:
             # envs = AsyncVectorEnv([make_envs(self.env) for _ in range(4)])
 
             # Reset the environment. sNote that obs is short for observation.
-            #self.env = self.random_maps(self.env, random_map=True)
+            # self.env = self.random_maps(self.env, random_map=True)
 
             state, _ = self.env.reset()
             done = False
@@ -484,7 +487,7 @@ class PPO_agent:
                         num_classes=len(self.env_2_id),
                     )
                 )"""
-                env_classes_target.append(torch.tensor([1,0,0], dtype=torch.float32))
+                env_classes_target.append(torch.tensor([1, 0, 0], dtype=torch.float32))
                 episode_rewards.append(reward)
 
                 done = terminated or turnicated
@@ -522,9 +525,9 @@ class PPO_agent:
         rewards_mean = np.mean(all_rewards)
         rtgs = self.compute_rtgs(rewards)
         # rtgs = None
-        #advantages, returns, value = self.compute_gae(
+        # advantages, returns, value = self.compute_gae(
         #    rewards, episode_observations, dones
-        #)
+        # )
         # print(rtgs, rtgs.shape)
         # print(rtgs.shape, actions.shape)
         # Create a sequence of rtgs
@@ -534,8 +537,8 @@ class PPO_agent:
             actions,
             log_probs,
             env_classes_target,
-            None, #value,
-            None, # advantages,
+            None,  # value,
+            None,  # advantages,
             rtgs,
             rewards_mean,
             lens,
@@ -688,8 +691,8 @@ class PPO_agent:
                         actions[mini_batch_indices],
                         log_probs[mini_batch_indices],
                         env_classes_target[mini_batch_indices],
-                        #values[mini_batch_indices],
-                        #advantages[mini_batch_indices],
+                        # values[mini_batch_indices],
+                        # advantages[mini_batch_indices],
                         returns[mini_batch_indices],
                     )
                 )
