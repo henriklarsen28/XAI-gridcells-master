@@ -367,7 +367,7 @@ class PPO_agent:
                     "Env_class loss": env_class_loss.item(),
                     "Policy loss": policy_loss.item(),
                     "Critic loss": critic_loss.item(),
-                    "Environment": self.env_2_id[self.env.maze_file],
+                    #"Environment": self.env_2_id[self.env.maze_file],
                     "Steps done": lens.mean(),
                     "Entropy": entropy.item(),
                     "Entropy coefficient": self.entorpy_coefficient,
