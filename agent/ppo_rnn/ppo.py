@@ -131,7 +131,7 @@ class PPO_agent:
             input_dim=self.obs_dim,
             hidden_dim=128,
             output_dim=self.act_dim,
-            num_layers=5,
+            num_layers=3,
             dropout=dropout,
             device=self.device,
         )
@@ -140,7 +140,7 @@ class PPO_agent:
             input_dim=self.obs_dim,
             hidden_dim=128,
             output_dim=1,
-            num_layers=5,
+            num_layers=3,
             dropout=dropout,
             device=self.device,
         )
@@ -260,6 +260,7 @@ class PPO_agent:
                 """kl_div = kl_divergence(
                     obs_batch, actions_batch, self.policy_network, self.cov_mat
                 )"""
+                entropy = self.compute_entropy(current_log_prob)
 
                 ratio = torch.exp(
                     torch.clamp(
@@ -293,7 +294,7 @@ class PPO_agent:
                 )"""
 
                 policy_loss = (
-                    policy_loss_ppo  # - self.entorpy_coefficient * entropy
+                    policy_loss_ppo - self.entorpy_coefficient * entropy
                 )
                 # print("Kl",kl_div, "Entropy", entropy)
 
@@ -650,7 +651,7 @@ class PPO_agent:
         return V, log_probs
 
     def compute_entropy(self, log_probs):
-        return torch.mean(-log_probs)
+        return -torch.sum(torch.exp(log_probs) * log_probs, dim=-1).mean()
 
     def __init_hyperparameters(self, config):
         self.clip_grad_normalization = config["PPO"]["clip_grad_normalization"]

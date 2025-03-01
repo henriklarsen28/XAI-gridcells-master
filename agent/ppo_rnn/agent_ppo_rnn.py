@@ -158,7 +158,7 @@ if __name__ == "__main__":
         "n_mini_batches": 4,
         "optimizer": "adam",
         "PPO": {
-            "gamma": 0.99,
+            "gamma": 0.995,
             "gae_lambda": 0.95,
             "n_updates_per_iteration": 8,  # hard update of the target model
             "clip": 0.2,
@@ -202,7 +202,7 @@ if __name__ == "__main__":
             "dropout": 0.2,
             "decouple_positional_embedding": False,
         },
-        "entropy": {"coefficient": 0.03, "min": 0.0001, "step": 10_000},
+        "entropy": {"coefficient": 0.03, "min": 0.0001, "step": 1_000},
     }
 
     # Run
