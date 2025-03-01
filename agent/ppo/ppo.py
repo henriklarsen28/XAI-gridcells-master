@@ -399,8 +399,8 @@ class PPO_agent:
 
         while t < self.batch_size:
             ep_tensor_seq = []
-            ep_obs = []
-            next_ep_obs = []
+            ep_obs = deque(maxlen=self.sequence_length)
+            next_ep_obs = deque(maxlen=self.sequence_length)
             ep_acts = []
             ep_log_probs = []
             ep_rews = []
@@ -419,7 +419,7 @@ class PPO_agent:
                 t += 1
                 ep_obs.append(obs)
 
-                tensor_obs = torch.stack(ep_obs).to(self.device)
+                tensor_obs = torch.stack(list(ep_obs)).to(self.device)
                 tensor_obs = self.preprocess_ep_obs(tensor_obs)
 
                 ep_tensor_seq.append(tensor_obs)
@@ -447,13 +447,12 @@ class PPO_agent:
                 done = terminated or truncated
 
                 obs = torch.tensor(obs, dtype=torch.float, device=self.device)
-                next_ep_obs = ep_obs.copy()
                 next_ep_obs.append(obs)
 
-                tensor_obs = torch.stack(ep_obs).to(self.device)
-                tensor_obs = self.preprocess_ep_obs(tensor_obs)
+                tensor_next_obs = torch.stack(list(next_ep_obs)).to(self.device)
+                tensor_next_obs = self.preprocess_ep_obs(tensor_next_obs)
                 with torch.no_grad():
-                    next_value, _ = self.critic_network(tensor_obs.unsqueeze(0))
+                    next_value, _ = self.critic_network(tensor_next_obs.unsqueeze(0))
                     next_value = next_value.squeeze(1)
 
                 ep_acts.append(action)
@@ -475,7 +474,6 @@ class PPO_agent:
 
             # Store full episode sequence
 
-            print("Episode length: ", len(ep_obs))
             batch_obs.append(torch.stack(ep_tensor_seq))
 
             batch_acts.append(torch.tensor(np.array(ep_acts), dtype=torch.float))
@@ -567,11 +565,12 @@ class PPO_agent:
 
     def preprocess_ep_obs(self, ep_obs):
         # Convert sequence to tensor and pad if necessary
-        seq_len = len(ep_obs)  # Actual sequence length
+        seq_len = len(ep_obs)
         padded_obs = torch.zeros(self.sequence_length, *ep_obs[-1].shape).to(
             self.device
         )
-        padded_obs[-seq_len:] = torch.stack(list(ep_obs))  # Right-align sequence
+
+        padded_obs[-seq_len:] = ep_obs  # Right-align sequence
 
         return padded_obs
 
