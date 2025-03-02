@@ -470,11 +470,11 @@ class PPO_agent:
             # batch_obs.append(torch.stack(ep_tensor_seq))
 
             batch_rews.append(torch.tensor(ep_rews, dtype=torch.float))
-            batch_values.append(torch.tensor(np.array(ep_values), dtype=torch.float))
+            batch_values.append(torch.tensor(ep_values, dtype=torch.float))
             batch_next_values.append(
-                torch.tensor(np.array(ep_next_values), dtype=torch.float)
+                torch.tensor(ep_next_values, dtype=torch.float)
             )
-            batch_dones.append(torch.tensor(np.array(ep_dones), dtype=torch.float))
+            batch_dones.append(torch.tensor(ep_dones, dtype=torch.float))
             batch_lens.append(len(ep_obs))
 
             """attention_masks = torch.zeros((len(batch_obs), self.sequence_length))
