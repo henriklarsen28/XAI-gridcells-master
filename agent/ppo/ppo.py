@@ -406,7 +406,7 @@ class PPO_agent:
             ep_attention_mask = []
 
             # Reset environment
-            self.env = self.random_maps(env=self.env, random_map=True)
+            #self.env = self.random_maps(env=self.env, random_map=True)
             obs, _ = self.env.reset()
             obs = torch.tensor(obs, dtype=torch.float, device=self.device)
 
@@ -492,7 +492,7 @@ class PPO_agent:
         #batch_next_values = torch.stack(batch_next_values)
         #batch_dones = torch.stack(batch_dones)
         batch_lens = torch.tensor(batch_lens)
-        batch_attention_masks = torch.stack(batch_attention_masks)
+        #batch_attention_masks = torch.stack(batch_attention_masks)
 
         #print(batch_obs.shape)
         #print(batch_acts)
