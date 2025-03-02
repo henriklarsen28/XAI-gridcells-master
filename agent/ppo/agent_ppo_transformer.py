@@ -86,7 +86,7 @@ class Model_TrainTest:
 
         # Define Env
         
-        """self.env = gym.make(
+        self.env = gym.make(
             "SunburstMazeContinuous-v0",
             maze_file=map_path,
             max_steps_per_episode=self.max_steps,
@@ -97,8 +97,8 @@ class Model_TrainTest:
             fov=self.fov,
             ray_length=self.ray_length,
             number_of_rays=self.number_of_rays,
-        )"""
-        self.env = gym.make("Pendulum-v1", render_mode=self.render_mode)
+        )
+        #self.env = gym.make("Pendulum-v1", render_mode=self.render_mode)
         self.agent = PPO_agent(
             env=self.env,
             device=device,
@@ -153,7 +153,7 @@ if __name__ == "__main__":
         # "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 3e-4,
-        "batch_size": 4000,
+        "batch_size": 3000,
         "mini_batch_size": 64,
         "n_mini_batches": 5,
         "optimizer": "adam",

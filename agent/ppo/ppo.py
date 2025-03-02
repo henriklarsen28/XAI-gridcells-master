@@ -406,7 +406,7 @@ class PPO_agent:
             ep_attention_mask = []
 
             # Reset environment
-            #self.env = self.random_maps(env=self.env, random_map=True)
+            self.env = self.random_maps(env=self.env, random_map=True)
             obs, _ = self.env.reset()
             obs = torch.tensor(obs, dtype=torch.float, device=self.device)
 
