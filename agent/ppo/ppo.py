@@ -172,14 +172,14 @@ class PPO_agent:
             # minibatches = self.batch_rollouts(rollouts)  # Create mini-batches
 
             # Minibatches
-            minibatches = self.generate_minibatches(
+            """minibatches = self.generate_minibatches(
                 obs_batch,
                 actions_batch,
                 log_probs_batch,
                 batch_rews.flatten(0, 1),
                 rtgs,
                 attention_masks,
-            )
+            )"""
 
             timestep_counter += sum(lens)
             iteration_counter += 1
@@ -406,7 +406,7 @@ class PPO_agent:
             ep_attention_mask = []
 
             # Reset environment
-            # self.env = self.random_maps(env=self.env, random_map=True)
+            self.env = self.random_maps(env=self.env, random_map=True)
             obs, _ = self.env.reset()
             obs = torch.tensor(obs, dtype=torch.float, device=self.device)
 
@@ -424,8 +424,8 @@ class PPO_agent:
                 # Get action and log probability (transformer expects a full sequence, so we pass collected states)
                 action, log_prob = self.get_action(tensor_obs)  # Pass full sequence
                 with torch.no_grad():
-                    value = self.critic_network(tensor_obs.unsqueeze(0))
-                    value = value.squeeze(1)
+                    value, _ = self.critic_network(tensor_obs.unsqueeze(0))
+                    value = value.squeeze()
 
                 obs, reward, terminated, truncated, _ = self.env.step(action)
                 obs = obs.flatten()
@@ -445,8 +445,8 @@ class PPO_agent:
                 tensor_next_obs = torch.stack(list(next_ep_obs)).to(self.device)
                 tensor_next_obs = self.preprocess_ep_obs(tensor_next_obs)
                 with torch.no_grad():
-                    next_value = self.critic_network(tensor_next_obs.unsqueeze(0))
-                    # next_value = next_value.squeeze(1)
+                    next_value, _ = self.critic_network(tensor_next_obs.unsqueeze(0))
+                    next_value = next_value.squeeze()
                 # ep_acts.append(action)
                 ep_rews.append(reward)
                 ep_values.append(value)
@@ -481,22 +481,23 @@ class PPO_agent:
             for i, length in enumerate(batch_lens):
                 attention_masks[i, :length] = 1"""
             batch_attention_masks.append(torch.stack(ep_attention_mask))
+         
+
 
         batch_obs = torch.stack(batch_obs)
         batch_acts = torch.tensor(batch_acts)
         batch_log_probs = torch.tensor(batch_log_probs)
-        batch_rews = torch.stack(batch_rews)
-        batch_values = torch.stack(batch_values)
-        batch_next_values = torch.stack(batch_next_values)
-        batch_dones = torch.stack(batch_dones)
+        #batch_rews = torch.stack(batch_rews)
+        #batch_values = torch.stack(batch_values)
+        #batch_next_values = torch.stack(batch_next_values)
+        #batch_dones = torch.stack(batch_dones)
         batch_lens = torch.tensor(batch_lens)
         batch_attention_masks = torch.stack(batch_attention_masks)
 
-        print(batch_obs.shape)
-        print(batch_acts)
-        print(batch_log_probs.shape)
-        print(batch_rews.shape)
-        print(batch_values.shape)
+        #print(batch_obs.shape)
+        #print(batch_acts)
+        #print(batch_log_probs.shape)
+        #print(batch_values.shape)
 
         """# Pad sequences to the max episode length in the batch
         batch_obs = pad_sequence(
@@ -506,7 +507,7 @@ class PPO_agent:
         """batch_acts = pad_sequence(batch_acts, batch_first=True)
         batch_dones = pad_sequence(batch_dones, batch_first=True)"""
 
-        batch_dones = batch_dones.unsqueeze(2)
+        #batch_dones = batch_dones.unsqueeze(2)
 
         # Compute RTGs
         batch_rtgs = self.compute_rtgs(batch_rews)
@@ -529,8 +530,8 @@ class PPO_agent:
         # batch_obs = batch_obs.flatten(0,1)
         # batch_acts = batch_acts.flatten(0,1)
         # batch_log_probs = batch_log_probs.flatten(0,1)
-        batch_dones = batch_dones.flatten(0, 1)
-        batch_attention_masks = batch_attention_masks.flatten(0, 1)
+        #batch_dones = batch_dones.flatten(0, 1)
+        #batch_attention_masks = batch_attention_masks.flatten(0, 1)
         # returns = returns.flatten(0,1)
         # advantages = advantages.flatten(0,1)
         # batch_lens = batch_lens.flatten(1,2)
@@ -564,7 +565,7 @@ class PPO_agent:
             obs = obs.unsqueeze(0)
 
         attention_mask = (obs.sum(dim=-1) != 0).to(torch.float32)
-        mean, _ = self.policy_network(obs)
+        mean, std, _, _ = self.policy_network(obs)
         dist = torch.distributions.MultivariateNormal(mean, self.cov_mat)
 
         action = dist.sample()
@@ -576,15 +577,16 @@ class PPO_agent:
 
     def evaluate(self, obs, actions, attention_mask):
         # obs = self.preprocess_ep_obs(obs)
-        V = self.critic_network(obs).squeeze()
-        mean, env_class = self.policy_network(obs)
+        V, _ = self.critic_network(obs)
+        V = V.squeeze()
+        mean, _, env_class, _ = self.policy_network(obs)
         dist = torch.distributions.MultivariateNormal(mean, self.cov_mat)
         log_prob = dist.log_prob(actions)
         entropy = dist.entropy()
         return V, log_prob, entropy.mean(), env_class
 
     def kl_divergence(self, obs, actions, attention_mask):
-        mean = self.policy_network(obs, attention_mask)
+        mean, _, _, _ = self.policy_network(obs, attention_mask)
         dist = torch.distributions.MultivariateNormal(mean, self.cov_mat)
         old_dist = torch.distributions.MultivariateNormal(actions, self.cov_mat)
 
