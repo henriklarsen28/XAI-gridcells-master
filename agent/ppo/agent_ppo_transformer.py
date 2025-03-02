@@ -153,14 +153,14 @@ if __name__ == "__main__":
         # "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 3e-4,
-        "batch_size": 2000,
+        "batch_size": 4000,
         "mini_batch_size": 64,
-        "n_mini_batches": 4,
+        "n_mini_batches": 5,
         "optimizer": "adam",
         "PPO": {
             "gamma": 0.99,
             "gae_lambda": 0.95,
-            "n_updates_per_iteration": 8,  # hard update of the target model
+            "n_updates_per_iteration": 10,  # hard update of the target model
             "clip": 0.2,
             "clip_grad_normalization": 0.5,
             "policy_kl_range": 0.0008,
@@ -195,14 +195,14 @@ if __name__ == "__main__":
         "ray_length": fov_config["ray_length"],
         "number_of_rays": fov_config["number_of_rays"],
         "transformer": {
-            "sequence_length": 128,
+            "sequence_length": 30,
             "n_embd": 128,
             "n_head": 6,
-            "n_layer": 3,
+            "n_layer": 2,
             "dropout": 0.2,
             "decouple_positional_embedding": False,
         },
-        "entropy": {"coefficient": 0.03, "min": 0.0001, "step": 10_000},
+        "entropy": {"coefficient": 0.015, "min": 0.0001, "step": 1_000},
     }
 
     # Run

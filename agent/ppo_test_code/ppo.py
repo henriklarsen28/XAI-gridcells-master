@@ -205,6 +205,9 @@ class PPO:
 
             # Calculate advantage at k-th iteration
             V, _ = self.evaluate(batch_obs, batch_acts)
+
+            print("rtgs", batch_rtgs, batch_rtgs.shape)
+            print("V", V, V.shape)
             A_k = batch_rtgs - V.detach()  # ALG STEP 5
 
             # One of the only tricks I use that isn't in the pseudocode. Normalizing advantages
@@ -225,8 +228,11 @@ class PPO:
                 # here's a great explanation:
                 # https://cs.stackexchange.com/questions/70518/why-do-we-use-the-log-in-gradient-based-reinforcement-algorithms
                 # TL;DR makes gradient ascent easier behind the scenes.
+                print("batch_log_probs", batch_log_probs)
+                print("curr_log_probs", curr_log_probs)
                 ratios = torch.exp(curr_log_probs - batch_log_probs)
-
+                print("ratios", ratios)
+                print("A_k", A_k)
                 # Calculate surrogate losses.
                 surr1 = ratios * A_k
                 surr2 = torch.clamp(ratios, 1 - self.clip, 1 + self.clip) * A_k
@@ -236,12 +242,12 @@ class PPO:
                 # the performance function, but Adam minimizes the loss. So minimizing the negative
                 # performance function maximizes it.
                 actor_loss = (-torch.min(surr1, surr2)).mean()
-                env_class_loss = F.cross_entropy(
+                """env_class_loss = F.cross_entropy(
                     batch_env_classes_target.float(), batch_env_classes.float()
-                )
-                env_class_loss = env_class_loss / env_class_loss.mean()
-                env_class_loss = env_class_loss * 0.1
-                policy_loss = actor_loss + env_class_loss
+                )"""
+                #env_class_loss = env_class_loss / env_class_loss.mean()
+                #env_class_loss = env_class_loss * 0.1
+                policy_loss = actor_loss #+ env_class_loss
                 critic_loss = nn.MSELoss()(V, batch_rtgs)
 
                 # Calculate gradients and perform backward propagation for actor network
@@ -268,8 +274,8 @@ class PPO:
                     "Episode": batch_lens[0],
                     "Reward per episode": batch_rtgs.mean().item(),
                     "Actor loss": actor_loss.item(),
-                    "Environment": self.env_2_id[self.env.maze_file],
-                    "Env class loss": env_class_loss.item(),
+                    #"Environment": self.env_2_id[self.env.maze_file],
+                    #"Env class loss": env_class_loss.item(),
                     "Policy loss": policy_loss.item(),
                     "Critic loss": critic_loss.item(),
                     "Steps done": batch_lens[0],
@@ -327,9 +333,9 @@ class PPO:
             ep_rews = []  # rewards collected per episode
 
             # Reset the environment. sNote that obs is short for observation.
-            self.env = random_maps(
+            """self.env = random_maps(
                 self.env, random_map=True, iteration_counter=i_so_far
-            )
+            )"""
             obs, _ = self.env.reset()
             done = False
 
@@ -361,7 +367,6 @@ class PPO:
 
                 # Don't really care about the difference between terminated or truncated in this, so just combine them
                 done = terminated | truncated
-
                 # Track recent reward, action, and action log probability
                 ep_rews.append(rew)
                 batch_acts.append(action)
@@ -382,10 +387,13 @@ class PPO:
         batch_acts = torch.tensor(np.array(batch_acts), dtype=torch.float)
         batch_log_probs = torch.tensor(batch_log_probs, dtype=torch.float)
         env_classes_pred = torch.stack(env_classes_pred).to(self.device)
-        env_classes_target = torch.tensor(
+        """env_classes_target = torch.tensor(
             [self.env_2_id[self.env.maze_file] for _ in range(len(env_classes_pred))],
             dtype=torch.float32,
-        ).to(self.device)
+        ).to(self.device)"""
+        env_classes_target.append(torch.tensor([1, 0, 0], dtype=torch.float32))
+
+        env_classes_target = torch.stack(env_classes_target).to(self.device)
         # Normalize rewards
         """all_rewards = np.concatenate(batch_rews)
         mean = np.mean(all_rewards)
@@ -396,6 +404,11 @@ class PPO:
         # Log the episodic returns and episodic lengths in this batch.
         self.logger["batch_rews"] = batch_rews
         self.logger["batch_lens"] = batch_lens
+
+        print("batch_obs", batch_obs)
+        print("batch_acts", batch_acts)
+        print("batch_log_probs", batch_log_probs)
+
 
         return (
             batch_obs,
@@ -438,32 +451,6 @@ class PPO:
 
         return batch_rtgs
 
-    def scale_actions_log_probs(self, actions, log_probs):
-
-        # Split rotation and velocity components
-        actions_rot = actions[0]  # First column: rotation (-30, 30)
-        actions_vel = actions[1]  # Second column: velocity (0, 1)
-
-        # Apply tanh and sigmoid scaling
-        actions_rot_scaled = 30 * torch.tanh(actions_rot)  # Scale to [-30, 30]
-        actions_vel_scaled = torch.sigmoid(actions_vel)  # Scale to [0, 1]
-
-        # Compute log probability corrections
-        log_prob_rot_correction = -torch.log(
-            1 - torch.tanh(actions_rot).pow(2) + 1e-6
-        ).sum(dim=-1)
-        sigmoid_derivative = actions_vel_scaled * (1 - actions_vel_scaled)
-        log_prob_vel_correction = -torch.log(sigmoid_derivative + 1e-6).sum(dim=-1)
-
-        # Adjust log probability
-        log_prob_adjusted = (
-            log_probs + log_prob_rot_correction + log_prob_vel_correction
-        )
-
-        actions_scaled = torch.stack([actions_rot_scaled, actions_vel_scaled], dim=-1)
-
-        return actions_scaled, log_prob_adjusted
-
     def get_action(self, obs):
         """
         Queries an action from the actor network, should be called from rollout.
@@ -485,7 +472,6 @@ class PPO:
 
         # Sample an action from the distribution
         action = dist.sample()
-
         # Calculate the log probability for that action
         log_prob = dist.log_prob(action)
         # Return the sampled action and the log probability of that action in our distribution
@@ -521,6 +507,7 @@ class PPO:
         mean, _ = self.actor(batch_obs)
         dist = MultivariateNormal(mean, self.cov_mat)
         log_probs = dist.log_prob(batch_acts)
+
 
         # _ , log_probs = self.scale_actions_log_probs(batch_acts, log_probs)
 

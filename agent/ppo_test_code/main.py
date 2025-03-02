@@ -144,7 +144,7 @@ def main(args):
         "number_of_rays": 100,
     }
 
-	env = SunburstMazeContinuous(
+	"""env = SunburstMazeContinuous(
 		maze_file=map_path_train,
 		render_mode="rgb_array",
 		max_steps_per_episode=hyperparameters["max_timesteps_per_episode"],
@@ -154,15 +154,15 @@ def main(args):
 		fov=fov_config["fov"],
 		ray_length=fov_config["ray_length"],
 		number_of_rays=fov_config["number_of_rays"],
-	)
+	)"""
+	env = gym.make("Pendulum-v1", render_mode="rgb_array")
 
 	# Train or test, depending on the mode specified
-	"""if args.mode == 'train':
-		train(env=env, hyperparameters=hyperparameters, actor_model=args.actor_model, critic_model=args.critic_model)
-	"""
+	train(env=env, hyperparameters=hyperparameters, actor_model=args.actor_model, critic_model=args.critic_model)
+	
 
-	actor_model = "models/colorful-sunset-826/ppo_actor_975.pth"
-	test(env=env, actor_model=actor_model)
+	#actor_model = "models/colorful-sunset-826/ppo_actor_975.pth"
+	#test(env=env, actor_model=actor_model)
 
 if __name__ == '__main__':
 	args = get_args() # Parse arguments from command line

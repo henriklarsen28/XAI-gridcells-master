@@ -8,7 +8,6 @@ from collections import deque
 
 import numpy as np
 import torch
-from action import get_action
 
 from env import SunburstMazeContinuous
 from utils import add_to_sequence, create_gif, padding_sequence

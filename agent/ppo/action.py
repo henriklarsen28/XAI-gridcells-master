@@ -1,7 +1,7 @@
 import torch
 
 
-def get_action(obs, policy_network, cov_mat):
+"""def get_action(obs, policy_network, cov_mat):
 
     if len(obs.shape) == 2:
         obs = obs.unsqueeze(0)
@@ -22,7 +22,7 @@ def evaluate(obs, actions, policy_network, critic_network, cov_mat):
     log_prob = dist.log_prob(actions)
     entropy = dist.entropy()
 
-    return V, log_prob, entropy.mean(), env_class
+    return V, log_prob, entropy.mean(), env_class"""
 
 
 def kl_divergence(obs, actions, policy_network, cov_mat):
