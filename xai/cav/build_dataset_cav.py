@@ -252,7 +252,7 @@ def find_model_files(base_path: str, ep_ids: list):
 
     for num in ep_ids:
         for file in files:
-            if file.endswith(f"{num}.pth"):
+            if file.endswith(f"_{num}.pth"):
                 path = os.path.join(base_path, file)
                 model_files.append(path)
     return model_files
@@ -409,9 +409,9 @@ def main():
     dataset_directory_test = os.path.join(dataset_path, 'test')
 
     if not os.path.exists(dataset_directory_train):
-        os.makedirs(dataset_directory_train)
+        os.makedirs(dataset_directory_train, exist_ok=True)
     if not os.path.exists(dataset_directory_test):
-        os.makedirs(dataset_directory_test)
+        os.makedirs(dataset_directory_test, exist_ok=True)
 
     build_csv_dataset(model_files, dataset_path, 'raw_data')
     build_random_dataset(dataset_path, "raw_data")

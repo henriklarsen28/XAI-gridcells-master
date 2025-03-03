@@ -11,7 +11,7 @@ from gymnasium import spaces
 
 from utils import calculate_fov_matrix_size, step_angle
 
-from ..file_manager import build_map
+from ..file_manager import build_grid_layout, build_map
 from .maze_game_continuous import Maze
 
 checkpoints = [
@@ -44,7 +44,7 @@ class SunburstMazeContinuous(gym.Env):
         fov=math.pi / 2,
         ray_length=10,
         number_of_rays=100,
-        grid_length=4
+        grid_length=None
     ):
         self.maze_file = maze_file
         self.initial_map = build_map(maze_file)
@@ -60,6 +60,14 @@ class SunburstMazeContinuous(gym.Env):
             for x in range(self.width):
                 if self.env_map[y][x] == 0:
                     self.map_observation_size += 1
+
+        if grid_length:
+            self.env_grid = build_grid_layout(self.env_map, grid_length)
+        
+        self.color_map = {}
+        for value in set(self.env_grid.values()):
+            self.color_map[value] = (np.random.randint(0, 255), np.random.randint(0, 255), np.random.randint(0, 255), 100) # random colors with alpha
+
         """print(
             "height:",
             self.height,
@@ -446,6 +454,9 @@ class SunburstMazeContinuous(gym.Env):
 
         return observation, reward, terminated, False, info
 
+    def get_grid_id(self):
+        return self.env_grid.get(self.position, None)
+
     def view_of_maze_complete(self):
         if len(self.viewed_squares) == self.map_observation_size:
             return True
@@ -514,6 +525,8 @@ class SunburstMazeContinuous(gym.Env):
                 self.wall_rays,
                 [],
                 self.past_actions,
+                self.env_grid,
+                self.color_map,
             )
 
     def render_rgb_array(self):

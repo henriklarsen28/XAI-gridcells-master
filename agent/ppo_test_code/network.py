@@ -3,48 +3,52 @@
 	define our actor and critic networks in PPO.
 """
 
-import torch
-from torch import nn
-import torch.nn.functional as F
 import numpy as np
+import torch
+import torch.nn.functional as F
+from torch import nn
+
 
 class FeedForwardNN(nn.Module):
-	"""
-		A standard in_dim-64-64-out_dim Feed Forward Neural Network.
-	"""
-	def __init__(self, in_dim, out_dim):
-		"""
-			Initialize the network and set up the layers.
+    """
+    A standard in_dim-64-64-out_dim Feed Forward Neural Network.
+    """
 
-			Parameters:
-				in_dim - input dimensions as an int
-				out_dim - output dimensions as an int
+    def __init__(self, in_dim, out_dim):
+        """
+        Initialize the network and set up the layers.
 
-			Return:
-				None
-		"""
-		super(FeedForwardNN, self).__init__()
+        Parameters:
+                in_dim - input dimensions as an int
+                out_dim - output dimensions as an int
 
-		self.layer1 = nn.Linear(in_dim, 64)
-		self.layer2 = nn.Linear(64, 64)
-		self.layer3 = nn.Linear(64, out_dim)
+        Return:
+                None
+        """
+        super(FeedForwardNN, self).__init__()
 
-	def forward(self, obs):
-		"""
-			Runs a forward pass on the neural network.
+        self.layer1 = nn.Linear(in_dim, 128)
+        self.layer2 = nn.Linear(128, 128)
+        self.layer3 = nn.Linear(128, 64)
+        self.layer4 = nn.Linear(64, out_dim)
 
-			Parameters:
-				obs - observation to pass as input
+    def forward(self, obs):
+        """
+        Runs a forward pass on the neural network.
 
-			Return:
-				output - the output of our forward pass
-		"""
-		# Convert observation to tensor if it's a numpy array
-		if isinstance(obs, np.ndarray):
-			obs = torch.tensor(obs, dtype=torch.float)
+        Parameters:
+                obs - observation to pass as input
 
-		activation1 = F.relu(self.layer1(obs))
-		activation2 = F.relu(self.layer2(activation1))
-		output = self.layer3(activation2)
+        Return:
+                output - the output of our forward pass
+        """
+        # Convert observation to tensor if it's a numpy array
+        if isinstance(obs, np.ndarray):
+            obs = torch.tensor(obs, dtype=torch.float)
 
-		return output
+        activation1 = F.relu(self.layer1(obs))
+        activation2 = F.relu(self.layer2(activation1))
+        activation3 = self.layer3(activation2)
+        output = self.layer4(activation3)
+
+        return output

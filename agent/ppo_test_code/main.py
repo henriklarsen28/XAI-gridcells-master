@@ -10,19 +10,19 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 
 sys.path.append(project_root)
 
-import gymnasium as gym
-import sys
-import torch
-
-from arguments import get_args
-from ppo import PPO
-from network import FeedForwardNN
-from eval_policy import eval_policy
-
 import math
+import sys
+
+import gymnasium as gym
+import torch
+from arguments import get_args
+from eval_policy import eval_policy
+from network import FeedForwardNN
+from ppo import PPO
+from network_policy import FeedForwardNNPolicy
+
 from env import SunburstMazeContinuous
 from utils.calculate_fov import calculate_fov_matrix_size
-
 
 # TODO: Implementere med ulike kart, byttes hver 20 episode
 
@@ -42,7 +42,7 @@ def train(env, hyperparameters, actor_model, critic_model):
 	print(f"Training", flush=True)
 
 	# Create a model for PPO.
-	model = PPO(policy_class=FeedForwardNN, env=env, **hyperparameters)
+	model = PPO(policy_class=FeedForwardNNPolicy, critic_class=FeedForwardNN, env=env, **hyperparameters)
 
 	# Tries to load in an existing actor/critic model to continue training on
 	if actor_model != '' and critic_model != '':
@@ -74,6 +74,8 @@ def test(env, actor_model):
 	"""
 	print(f"Testing {actor_model}", flush=True)
 
+	
+
 	# If the actor model is not specified, then exit
 	if actor_model == '':
 		print(f"Didn't specify model file. Exiting.", flush=True)
@@ -84,7 +86,7 @@ def test(env, actor_model):
 	act_dim = env.action_space.shape[0]
 
 	# Build our policy the same way we build our actor model in PPO
-	policy = FeedForwardNN(obs_dim, act_dim)
+	policy = FeedForwardNNPolicy(obs_dim, act_dim)
 
 	# Load in the actor model saved by the PPO algorithm
 	policy.load_state_dict(torch.load(actor_model))
@@ -152,14 +154,17 @@ def main(args):
 		fov=fov_config["fov"],
 		ray_length=fov_config["ray_length"],
 		number_of_rays=fov_config["number_of_rays"],
+		grid_length=4
 	)
 
 	# Train or test, depending on the mode specified
-	if args.mode == 'train':
+	'''if args.mode == 'train':
 		train(env=env, hyperparameters=hyperparameters, actor_model=args.actor_model, critic_model=args.critic_model)
 	else:
-		test(env=env, actor_model=args.actor_model)
+		test(env=env, actor_model=args.actor_model)'''
+	
+	actor_model = "../ppo/models/feed-forward/colorful-sunset-826/actor/ppo_actor_675.pth"
 
-if __name__ == '__main__':
-	args = get_args() # Parse arguments from command line
-	main(args)
+	test(env=env, actor_model=actor_model)
+
+if __na

@@ -22,75 +22,69 @@ from env import SunburstMazeContinuous
 from utils.calculate_fov import calculate_fov_matrix_size
 from utils.sequence_preprocessing import add_to_sequence, padding_sequence
 from utils.state_preprocess import state_preprocess
+from agent.ppo_test_code import FeedForwardNN
+from agent.ppo_test_code.network_policy import FeedForwardNNPolicy
+from xai.cav.cav_ff.eval_policy_ff import eval_policy
 
 device = torch.device("cpu")
-fov_config = {
-    "fov": math.pi / 1.5,
-    "ray_length": 8,
-    "number_of_rays": 100,
-}
 
-half_fov = fov_config["fov"] / 2
-matrix_size = calculate_fov_matrix_size(fov_config["ray_length"], half_fov)
-print("Matrix size: ", matrix_size)
-matrix_height = matrix_size[0]
-matrix_width = matrix_size[1]
-num_states = matrix_size[0] * matrix_size[1]
+rewards =  {
+            "is_goal": 2,
+            "hit_wall": -0.01,
+            "has_not_moved": -0.005,
+            "new_square": 0.0025,
+            "max_steps_reached": -0.025,
+            "penalty_per_step": -0.0002,
+            "number_of_squares_visible": 0,
+            "goal_in_sight": 0.1,
+			"is_false_goal": -0.01,
+	}
+fov_config = {
+            "fov": math.pi / 1.5,
+            "ray_length": 10,
+            "number_of_rays": 100,
+            }
+
+hyperparameters = {
+				'timesteps_per_batch': 2048, 
+				'max_timesteps_per_episode': 250, 
+				'gamma': 0.99, 
+				'n_updates_per_iteration': 10,
+				'lr': 3e-4, 
+				'clip': 0.2,
+				'render': True,
+				'render_every_i': 10
+			  }
+
 
 # Parameters
 config = {
-    "model_path": "../../../agent/ppo/models/feed-forward/",
+    "model_path": "../../../agent/ppo/models/feed-forward/colorful-sunset-826/actor",
     
-    "model_name": "soft-star-528/actor", # TODO: change to the correct model name
-    "model_episodes": [500, 1000, 1800], # TODO: change to the correct model episodes
+    "model_name": "colorful-sunset-826", # TODO: change to the correct model name
+    "model_episodes": [675, 1500, 2925], # TODO: change to the correct model episodes
 
     "env_name": "map_two_rooms_18_19", #TODO: change to the correct env name
-    "env_path": "../../env/random_generated_maps/goal/large/map_two_rooms_18_19.csv", # TODO: Change to the correct path for what the model was trained on
+    "env_path": "../../../env/random_generated_maps/goal/large/map_two_rooms_18_19.csv", # TODO: Change to the correct path for what the model was trained on
     # "env_path": "../../../env/map_v0/map_open_doors_horizontal.csv",
-
-    "max_steps_per_episode": 250,
-    "random_start_position": True,
-    "rewards": {
-        "is_goal": 200 / 200,
-        "hit_wall": -0.01 / 200,
-        "has_not_moved": -0.2 / 200,
-        "new_square": 0.4 / 200,
-        "max_steps_reached": -0.5 / 200,
-        "penalty_per_step": -0.01 / 200,
-        "goal_in_sight": 0.5 / 200,
-        "number_of_squares_visible": 0.001 / 200
-        },
-    # TODO
-    "observation_space": {
-        "position": True,
-        "orientation": True,
-        "steps_to_goal": False,
-        "last_known_steps": 0,
-        "salt_and_pepper_noise": 0.2,
-        },
-    "save_interval": 100,
-        "memory_capacity": 200_000,
-        "render_fps": 100,
-        "num_states": num_states,
-        "clip_grad_normalization": 3,
-        "fov": math.pi / 1.5,
-        "ray_length": 8,
-        "number_of_rays": 100,
-        "grid_length": 4, # 4x4 grid
-
-        "transformer": {
-            "sequence_length": 45,
-            "n_embd": 128,
-            "n_head": 8,
-            "n_layer": 3,
-            "dropout": 0.3,
-            "state_dim": num_states,
-        "decouple_positional_embedding": False,
-    },
     "cav": {
         "dataset_max_length" : 1500
-    }
+    },
+
+    "grid_length": 4,
 }
+
+env = SunburstMazeContinuous(
+    maze_file=config['env_path'],
+    render_mode="human",
+    max_steps_per_episode=hyperparameters["max_timesteps_per_episode"],
+    random_start_position=True,
+    rewards=rewards,
+    fov=fov_config["fov"],
+    ray_length=fov_config["ray_length"],
+    number_of_rays=fov_config["number_of_rays"],
+    grid_length=config["grid_length"]
+)
 
 
 # CAV for stuck in wall -> Sees into wall and tries to move forward
@@ -241,83 +235,6 @@ def build_goal_dataset():
     save_to_csv(positive_dataset_goal, "positive_goal.csv")
     save_to_csv(negative_dataset_goal, "negative_goal.csv")'''
 
-
-def build_csv_dataset(model_paths: list, dataset_path: str, dataset_subfolder = ''):
-    # Load early agent data
-    model_load_path = model_paths[0]
-
-    epsilon = 0.2
-
-    env = SunburstMazeContinuous(
-        maze_file=config["env_path"],
-        render_mode="human",
-        max_steps_per_episode=config["max_steps_per_episode"],
-        random_start_position=config["random_start_position"],
-        rewards=config["rewards"],
-        fov=config["fov"],
-        ray_length=config["ray_length"],
-        number_of_rays=config["number_of_rays"],
-        grid_length=config["grid_length"]
-    )
-
-    env.metadata["render_fps"] = 100
-    agent = DQN_Agent(
-        env=env,
-        epsilon=epsilon,
-        epsilon_min=0.01,
-        epsilon_decay=0.999,
-        clip_grad_normalization=1.0,
-        learning_rate=0.0001,
-        discount=0.99,
-        memory_capacity=10000,
-        device=device,
-        seed=42,
-    )
-
-    con = Concepts(
-        grid_pos_to_id=env.env_grid,
-    )
-
-    con.clear_datasets()
-
-    # Load the model
-    agent.model.load_state_dict(torch.load(model_load_path, map_location=device))
-    agent.model.eval()
-
-    # Containing a tuple of observation sequence, legal_actions, position sequence, action sequence
-    collected_observations = run_agent(env, agent, model_paths)
-    #print("Length of collected sequences: ", len(collected_sequences))
-
-
-    for observation in collected_observations:
-        obs, legal_actions, position, action = observation
-        #print(len(observation_sequence))
-        if rd.random() > 0.4:
-            # Check if the agent is stuck in a wall
-            con.positive_looking_at_wall(obs, legal_actions, action)
-            con.positive_rotating_stuck(obs, action, position)
-
-
-    path = os.path.join(dataset_path, dataset_subfolder)
-
-    if os.path.exists(path) == False:
-        os.makedirs(path)
-    for key, val in con.datasets.items():
-        filename = key
-        if isinstance(val, dict):
-            for sub_key, sub_val in val.items():
-                if sub_val:
-                    filename = str(key) + '_' + str(sub_key)
-                    data_preprocessed = shuffle_and_trim_datasets(sub_val)
-                    save_to_csv(data_preprocessed, filename, path)
-        else:
-            if val:
-                data_preprocessed = shuffle_and_trim_datasets(val)
-                save_to_csv(data_preprocessed, filename, path)
-
-    save_config(dataset_path)
-  
-
 def shuffle_and_trim_datasets(dataset: deque):
     max_length = config["cav"]["dataset_max_length"]
     # shuffle the dataset
@@ -388,7 +305,7 @@ def find_model_files(base_path: str, ep_ids: list):
 
     for num in ep_ids:
         for file in files:
-            if file.endswith(f"{num}.pth"):
+            if file.endswith(f"_{num}.pth"):
                 path = os.path.join(base_path, file)
                 model_files.append(path)
     return model_files
@@ -460,79 +377,87 @@ def grid_observation_dataset(dataset_path, dataset_subfolder, model_name: str, m
             positive_file_train, negative_file_train = get_positive_negative_data(concept, datapath = f"dataset/{model_name}/{map_name}/raw_data")
             positive_file_train.to_csv(os.path.join(dataset_path, 'train', f"{concept}_positive_train.csv"), index=False)
             negative_file_train.to_csv(os.path.join(dataset_path, 'train', f"{concept}_negative_train.csv"), index=False)
-    
 
-def run_agent(env: SunburstMazeDiscrete, agent: DQN_Agent, models: list):
+def build_csv_dataset(actor_model_paths: list, dataset_path: str, dataset_subfolder = ''):
+    # Load early agent data
+    actor_model = actor_model_paths[0] # TODO: set up actor model paths
 
-    collected_observations = deque()
 
-    max_episodes = 160
-    total_steps = 0
-    # Testing loop over episodes
-    for episode in range(0, max_episodes):
+    # If the actor model is not specified, then exit
+    if actor_model_paths == '':
+        print(f"Didn't specify model file. Exiting.", flush=True)
+        sys.exit(0)
 
-        # Load new model when the episode is larger than 60
-        if episode == 60:
-            model_load_path = models[1]
-            print("Using model: ", model_load_path)
-            agent.model.load_state_dict(
-                torch.load(model_load_path, map_location=device)
-            )
-            agent.model.eval()
+    print(f"Testing {actor_model}", flush=True)
 
-        if episode == 90:
-            model_load_path = models[2]
-            print("Using model: ", model_load_path)
-            agent.model.load_state_dict(
-                torch.load(model_load_path, map_location=device)
-            )
-            agent.model.eval()
+    con = Concepts(
+        grid_pos_to_id=env.env_grid, # TODO: Build grid layout in continous environment
+    )
 
-        state, _ = env.reset(seed=42)
-        done = False
-        truncation = False
-        steps_done = 0
-        total_reward = 0
-        while not done and not truncation:
-            state = state_preprocess(state, device)
+    con.clear_datasets()
 
-            action, _ = agent.select_action(state)
-            legal_actions = env.legal_actions()
-            next_state, reward, done, truncation, _ = env.step(action)
+    # Extract out dimensions of observation and action spaces
+    obs_dim = env.observation_space.n
+    act_dim = env.action_space.shape[0]
 
-            collected_observations.append(
-                (state, legal_actions, env.position, action)
-            )
-            state = next_state
-            total_reward += reward
-            steps_done += 1
-            total_steps += 1
-            # Make sure the sequence length is filled up
-        # Print log
-        result = (
-            f"Episode: {episode}, "
-            f"Steps: {steps_done:}, "
-            f"Reward: {total_reward:.2f}, "
-        )
-        print(result)
+    # Build our policy the same way we build our actor model in PPO
+    """model = torch.load(actor_model, map_location=device)
 
-    return copy.deepcopy(collected_observations)
+    for name, param in model.items():
+        print(name, len(param))
 
+    sys.exit()"""
+
+    policy = FeedForwardNNPolicy(obs_dim, act_dim)
+
+    # Load in the actor model saved by the PPO algorithm
+    policy.load_state_dict(torch.load(actor_model, map_location=device))
+
+    # Evaluate policy
+    collected_observations = eval_policy(policy=policy, env=env, device=device, render=True)
+
+    #TODO: Update model
+
+    for observation, position in collected_observations:
+        # print(len(observation_sequence))
+        if rd.random() > 0.4:
+            con.in_grid_square(observation, position)
+
+
+    path = os.path.join(dataset_path, dataset_subfolder)
+
+    if os.path.exists(path) == False:
+        os.makedirs(path)
+    for key, val in con.datasets.items():
+        filename = key
+        if isinstance(val, dict):
+            for sub_key, sub_val in val.items():
+                if sub_val:
+                    filename = str(key) + '_' + str(sub_key)
+                    data_preprocessed = shuffle_and_trim_datasets(sub_val)
+                    save_to_csv(data_preprocessed, filename, path)
+        else:
+            if val:
+                data_preprocessed = shuffle_and_trim_datasets(val)
+                save_to_csv(data_preprocessed, filename, path)
+
+    save_config(dataset_path)
 
 
 def main():
-    model_path = os.path.join(config["model_path"], config["model_name"])
-    model_files = find_model_files(model_path, config["model_episodes"])
+    #model_path = os.path.join(config["model_path"], config["model_name"])
+    model_files = find_model_files(config["model_path"], config["model_episodes"])
     dataset_path = os.path.join('./dataset/', config["model_name"], config["env_name"])
 
-    dataset_directory_train = f"./dataset/{config["model_name"]}/{config["env_name"]}/train"
-    dataset_directory_test = f"./dataset/{config["model_name"]}/{config["env_name"]}/test"
+    dataset_directory_train = f"./dataset/{config['model_name']}/{config['env_name']}/train"
+    dataset_directory_test = f"./dataset/{config['model_name']}/{config['env_name']}/test"
 
     if not os.path.exists(dataset_directory_train):
-        os.makedirs(dataset_directory_train)
+        os.makedirs(dataset_directory_train, exist_ok=True)
     if not os.path.exists(dataset_directory_test):
-        os.makedirs(dataset_directory_test)
+        os.makedirs(dataset_directory_test, exist_ok=True)
 
+    print("model files:", model_files)
 
     build_csv_dataset(model_files, dataset_path, 'raw_data')
     #build_random_dataset(dataset_path, "raw_data")

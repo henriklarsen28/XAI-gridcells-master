@@ -71,7 +71,7 @@ class PPO:
 	"""
 		This is the PPO class we will use as our model in main.py
 	"""
-	def __init__(self, policy_class, env: SunburstMazeContinuous, **hyperparameters):
+	def __init__(self, policy_class, critic_class, env: SunburstMazeContinuous, **hyperparameters):
 		"""
 			Initializes the PPO model, including hyperparameters.
 
@@ -100,7 +100,7 @@ class PPO:
 
 		 # Initialize actor and critic networks
 		self.actor = policy_class(self.obs_dim, self.act_dim)                                                   # ALG STEP 1
-		self.critic = policy_class(self.obs_dim, 1)
+		self.critic = critic_class(self.obs_dim, 1)
 
 		# Initialize optimizers for actor and critic
 		self.actor_optim = Adam(self.actor.parameters(), lr=self.lr)
