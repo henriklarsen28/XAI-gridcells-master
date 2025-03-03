@@ -86,7 +86,7 @@ class Model_TrainTest:
 
         # Define Env
         
-        """self.env = gym.make(
+        self.env = gym.make(
             "SunburstMazeContinuous-v0",
             maze_file=map_path,
             max_steps_per_episode=self.max_steps,
@@ -97,8 +97,8 @@ class Model_TrainTest:
             fov=self.fov,
             ray_length=self.ray_length,
             number_of_rays=self.number_of_rays,
-        )"""
-        self.env = gym.make("Pendulum-v1", render_mode=self.render_mode)
+        )
+        #self.env = gym.make("Pendulum-v1", render_mode=self.render_mode)
         self.agent = PPO_agent(
             env=self.env,
             device=device,
@@ -153,14 +153,14 @@ if __name__ == "__main__":
         # "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 3e-4,
-        "batch_size": 1500,
-        #"mini_batch_size": 750,
+        "batch_size": 3000,
+        "mini_batch_size": 750,
         "n_mini_batches": 4,
         "optimizer": "adam",
         "PPO": {
             "gamma": 0.995,
             "gae_lambda": 0.95,
-            "n_updates_per_iteration": 8,  # hard update of the target model
+            "n_updates_per_iteration": 10,  # hard update of the target model
             "clip": 0.2,
             "clip_grad_normalization": 0.5,
             "policy_kl_range": 0.0008,
@@ -171,15 +171,15 @@ if __name__ == "__main__":
         "random_start_position": True,
         "random_goal_position": False,
         "rewards": {
-            "is_goal": 1,
+            "is_goal": 10,
             "hit_wall": -0.001,
             "has_not_moved": -0.005,
             "new_square": 0.0,
             "max_steps_reached": -0.025,
-            "penalty_per_step": -0.00002,
+            "penalty_per_step": -0.0002,
             "number_of_squares_visible": 0,
             "goal_in_sight": 0.001,
-            "is_false_goal": -0.01,
+            "is_false_goal": 0,
             # and the proportion of number of squares viewed (set in the env)
         },
         # TODO
@@ -195,7 +195,7 @@ if __name__ == "__main__":
         "ray_length": fov_config["ray_length"],
         "number_of_rays": fov_config["number_of_rays"],
         "transformer": {
-            "sequence_length": 20,
+            "sequence_length": 10,
             "n_embd": 196,
             "n_head": 6,
             "n_layer": 3,
