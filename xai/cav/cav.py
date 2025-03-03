@@ -57,6 +57,11 @@ episode_numbers = [
     "5000",
     "5200",
 ]
+episode_numbers = [
+    "400",
+    "2500",
+    "5000"
+]
 
 # episode_numbers = ["100", "200"]
 
@@ -202,7 +207,7 @@ class CAV:
         
 
         positive, q_values_positive = create_activation_dataset(
-            f"{dataset_directory_train}/{concept}_train.csv",
+            f"{dataset_directory_train}/{concept}_positive_train.csv",
             model_path,
             block,
             embedding=embedding,
@@ -223,7 +228,7 @@ class CAV:
         assert isinstance(negative, torch.Tensor), "Negative must be a tensor"
 
         positive_test, q_values_positive_test = create_activation_dataset(
-            f"{dataset_directory_test}/{concept}_test.csv",
+            f"{dataset_directory_test}/{concept}_positive_test.csv",
             model_path,
             block,
             embedding=embedding,
@@ -618,25 +623,24 @@ def grid_observation_dataset(model_name: str, concept:str):
             negative_file_train = get_positive_negative_data(concept, datapath = f"dataset/{model_name}/map_circular_4_5/train")
             negative_file_train.to_csv(f"./dataset/{model_name}/map_circular_4_5/train/{concept}_negative_train.csv", index=False)
 
-
 def main():
     
     model_name ="model_rose-pyramid-152"
     model_load_path = f"../../agent/dqn/models/{model_name}"
-    dataset_directory_train = "./dataset/model_rose-pyramid-152/map_circular_4_5/train"
-    dataset_directory_test = "./dataset/model_rose-pyramid-152/map_circular_4_5/test"
-    dataset_directory_random = "./dataset/model_rose-pyramid-152/map_circular_4_5"
-    # concept = "goal"
-    # positive_file = "dataset/positive_wall_activations.pt"
-    # negative_file = "dataset/negative_wall_activations.pt"
+    map_name = "map_conditional_prob_10_4"
+    #map_name = "map_circular_4_5"
+    #map_name = "map_two_rooms_9_8"
 
-    # grid_observation_dataset(model_name)
-    concept = "random"
-    cav = CAV()
-    cav.calculate_cav(concept, dataset_directory_random, dataset_directory_random, model_load_path, sensitivity=False)
-    cav.plot_cav(concept)
+    dataset_directory_train = f"./dataset/{model_name}/{map_name}/train"
+    dataset_directory_test = f"./dataset/{model_name}/{map_name}/test"
+    dataset_directory_random = f"./dataset/{model_name}/{map_name}"
 
-    '''for i in range(15):
+    #concept = "random"
+    #cav = CAV()
+    #cav.calculate_cav(concept, dataset_directory_random, dataset_directory_random, model_load_path, sensitivity=False)
+    #cav.plot_cav(concept)
+
+    for i in range(15):
         concept = f"grid_observations_{i}"
         # grid_observation_dataset(model_name, concept)
         # cav = CAV()
@@ -646,8 +650,8 @@ def main():
             analysis = Analysis(average)
             for _ in range(average):
                 cav = CAV()
-                cav.calculate_cav(concept, dataset_directory_random, dataset_directory_random, model_load_path, sensitivity=False, action_index=action)
-                cav.plot_cav(concept)'''
+                cav.calculate_cav(concept, dataset_directory_train, dataset_directory_test, model_load_path, sensitivity=False, action_index=action)
+                cav.plot_cav(concept)
                 #tcav = cav.tcav_list
                 #analysis.add_total_tcav_scores(tcav)
 

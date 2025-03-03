@@ -15,11 +15,10 @@ import pygame
 from gymnasium import spaces
 
 
-from env.file_manager import build_map
+from env.file_manager import build_map, build_grid_layout
 from env.continuous.maze_game_continuous import Maze
 
 from utils import calculate_fov_matrix_size, step_angle
-
 
 checkpoints = [
     {"coordinates": [(19, 9), (19, 10), (19, 11)], "visited": False},
@@ -52,6 +51,7 @@ class SunburstMazeContinuous(gym.Env):
         fov=math.pi / 2,
         ray_length=10,
         number_of_rays=100,
+        grid_length=None
     ):
         super().__init__()
         self.maze_file = maze_file
@@ -69,6 +69,14 @@ class SunburstMazeContinuous(gym.Env):
             for x in range(self.width):
                 if self.env_map[y][x] == 0:
                     self.map_observation_size += 1
+
+        if grid_length:
+            self.env_grid = build_grid_layout(self.env_map, grid_length)
+        
+        self.color_map = {}
+        for value in set(self.env_grid.values()):
+            self.color_map[value] = (np.random.randint(0, 255), np.random.randint(0, 255), np.random.randint(0, 255), 100) # random colors with alpha
+
         """print(
             "height:",
             self.height,
@@ -457,8 +465,21 @@ class SunburstMazeContinuous(gym.Env):
 
         if self.render_mode == "human":
             self.render()
+        # print("Observed squares map in step: ", self.observed_squares_map)
+        # print('Number of squares in total', self.height * self.width)
 
-        return observation, reward, False, False, info
+        # print ("Length of viewed squares: ",  len(self.viewed_squares))
+        # print("Proporition of viewed squares: ", len(self.viewed_squares) / self.map_observation_size)
+
+        return observation, reward, terminated, False, info
+
+    def get_grid_id(self):
+        return self.env_grid.get(self.position, None)
+
+    def view_of_maze_complete(self):
+        if len(self.viewed_squares) == self.map_observation_size:
+            return True
+        return False
 
     def has_not_moved(self, position):
         # Only keep the last 50 moves
@@ -526,6 +547,9 @@ class SunburstMazeContinuous(gym.Env):
                 self.observed_squares_map,
                 self.wall_rays,
                 [],
+                self.past_actions,
+                self.env_grid,
+                self.color_map,
             )
 
     def render_rgb_array(self):

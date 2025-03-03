@@ -157,119 +157,151 @@ class PPO:
         """
         Train the actor and critic networks. Here is where the main PPO algorithm resides.
 
-        Parameters:
-                total_timesteps - the total number of timesteps to train for
+class PPO:
+	"""
+		This is the PPO class we will use as our model in main.py
+	"""
+	def __init__(self, policy_class, critic_class, env: SunburstMazeContinuous, **hyperparameters):
+		"""
+			Initializes the PPO model, including hyperparameters.
 
-        Return:
-                None
-        """
-        print(
-            f"Learning... Running {self.max_timesteps_per_episode} timesteps per episode, ",
-            end="",
-        )
-        print(
-            f"{self.timesteps_per_batch} timesteps per batch for a total of {total_timesteps} timesteps"
-        )
-        t_so_far = 0  # Timesteps simulated so far
-        i_so_far = 0  # Iterations ran so far
-        while t_so_far < total_timesteps:  # ALG STEP 2
+			Parameters:
+				policy_class - the policy class to use for our actor/critic networks.
+				env - the environment to train on.
+				hyperparameters - all extra arguments passed into PPO that should be hyperparameters.
 
-            # Select a new map every 20 iterations
-            """self.env = random_maps(
-                self.env, random_map=True, iteration_counter=i_so_far
-            )"""
+			Returns:
+				None
+		"""
+		# Make sure the environment is compatible with our code
+		#assert(type(env.observation_space) == gym.spaces.Box)
+		assert(type(env.action_space) == gym.spaces.Box)
+		self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-            # Autobots, roll out (just kidding, we're collecting our batch simulations here)
-            (
-                batch_obs,
-                batch_acts,
-                batch_log_probs,
-                batch_env_classes_target,
-                batch_env_classes,
-                batch_rtgs,
-                batch_lens,
-                frames,
-            ) = self.rollout(
-                i_so_far
-            )  # ALG STEP 3
-            print("batch_act", batch_acts)
-            # Calculate how many timesteps we collected this batch
-            t_so_far += np.sum(batch_lens)
+		wandb.init(project="sunburst-maze-continuous", config=self)
+		self.render_mode = "rgb_array"
+		# Initialize hyperparameters for training with PPO
+		self._init_hyperparameters(hyperparameters)
 
-            # Increment the number of iterations
-            i_so_far += 1
+		# Extract environment information
+		self.env = env
+		self.obs_dim = env.observation_space.n
+		self.act_dim = env.action_space.shape[0]
 
-            # Logging timesteps so far and iterations so far
-            self.logger["t_so_far"] = t_so_far
-            self.logger["i_so_far"] = i_so_far
+		 # Initialize actor and critic networks
+		self.actor = policy_class(self.obs_dim, self.act_dim)                                                   # ALG STEP 1
+		self.critic = critic_class(self.obs_dim, 1)
 
-            # Calculate advantage at k-th iteration
-            V, _ = self.evaluate(batch_obs, batch_acts)
+		# Initialize optimizers for actor and critic
+		self.actor_optim = Adam(self.actor.parameters(), lr=self.lr)
+		self.critic_optim = Adam(self.critic.parameters(), lr=self.lr)
 
-            print("rtgs", batch_rtgs, batch_rtgs.shape)
-            print("V", V, V.shape)
-            A_k = batch_rtgs - V.detach()  # ALG STEP 5
+		# Initialize the covariance matrix used to query the actor for actions
+		self.cov_var = torch.full(size=(self.act_dim,), fill_value=0.5)
+		self.cov_mat = torch.diag(self.cov_var)
 
-            # One of the only tricks I use that isn't in the pseudocode. Normalizing advantages
-            # isn't theoretically necessary, but in practice it decreases the variance of
-            # our advantages and makes convergence much more stable and faster. I added this because
-            # solving some environments was too unstable without it.
-            A_k = (A_k - A_k.mean()) / (A_k.std() + 1e-10)
+		self.action_low = torch.tensor(env.action_space.low).to(self.device)
+		self.action_high = torch.tensor(env.action_space.high).to(self.device)
 
-            # This is the loop where we update our network for some n epochs
-            for _ in range(self.n_updates_per_iteration):  # ALG STEP 6 & 7
-                # Calculate V_phi and pi_theta(a_t | s_t)
-                V, curr_log_probs = self.evaluate(batch_obs, batch_acts)
-                
-                # Calculate the ratio pi_theta(a_t | s_t) / pi_theta_k(a_t | s_t)
-                # NOTE: we just subtract the logs, which is the same as
-                # dividing the values and then canceling the log with e^log.
-                # For why we use log probabilities instead of actual probabilities,
-                # here's a great explanation:
-                # https://cs.stackexchange.com/questions/70518/why-do-we-use-the-log-in-gradient-based-reinforcement-algorithms
-                # TL;DR makes gradient ascent easier behind the scenes.
-                print("batch_log_probs", batch_log_probs)
-                print("curr_log_probs", curr_log_probs)
-                ratios = torch.exp(curr_log_probs - batch_log_probs)
-                print("ratios", ratios)
-                print("A_k", A_k)
-                # Calculate surrogate losses.
-                surr1 = ratios * A_k
-                surr2 = torch.clamp(ratios, 1 - self.clip, 1 + self.clip) * A_k
+		# This logger will help us with printing out summaries of each iteration
+		self.logger = {
+			'delta_t': time.time_ns(),
+			't_so_far': 0,          # timesteps so far
+			'i_so_far': 0,          # iterations so far
+			'batch_lens': [],       # episodic lengths in batch
+			'batch_rews': [],       # episodic returns in batch
+			'actor_losses': [],     # losses of actor network in current iteration
+		}
 
-                # Calculate actor and critic losses.
-                # NOTE: we take the negative min of the surrogate losses because we're trying to maximize
-                # the performance function, but Adam minimizes the loss. So minimizing the negative
-                # performance function maximizes it.
-                actor_loss = (-torch.min(surr1, surr2)).mean()
-                """env_class_loss = F.cross_entropy(
-                    batch_env_classes_target.float(), batch_env_classes.float()
-                )"""
-                #env_class_loss = env_class_loss / env_class_loss.mean()
-                #env_class_loss = env_class_loss * 0.1
-                policy_loss = actor_loss #+ env_class_loss
-                critic_loss = nn.MSELoss()(V, batch_rtgs)
+	def learn(self, total_timesteps):
+		"""
+			Train the actor and critic networks. Here is where the main PPO algorithm resides.
 
-                # Calculate gradients and perform backward propagation for actor network
-                self.actor_optim.zero_grad()
-                policy_loss.backward(retain_graph=True)
-                self.actor_optim.step()
+			Parameters:
+				total_timesteps - the total number of timesteps to train for
 
-                # Calculate gradients and perform backward propagation for critic network
-                self.critic_optim.zero_grad()
-                critic_loss.backward()
-                self.critic_optim.step()
+			Return:
+				None
+		"""
+		print(f"Learning... Running {self.max_timesteps_per_episode} timesteps per episode, ", end='')
+		print(f"{self.timesteps_per_batch} timesteps per batch for a total of {total_timesteps} timesteps")
+		t_so_far = 0 # Timesteps simulated so far
+		i_so_far = 0 # Iterations ran so far
+		while t_so_far < total_timesteps:                                                                       # ALG STEP 2
 
-                # Log actor loss
-                self.logger["actor_losses"].append(actor_loss.detach())
+			# Select a new map every 20 iterations
+			self.env = random_maps(self.env, random_map=True, iteration_counter=i_so_far)
 
-            gif = None
-            if frames:
-                if os.path.exists(f"./gifs/{self.run.name}") is False:
-                    os.makedirs(f"./gifs/{self.run.name}")
-                gif = create_gif(gif_path=f"./gifs/{self.run.name}/{i_so_far}.gif", frames=frames)
-                frames.clear()
-            wandb.log(
+			# Autobots, roll out (just kidding, we're collecting our batch simulations here)
+			batch_obs, batch_acts, batch_log_probs, batch_rtgs, batch_lens, frames = self.rollout(i_so_far)                     # ALG STEP 3
+			print("batch_act", batch_acts)
+			# Calculate how many timesteps we collected this batch
+			t_so_far += np.sum(batch_lens)
+
+			# Increment the number of iterations
+			i_so_far += 1
+
+			# Logging timesteps so far and iterations so far
+			self.logger['t_so_far'] = t_so_far
+			self.logger['i_so_far'] = i_so_far
+
+			# Calculate advantage at k-th iteration
+			V, _ = self.evaluate(batch_obs, batch_acts)
+			A_k = batch_rtgs - V.detach()                                                                       # ALG STEP 5
+
+			# One of the only tricks I use that isn't in the pseudocode. Normalizing advantages
+			# isn't theoretically necessary, but in practice it decreases the variance of 
+			# our advantages and makes convergence much more stable and faster. I added this because
+			# solving some environments was too unstable without it.
+			A_k = (A_k - A_k.mean()) / (A_k.std() + 1e-10)
+
+			# This is the loop where we update our network for some n epochs
+			for _ in range(self.n_updates_per_iteration):                                                       # ALG STEP 6 & 7
+				# Calculate V_phi and pi_theta(a_t | s_t)
+				V, curr_log_probs = self.evaluate(batch_obs, batch_acts)
+
+				# Calculate the ratio pi_theta(a_t | s_t) / pi_theta_k(a_t | s_t)
+				# NOTE: we just subtract the logs, which is the same as
+				# dividing the values and then canceling the log with e^log.
+				# For why we use log probabilities instead of actual probabilities,
+				# here's a great explanation: 
+				# https://cs.stackexchange.com/questions/70518/why-do-we-use-the-log-in-gradient-based-reinforcement-algorithms
+				# TL;DR makes gradient ascent easier behind the scenes.
+				ratios = torch.exp(curr_log_probs - batch_log_probs)
+
+				# Calculate surrogate losses.
+				surr1 = ratios * A_k
+				surr2 = torch.clamp(ratios, 1 - self.clip, 1 + self.clip) * A_k
+
+				# Calculate actor and critic losses.
+				# NOTE: we take the negative min of the surrogate losses because we're trying to maximize
+				# the performance function, but Adam minimizes the loss. So minimizing the negative
+				# performance function maximizes it.
+				actor_loss = (-torch.min(surr1, surr2)).mean()
+				critic_loss = nn.MSELoss()(V, batch_rtgs)
+
+				# Calculate gradients and perform backward propagation for actor network
+				self.actor_optim.zero_grad()
+				actor_loss.backward(retain_graph=True)
+				self.actor_optim.step()
+
+				# Calculate gradients and perform backward propagation for critic network
+				self.critic_optim.zero_grad()
+				critic_loss.backward()
+				self.critic_optim.step()
+
+				# Log actor loss
+				self.logger['actor_losses'].append(actor_loss.detach())
+
+			gif = None
+			if frames:
+				if os.path.exists("./gifs") is False:
+					os.makedirs("./gifs")
+				gif = create_gif(
+                    gif_path=f"./gifs/{i_so_far}.gif", frames=frames
+                )
+				frames.clear()
+			wandb.log(
                 {
                     "Episode": batch_lens[0],
                     "Reward per episode": batch_rtgs.mean().item(),

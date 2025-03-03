@@ -40,8 +40,8 @@ config = {
     "model_name": "model_rose-pyramid-152",
     "model_episodes": [400, 2500, 5000],
 
-    "env_name": "map_circular_4_5",
-    "env_path": "../../env/random_generated_maps/goal/medium/map_circular_4_5.csv",
+    "env_name": "map_two_rooms_9_8",
+    "env_path": "../../env/random_generated_maps/goal/medium/map_two_rooms_9_8.csv",
 
     "max_steps_per_episode": 250,
     "random_start_position": True,
@@ -92,7 +92,7 @@ config = {
     }
 
 
-def build_csv_dataset(model_paths: str):
+def build_csv_dataset(model_paths: list, dataset_path: str, dataset_subfolder: str = ''):
     # Load early agent data
 
     epsilon = 0.2
@@ -155,6 +155,10 @@ def build_csv_dataset(model_paths: str):
             # con.inside_box(observation_sequence, position_sequence[-1])
             con.in_grid_square(observation_sequence, position_sequence[-1])
 
+    path = f"./dataset/{config["model_name"]}/{config["env_name"]}/raw_data"
+
+    if os.path.exists(path) == False:
+        os.makedirs(path)
 
     for key, val in con.datasets.items():
         filename = key
@@ -163,13 +167,13 @@ def build_csv_dataset(model_paths: str):
                 if sub_val:
                     filename = str(key) + '_' + str(sub_key)
                     data_preprocessed = shuffle_and_trim_datasets(sub_val)
-                    save_to_csv(data_preprocessed, filename, path = f"./dataset/{config["model_name"]}/{config["env_name"]}/raw_data")
+                    save_to_csv(data_preprocessed, filename, path)
         else:
             if val:
                 data_preprocessed = shuffle_and_trim_datasets(val)
-                save_to_csv(data_preprocessed, filename, path = f"./dataset/{config["model_name"]}/{config["env_name"]}/raw_data")
+                save_to_csv(data_preprocessed, filename, path)
 
-    save_config()
+    save_config(dataset_path)
 
 def shuffle_and_trim_datasets(dataset: deque):
     max_length = config["cav"]["dataset_max_length"]
@@ -228,11 +232,10 @@ def save_to_csv(dataset: list, file_name: str, path: str):
 
     df.to_csv(f"{path}/{file_name}.csv", index=False)
 
-def save_config():
-    path = f"./dataset/{config["model_name"]}/{config["env_name"]}"
-    if os.path.exists(path) == False:
-        os.makedirs(path)
-    with open(os.path.join(path, "config.json"), "w") as f:
+def save_config(dataset_path: str):
+    if os.path.exists(dataset_path) == False:
+        os.makedirs(dataset_path)
+    with open(os.path.join(dataset_path, "config.json"), "w") as f:
         json.dump(config, f, indent=4)
 
 def find_model_files(base_path: str, ep_ids: list):
@@ -250,12 +253,13 @@ def find_model_files(base_path: str, ep_ids: list):
 
     for num in ep_ids:
         for file in files:
-            if file.endswith(f"{num}.pth"):
+            if file.endswith(f"_{num}.pth"):
                 path = os.path.join(base_path, file)
                 model_files.append(path)
     return model_files
 
-def build_random_dataset(file_path):
+def build_random_dataset(dataset_path, dataset_subfolder):
+    file_path = os.path.join(dataset_path, dataset_subfolder)
     # load and concatenate all CSV files
     print("Building random dataset")
     files = [os.path.join(file_path, f) for f in os.listdir(file_path) if f.endswith('.csv')]
@@ -269,9 +273,56 @@ def build_random_dataset(file_path):
     random_positive = random_sample.iloc[:half]
     random_negative = random_sample.iloc[half:]
 
-    random_positive.to_csv(f"{os.path.join('./dataset/', config["model_name"], config["env_name"], 'random.csv')}", index=False)
-    random_negative.to_csv(f"{os.path.join('./dataset/', config["model_name"], config["env_name"], 'random_negative.csv')}", index=False)
+    random_positive.to_csv(f"{os.path.join(dataset_path, 'random_positive.csv')}", index=False)
+    random_negative.to_csv(f"{os.path.join(dataset_path, 'random_negative.csv')}", index=False)
+
+def get_positive_negative_data(concept: str, datapath: str):
+    negative_files = []
+    positive_file = None
+
+    print('Datapath:', datapath)
+    for file in os.listdir(datapath):
+        file_path = os.path.join(datapath, file)
+        if file.startswith(concept):
+            positive_file = file_path
+            print('Positive file:', positive_file)
+        else:
+            negative_files.append(file_path)
+
+    if positive_file is None:
+        raise FileNotFoundError("Positive file not found")
     
+    positive_df = pd.read_csv(positive_file)
+    
+    # Determine sample size: at least 1500 lines or the length of the positive file content, whichever is greater
+    sample_size = max(1500, len(positive_df))
+
+    # Aggregate negative file content and then sample
+    neg_dfs = []
+    for neg_file in negative_files:
+        neg_df = pd.read_csv(neg_file)
+        neg_dfs.append(neg_df)
+
+    negative_df = pd.concat(neg_dfs)
+    negative_df = negative_df.sample(sample_size)
+    
+    return positive_df, negative_df
+
+def grid_observation_dataset(dataset_path, dataset_subfolder, model_name: str, map_name: str):
+    for i in range(15):
+        concept = "grid_observations_" + str(i)
+        negative_file_test = os.path.join(dataset_path, 'test', f"{concept}_negative_test.csv")
+        negative_file_train = os.path.join(dataset_path, 'train',f"{concept}_negative_train.csv")
+
+        if not os.path.exists(negative_file_test):
+            positive_file_test, negative_file_test = get_positive_negative_data(concept, os.path.join(dataset_path, dataset_subfolder))
+            positive_file_test.to_csv(os.path.join(dataset_path, 'test', f"{concept}_positive_test.csv"), index=False)
+            negative_file_test.to_csv(os.path.join(dataset_path, 'test', f"{concept}_negative_test.csv"), index=False)
+        
+        if not os.path.exists(negative_file_train):
+            positive_file_train, negative_file_train = get_positive_negative_data(concept, datapath = f"dataset/{model_name}/{map_name}/raw_data")
+            positive_file_train.to_csv(os.path.join(dataset_path, 'train', f"{concept}_positive_train.csv"), index=False)
+            negative_file_train.to_csv(os.path.join(dataset_path, 'train', f"{concept}_negative_train.csv"), index=False)
 
 def run_agent(env: SunburstMazeDiscrete, agent: DTQN_Agent, models: list):
 
@@ -353,10 +404,20 @@ def main():
     model_files = find_model_files(model_path, config["model_episodes"])
     dataset_path = os.path.join('./dataset/', config["model_name"], config["env_name"])
 
-    build_csv_dataset(model_files)
-    #build_random_dataset(dataset_path + "/raw_data")
+    dataset_directory_train = os.path.join(dataset_path, 'train')
+    dataset_directory_test = os.path.join(dataset_path, 'test')
+
+    if not os.path.exists(dataset_directory_train):
+        os.makedirs(dataset_directory_train, exist_ok=True)
+    if not os.path.exists(dataset_directory_test):
+        os.makedirs(dataset_directory_test, exist_ok=True)
+
+    build_csv_dataset(model_files, dataset_path, 'raw_data')
+    build_random_dataset(dataset_path, "raw_data")
     #split_dataset_into_train_test(dataset_path, ratio = 0.8)
+    grid_observation_dataset(dataset_path, 'raw_data', model_name=config["model_name"], map_name=config["env_name"]) # specifically for grid layout concept
 
 
 if __name__ == "__main__":
     main()
+
