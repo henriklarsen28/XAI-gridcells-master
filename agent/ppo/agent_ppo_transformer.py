@@ -171,7 +171,7 @@ if __name__ == "__main__":
         "random_start_position": True,
         "random_goal_position": False,
         "rewards": {
-            "is_goal": 1,
+            "is_goal": 5,
             "hit_wall": -0.001,
             "has_not_moved": -0.005,
             "new_square": 0.0,

@@ -468,14 +468,14 @@ class PPO_agent:
             # Store full episode sequence
 
             # batch_obs.append(torch.stack(ep_tensor_seq))
-
+            batch_lens.append(ep_t + 1)
             batch_rews.append(torch.tensor(ep_rews, dtype=torch.float))
             batch_values.append(torch.tensor(ep_values, dtype=torch.float))
             batch_next_values.append(
                 torch.tensor(ep_next_values, dtype=torch.float)
             )
             batch_dones.append(torch.tensor(ep_dones, dtype=torch.float))
-            batch_lens.append(len(ep_obs))
+            
 
             """attention_masks = torch.zeros((len(batch_obs), self.sequence_length))
             for i, length in enumerate(batch_lens):
@@ -535,7 +535,7 @@ class PPO_agent:
         # returns = returns.flatten(0,1)
         # advantages = advantages.flatten(0,1)
         # batch_lens = batch_lens.flatten(1,2)
-
+        print(batch_lens)
         return (
             batch_obs,
             batch_acts,
