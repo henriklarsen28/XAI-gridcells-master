@@ -471,33 +471,28 @@ class PPO_agent:
             batch_lens.append(ep_t + 1)
             batch_rews.append(torch.tensor(ep_rews, dtype=torch.float))
             batch_values.append(torch.tensor(ep_values, dtype=torch.float))
-            batch_next_values.append(
-                torch.tensor(ep_next_values, dtype=torch.float)
-            )
+            batch_next_values.append(torch.tensor(ep_next_values, dtype=torch.float))
             batch_dones.append(torch.tensor(ep_dones, dtype=torch.float))
-            
 
             """attention_masks = torch.zeros((len(batch_obs), self.sequence_length))
             for i, length in enumerate(batch_lens):
                 attention_masks[i, :length] = 1"""
             batch_attention_masks.append(torch.stack(ep_attention_mask))
-         
-
 
         batch_obs = torch.stack(batch_obs)
-        batch_acts = torch.tensor(batch_acts)
-        batch_log_probs = torch.tensor(batch_log_probs)
-        #batch_rews = torch.stack(batch_rews)
-        #batch_values = torch.stack(batch_values)
-        #batch_next_values = torch.stack(batch_next_values)
-        #batch_dones = torch.stack(batch_dones)
+        batch_acts = torch.tensor(batch_acts, dtype=torch.float, device=self.device)
+        batch_log_probs = torch.tensor(batch_log_probs, dtype=torch.float, device=self.device)
+        # batch_rews = torch.stack(batch_rews)
+        # batch_values = torch.stack(batch_values)
+        # batch_next_values = torch.stack(batch_next_values)
+        # batch_dones = torch.stack(batch_dones)
         batch_lens = torch.tensor(batch_lens)
-        #batch_attention_masks = torch.stack(batch_attention_masks)
+        # batch_attention_masks = torch.stack(batch_attention_masks)
 
-        #print(batch_obs.shape)
-        #print(batch_acts)
-        #print(batch_log_probs.shape)
-        #print(batch_values.shape)
+        # print(batch_obs.shape)
+        # print(batch_acts)
+        # print(batch_log_probs.shape)
+        # print(batch_values.shape)
 
         """# Pad sequences to the max episode length in the batch
         batch_obs = pad_sequence(
@@ -507,7 +502,7 @@ class PPO_agent:
         """batch_acts = pad_sequence(batch_acts, batch_first=True)
         batch_dones = pad_sequence(batch_dones, batch_first=True)"""
 
-        #batch_dones = batch_dones.unsqueeze(2)
+        # batch_dones = batch_dones.unsqueeze(2)
 
         # Compute RTGs
         batch_rtgs = self.compute_rtgs(batch_rews)
@@ -530,8 +525,8 @@ class PPO_agent:
         # batch_obs = batch_obs.flatten(0,1)
         # batch_acts = batch_acts.flatten(0,1)
         # batch_log_probs = batch_log_probs.flatten(0,1)
-        #batch_dones = batch_dones.flatten(0, 1)
-        #batch_attention_masks = batch_attention_masks.flatten(0, 1)
+        # batch_dones = batch_dones.flatten(0, 1)
+        # batch_attention_masks = batch_attention_masks.flatten(0, 1)
         # returns = returns.flatten(0,1)
         # advantages = advantages.flatten(0,1)
         # batch_lens = batch_lens.flatten(1,2)

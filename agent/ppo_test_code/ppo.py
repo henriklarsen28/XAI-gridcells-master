@@ -384,8 +384,8 @@ class PPO:
         # Reshape data as tensors in the shape specified in function description, before returning
 
         batch_obs = torch.tensor(np.array(batch_obs), dtype=torch.float)
-        batch_acts = torch.tensor(np.array(batch_acts), dtype=torch.float)
-        batch_log_probs = torch.tensor(batch_log_probs, dtype=torch.float)
+        batch_acts = torch.tensor(np.array(batch_acts), dtype=torch.float, device=self.device)
+        batch_log_probs = torch.tensor(batch_log_probs, dtype=torch.float, device=self.device)
         env_classes_pred = torch.stack(env_classes_pred).to(self.device)
         """env_classes_target = torch.tensor(
             [self.env_2_id[self.env.maze_file] for _ in range(len(env_classes_pred))],
