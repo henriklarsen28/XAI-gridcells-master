@@ -167,4 +167,6 @@ def main(args):
 
 	test(env=env, actor_model=actor_model)
 
-if __na
+if __name__ == '__main__':
+	args = get_args() # Parse arguments from command line
+	main(args)
