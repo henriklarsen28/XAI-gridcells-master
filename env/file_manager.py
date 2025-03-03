@@ -50,6 +50,7 @@ def read_map(map_file):
 
 
 def build_map(map_file):
+    assert map_file is not None, "Map file is not defined"
     lines = read_map(map_file)
     env_map = []
     for line in lines:

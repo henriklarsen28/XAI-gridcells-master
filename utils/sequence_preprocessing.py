@@ -1,5 +1,6 @@
 import torch
 from collections import deque
+import numpy as np
 
 
 def padding_sequence_int(sequence: torch.tensor, max_length, device):
@@ -36,7 +37,6 @@ def padding_sequence(sequence: torch.Tensor, max_length, device):
                 ]
             )
     return sequence"""
-    
     seq_len, feature_dim = sequence.shape
 
     if seq_len < max_length:
@@ -44,7 +44,9 @@ def padding_sequence(sequence: torch.Tensor, max_length, device):
         padding = torch.zeros((max_length - seq_len, feature_dim), dtype=torch.float32, device=device)
         # Concatenate padding at the beginning
         sequence = torch.cat([padding, sequence], dim=0)
+
     return sequence
+
 
 
 
@@ -53,8 +55,8 @@ def add_to_sequence(sequence: deque, state: torch.Tensor, device):
     """
     Add the new state to the sequence
     """
-    state = torch.tensor(state, dtype=torch.float32, device=device)
-    state = state
+    if isinstance(state, np.ndarray):
+        state = torch.tensor(state, dtype=torch.float32, device=device)
     #torch.as_tensor(state, dtype=torch.float32, device=devic)
     sequence.append(state)
     return sequence

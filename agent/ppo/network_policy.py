@@ -55,4 +55,5 @@ class FeedForwardNNPolicy(nn.Module):
 		output = self.layer6(activation5)
 		env = torch.argmax(self.env_output(activation5))
 
-		return output
+
+		return output, env

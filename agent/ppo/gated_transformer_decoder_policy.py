@@ -13,17 +13,36 @@ class Head(nn.Module):
         self.query = nn.Linear(n_embd, head_size, bias=False)
         self.value = nn.Linear(n_embd, head_size, bias=False)
         self.register_buffer("tril", torch.tril(torch.ones(block_size, block_size)))
+
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, x):
+    def forward(self, x, attention_mask=None):
         B, T, C = x.shape
         k = self.key(x)
         q = self.query(x)
 
+        # Compute attention scores
         wei = q @ k.transpose(-2, -1) * k.shape[-1] ** -0.5
+
+        
         wei = wei.masked_fill(self.tril[:T, :T] == 0, float("-inf"))
-        wei = F.softmax(wei, dim=-1)
+
+
+
+        # Apply the causal mask (tril matrix) if you're using causal attention
+        if attention_mask is not None:
+
+            attention_mask = attention_mask.unsqueeze(1)  # Shape: [B, 1, T]
+            attention_mask = attention_mask.expand(-1, T, -1)  # Shape: [B, T, T]
+            wei = wei.masked_fill(attention_mask == 0, float("-inf"))
+
+
+        wei_masked = wei.clone()  # Make a copy to not modify the original tensor
+        wei_masked[wei == -float('inf')] = -1e9 
+
+        wei = F.softmax(wei_masked, dim=-1)
         wei = self.dropout(wei)
+
 
         v = self.value(x)
         out = wei @ v
@@ -40,12 +59,12 @@ class MultiHeadAttention(nn.Module):
         self.proj = nn.Linear(head_size * n_heads, n_embd)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, x):
+    def forward(self, x, attention_mask=None):
         head_output = []
         att_weights = []
 
         for h in self.heads:
-            out, wei = h(x)
+            out, wei = h(x, attention_mask)  # Pass the mask
             head_output.append(out)
             att_weights.append(wei)
 
@@ -69,6 +88,18 @@ class FeedFoward(nn.Module):
 
     def forward(self, x):
         return self.net(x)
+    
+class GatedResidual(nn.Module):
+    """Gated residual connection with a learnable gate."""
+    def __init__(self, embed_dim):
+        super().__init__()
+        self.gate = nn.Linear(embed_dim, embed_dim)  # Learnable gate
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x, residual):
+        gate_value = self.sigmoid(self.gate(x))  # Compute gating values
+        return x + gate_value * residual  # Apply gated residual connection
+
 
 
 class Block(nn.Module):
@@ -80,13 +111,16 @@ class Block(nn.Module):
         self.ln1 = nn.LayerNorm(n_embd)
         self.ln2 = nn.LayerNorm(n_embd)
 
-    def forward(self, x):
-        sa_out, att_weights = self.sa(self.ln1(x))
-        x = x + sa_out
-        x = x + self.ffwd(self.ln2(x))
-        return x, att_weights
-    
+        self.gated_residual_att = GatedResidual(n_embd)
+        self.gated_residual_ff = GatedResidual(n_embd)
 
+    def forward(self, x, attention_mask=None):
+        sa_out, att_weights = self.sa(self.ln1(x), attention_mask)
+        x = self.gated_residual_att(sa_out, x)
+        x = self.gated_residual_ff(self.ffwd(self.ln2(x)), x)
+        return x, att_weights
+
+    
 class FeedForward_Final(nn.Module):
     def __init__(self, n_embd, action_dim):
         super().__init__()
@@ -95,10 +129,11 @@ class FeedForward_Final(nn.Module):
             nn.ReLU(),
             nn.Linear(2 * n_embd, 2 * n_embd),
             nn.ReLU(),
-            nn.Linear(2 * n_embd, action_dim)        )
+            nn.Linear(2 * n_embd, action_dim))
 
     def forward(self, x):
         return self.net(x)
+
 
 
 class TransformerPolicy(nn.Module):
@@ -142,7 +177,7 @@ class TransformerPolicy(nn.Module):
         elif isinstance(module, nn.Embedding):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
-    def forward(self, x):
+    def forward(self, x, attention_mask=None):
 
         batch_size, sequence_length, state_dim = x.shape
         tok_emb = self.token_embedding(x.to(torch.float32))
@@ -155,17 +190,19 @@ class TransformerPolicy(nn.Module):
         att_weights_list = []
 
         for block in self.blocks:
-            x, att_weights = block(x)
+            x, att_weights = block(x, attention_mask)
             att_weights_list.append(att_weights)
 
         # x = self.blocks(x)
         x = self.ln_f(x)
 
-        output = self.output(x[:, -1, :].to(torch.float32))
+        output = self.output(x[:,-1,:].to(torch.float32))
         env_class_out = self.env_class(x[:, -1, :])
         env_class_out = F.gumbel_softmax(env_class_out, tau=1, hard=True)
         x_std = torch.exp(self.log_std)
+        #x = F.tanh(x)
         #x_last = x[:, -1, :]
+        #output = output[:, -1, :]
         return output, x_std, env_class_out, att_weights_list
 
 

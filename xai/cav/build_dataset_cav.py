@@ -159,6 +159,7 @@ def build_csv_dataset(model_paths: list, dataset_path: str, dataset_subfolder: s
 
     if os.path.exists(path) == False:
         os.makedirs(path)
+
     for key, val in con.datasets.items():
         filename = key
         if isinstance(val, dict):
@@ -259,7 +260,6 @@ def find_model_files(base_path: str, ep_ids: list):
 
 def build_random_dataset(dataset_path, dataset_subfolder):
     file_path = os.path.join(dataset_path, dataset_subfolder)
-
     # load and concatenate all CSV files
     print("Building random dataset")
     files = [os.path.join(file_path, f) for f in os.listdir(file_path) if f.endswith('.csv')]
@@ -323,7 +323,6 @@ def grid_observation_dataset(dataset_path, dataset_subfolder, model_name: str, m
             positive_file_train, negative_file_train = get_positive_negative_data(concept, datapath = f"dataset/{model_name}/{map_name}/raw_data")
             positive_file_train.to_csv(os.path.join(dataset_path, 'train', f"{concept}_positive_train.csv"), index=False)
             negative_file_train.to_csv(os.path.join(dataset_path, 'train', f"{concept}_negative_train.csv"), index=False)
-    
 
 def run_agent(env: SunburstMazeDiscrete, agent: DTQN_Agent, models: list):
 

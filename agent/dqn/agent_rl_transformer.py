@@ -612,9 +612,9 @@ if __name__ == "__main__":
     # num_states = get_num_states(map_path_train)
 
     fov_config = {
-        "fov": math.pi / 1.5,
-        "ray_length": 15,
-        "number_of_rays": 100,
+        "fov": math.pi / 1.2,
+        "ray_length": 10,
+        "number_of_rays": 20,
     }
     half_fov = fov_config["fov"] / 2
     matrix_size = calculate_fov_matrix_size(fov_config["ray_length"], half_fov)
@@ -654,15 +654,15 @@ if __name__ == "__main__":
         "random_goal_position": False,
 
         "rewards": {
-            "is_goal": 200 / 200,
-            "hit_wall": -0.5 / 200,
-            "has_not_moved": -0.2 / 200,
-            "new_square": 2 / 200,
-            "max_steps_reached": -0.5 / 200,
-            "penalty_per_step": -0.01 / 200,
-            "goal_in_sight": 0 / 200,
-            "number_of_squares_visible": 0 / 200,
-            "is_false_goal": 0 / 200,
+            "is_goal": 2.5,
+            "hit_wall": -0.1,
+            "has_not_moved": -0.05,
+            "new_square": 0.0025,
+            "max_steps_reached": -0.25,
+            "penalty_per_step": -0.002,
+            "number_of_squares_visible": 0,
+            "goal_in_sight": 0.1,
+			"is_false_goal": -0.2,
             # and the number of squares viewed (set in the env)
         },
         "observation_space": {

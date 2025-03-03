@@ -16,10 +16,11 @@ import sys
 import gymnasium as gym
 import torch
 from arguments import get_args
+from network import FeedForwardNN
+from network_policy import FeedForwardNNPolicy
 from eval_policy import eval_policy
 from network import FeedForwardNN
 from ppo import PPO
-from network_policy import FeedForwardNNPolicy
 
 from env import SunburstMazeContinuous
 from utils.calculate_fov import calculate_fov_matrix_size
@@ -82,7 +83,7 @@ def test(env, actor_model):
 		sys.exit(0)
 
 	# Extract out dimensions of observation and action spaces
-	obs_dim = env.observation_space.n
+	obs_dim = env.observation_space.shape[0]
 	act_dim = env.action_space.shape[0]
 
 	# Build our policy the same way we build our actor model in PPO
@@ -111,7 +112,7 @@ def main(args):
 	# ArgumentParser because it's too annoying to type them every time at command line. Instead, you can change them here.
 	# To see a list of hyperparameters, look in ppo.py at function _init_hyperparameters
 	hyperparameters = {
-				'timesteps_per_batch': 2048, 
+				'timesteps_per_batch': 4096, 
 				'max_timesteps_per_episode': 500, 
 				'gamma': 0.99, 
 				'n_updates_per_iteration': 10,
@@ -126,18 +127,18 @@ def main(args):
 	# observation and action spaces.
 	#env = gym.make('Pendulum-v1', render_mode='human' if args.mode == 'test' else 'rgb_array')
 
-	map_path_train = os.path.join(project_root, "env/map_v0/map_closed_doors_left.csv")
+	map_path_train = os.path.join(project_root, "env/random_generated_maps/goal/large/map_circular_4_19.csv")
 
 	rewards =  {
-            "is_goal": 2,
-            "hit_wall": -0.01,
+            "is_goal": 10,
+            "hit_wall": -0.001,
             "has_not_moved": -0.005,
-            "new_square": 0.0025,
+            "new_square": 0.0,
             "max_steps_reached": -0.025,
-            "penalty_per_step": -0.0002,
+            "penalty_per_step": -0.00002,
             "number_of_squares_visible": 0,
-            "goal_in_sight": 0.1,
-			"is_false_goal": -0.01,
+            "goal_in_sight": 0.001,
+            "is_false_goal": 0,
 	}
 	fov_config = {
         "fov": math.pi / 1.5,
@@ -145,11 +146,12 @@ def main(args):
         "number_of_rays": 100,
     }
 
-	env = SunburstMazeContinuous(
+	"""env = SunburstMazeContinuous(
 		maze_file=map_path_train,
 		render_mode="rgb_array",
 		max_steps_per_episode=hyperparameters["max_timesteps_per_episode"],
 		random_start_position=True,
+		random_goal_position=False,
 		rewards=rewards,
 		fov=fov_config["fov"],
 		ray_length=fov_config["ray_length"],
@@ -166,6 +168,15 @@ def main(args):
 	actor_model = "../ppo/models/feed-forward/colorful-sunset-826/actor/ppo_actor_675.pth"
 
 	test(env=env, actor_model=actor_model)
+	)"""
+	env = gym.make("Pendulum-v1", render_mode="rgb_array")
+
+	# Train or test, depending on the mode specified
+	train(env=env, hyperparameters=hyperparameters, actor_model=args.actor_model, critic_model=args.critic_model)
+	
+
+	#actor_model = "models/colorful-sunset-826/ppo_actor_975.pth"
+	#test(env=env, actor_model=actor_model)
 
 if __name__ == '__main__':
 	args = get_args() # Parse arguments from command line
