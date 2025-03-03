@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 import numpy as np
+from attention_pooling import AttentionPooling  
 
 torch.manual_seed(1337)
 
@@ -69,6 +70,17 @@ class FeedFoward(nn.Module):
 
     def forward(self, x):
         return self.net(x)
+    
+class GatedResidual(nn.Module):
+    """Gated residual connection with a learnable gate."""
+    def __init__(self, embed_dim):
+        super().__init__()
+        self.gate = nn.Linear(embed_dim, embed_dim)  # Learnable gate
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x, residual):
+        gate_value = self.sigmoid(self.gate(x))  # Compute gating values
+        return x + gate_value * residual  # Apply gated residual connection
 
 
 class Block(nn.Module):
@@ -80,28 +92,33 @@ class Block(nn.Module):
         self.ln1 = nn.LayerNorm(n_embd)
         self.ln2 = nn.LayerNorm(n_embd)
 
+        self.gated_residual_att = GatedResidual(n_embd)
+        self.gated_residual_ff = GatedResidual(n_embd)
+
     def forward(self, x):
         sa_out, att_weights = self.sa(self.ln1(x))
-        x = x + sa_out
-        x = x + self.ffwd(self.ln2(x))
+        x = self.gated_residual_att(sa_out,x)
+        x = self.gated_residual_ff(self.ffwd(self.ln2(x)), x)
         return x, att_weights
     
 
 class FeedForward_Final(nn.Module):
-    def __init__(self, n_embd, action_dim):
+    def __init__(self, n_embd, dropout, action_dim):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(n_embd, 2 * n_embd),
-            nn.ReLU(),
+            nn.GELU(),
             nn.Linear(2 * n_embd, 2 * n_embd),
-            nn.ReLU(),
-            nn.Linear(2 * n_embd, action_dim)        )
+            nn.GELU(),
+            nn.Linear(2 * n_embd, action_dim),
+            nn.Dropout(dropout),
+        )
 
     def forward(self, x):
         return self.net(x)
 
 
-class TransformerPolicy(nn.Module):
+class Transformer(nn.Module):
     def __init__(
         self,
         input_dim,
@@ -114,7 +131,7 @@ class TransformerPolicy(nn.Module):
         dropout,
         device,
     ):
-        super(TransformerPolicy, self).__init__()
+        super(Transformer, self).__init__()
         self.device = device
         self.token_embedding = nn.Linear(input_dim, n_embd)  # nn.Embedding (long, int)
         self.position_embedding = nn.Embedding(block_size, n_embd)
@@ -123,8 +140,16 @@ class TransformerPolicy(nn.Module):
             *[Block(n_embd, n_head, block_size, dropout) for _ in range(n_layer)]
         )
         self.ln_f = nn.LayerNorm(n_embd)
-        self.output = FeedForward_Final(n_embd, output_dim)
-        self.apply(self.init_weights)
+        """self.output_policy = nn.Linear(
+            n_embd, output_dim
+        )  # Optional: add hidden layers after the final decoder layer"""
+
+        self.att_pooling_policy = AttentionPooling(n_embd)
+        self.att_pooling_critic = AttentionPooling(n_embd)
+
+        self.output_policy = FeedForward_Final(n_embd, dropout, output_dim)
+        self.output_critic = FeedForward_Final(n_embd, dropout, 1)
+
 
         self.env_class = nn.Sequential(
             nn.Linear(n_embd, 64),
@@ -133,6 +158,8 @@ class TransformerPolicy(nn.Module):
         )
 
         self.log_std = nn.Parameter(torch.zeros(np.prod(output_dim)))
+
+        self.apply(self.init_weights)
 
     def init_weights(self, module):
         if isinstance(module, nn.Linear):
@@ -161,12 +188,26 @@ class TransformerPolicy(nn.Module):
         # x = self.blocks(x)
         x = self.ln_f(x)
 
-        output = self.output(x[:, -1, :].to(torch.float32))
-        env_class_out = self.env_class(x[:, -1, :])
+        policy_pool = self.att_pooling_policy(x)
+        critic_pool = self.att_pooling_critic(x)
+
+        policy = self.output_policy(policy_pool.to(torch.float32))
+        
+        value = self.output_critic(critic_pool.to(torch.float32))
+
+        std = torch.exp(self.log_std)
+
+
+        env_class_out = self.env_class(policy_pool)
         env_class_out = F.gumbel_softmax(env_class_out, tau=1, hard=True)
-        x_std = torch.exp(self.log_std)
-        #x_last = x[:, -1, :]
-        return output, x_std, env_class_out, att_weights_list
+        
+
+        #policy = policy
+        #value = value[:, -1, :]
+        """print("Policy", policy)
+        print("Value", value)"""
+
+        return policy, value, std, env_class_out, att_weights_list
 
 
 # device = torch.device("mps" if torch.backends.mps.is_available() else "cpu") # Was faster with cpu??? Loading between cpu and mps is slow maybe

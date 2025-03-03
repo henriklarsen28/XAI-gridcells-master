@@ -3,8 +3,11 @@ import sys
 import pygame
 import time
 import numpy as np
+import os
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 
-sys.path.append("..")
+sys.path.append(project_root)
+
 
 from env import SunburstMazeContinuous
 from env.sunburstmaze_discrete import action_encoding
@@ -71,11 +74,10 @@ def play_with_keyboard():
     }
 
     env = SunburstMazeContinuous(
-        maze_file="../env/random_generated_maps/goal/map_circular_4_19.csv",
+        maze_file=f"{project_root}/env/random_generated_maps/goal/map_circular_4_19.csv",
         render_mode="human",
         rewards=config["rewards"],
         random_start_position=config["random_start_position"],
-        observation_space=config["observation_space"],
         max_steps_per_episode=2000,
         fov=config["fov"],
         ray_length=config["ray_length"],

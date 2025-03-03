@@ -13,7 +13,7 @@ from PIL import Image
 
 from utils.calculate_fov import calculate_fov_matrix_size, step_angle
 
-from .file_manager import build_map, get_map
+from .file_manager import build_grid_layout, build_map
 from .maze_game import Maze
 
 checkpoints = [
@@ -39,6 +39,7 @@ class SunburstMazeDiscrete(gym.Env):
     def __init__(
         self,
         maze_file=None,
+        random_maps=False,
         render_mode=None,
         max_steps_per_episode=200,
         random_start_position=None,
@@ -48,11 +49,22 @@ class SunburstMazeDiscrete(gym.Env):
         fov=math.pi / 2,
         ray_length=10,
         number_of_rays=100,
-    ):
-        self.map_file = maze_file
-        self.maze_file = get_map(maze_file)
+        grid_length=None,
+    ):  
+        self.episode_iterations = 0
+        self.random_maps = random_maps
+        self.maze_file = maze_file
+
+        if random_maps:
+            self.multiple_map_path = maze_file
+            self.maze_file = rd.choice(maze_file)
+
         self.initial_map = build_map(self.maze_file)
         self.env_map = copy.deepcopy(self.initial_map)
+
+        if grid_length:
+            self.env_grid = build_grid_layout(self.env_map, grid_length)
+
         self.height = self.env_map.shape[0]
         self.width = self.env_map.shape[1]
         self.random_start_position = random_start_position
@@ -84,6 +96,8 @@ class SunburstMazeDiscrete(gym.Env):
 
         self.position = None
         self.goal = None
+        self.false_goal_touched = 0
+        self.grid_id = None
 
         # Episode step settings
         self.max_steps_per_episode = max_steps_per_episode
@@ -97,6 +111,10 @@ class SunburstMazeDiscrete(gym.Env):
         self.render_maze = None
         self.window = None
         self.clock = None
+
+        self.color_map = {}
+        for value in set(self.env_grid.values()):
+            self.color_map[value] = (np.random.randint(0, 255), np.random.randint(0, 255), np.random.randint(0, 255), 100) # random colors with alpha
 
         ## Visited checkpoints
         # self.visited_squares = []
@@ -175,7 +193,7 @@ class SunburstMazeDiscrete(gym.Env):
         return {
             "legal_actions": self.legal_actions(),
             "orientation": self.orientation,
-            "goal_in_sight": self.goal_in_sight,
+            "goal_in_sight": self.goal_in_sight
         }
 
     def _get_observation(self):
@@ -207,7 +225,7 @@ class SunburstMazeDiscrete(gym.Env):
             self.goal = (int(match.group(1)), int(match.group(2)))
         else:
             self.goal = None
-        print("Goal:", self.goal, "in maze file:", self.maze_file)
+        # print("Goal:", self.goal, "in maze file:", self.maze_file)
         return self.goal
 
     def reset(self, seed=None, options=None) -> tuple:
@@ -218,10 +236,14 @@ class SunburstMazeDiscrete(gym.Env):
 
         self.visited_squares = []
         self.viewed_squares = set()
+        self.false_goals_touched = 0
 
-        self.maze_file = get_map(self.map_file)
+        if self.random_maps and self.episode_iterations % 1 == 0:
+            self.maze_file = rd.choice(self.multiple_map_path)
+
         self.initial_map = build_map(self.maze_file)
         self.env_map = copy.deepcopy(self.initial_map)
+
         self.position = self.select_start_position()
         self.goal = self.extract_goal_coordinates()
 
@@ -248,6 +270,9 @@ class SunburstMazeDiscrete(gym.Env):
                 self.observed_squares_map,
                 self.wall_rays,
             )
+        
+        self.episode_iterations += 1
+
         return observation, self._get_info()
 
     def reset_checkpoints(self):
@@ -511,6 +536,8 @@ class SunburstMazeDiscrete(gym.Env):
         # terminated = self.is_goal()
         info = self._get_info()
 
+        self.grid_id = self.get_grid_id()
+
         if self.render_mode == "human":
             self.render()
 
@@ -526,7 +553,7 @@ class SunburstMazeDiscrete(gym.Env):
             bool: True if the current position is a goal position, False otherwise.
         """
         if int(self.env_map[self.position[0]][self.position[1]]) == 2 and self.position == self.goal:
-            print("Correct goal reached!")
+            # print("Correct goal reached!")
             return True
         return False
     
@@ -537,8 +564,13 @@ class SunburstMazeDiscrete(gym.Env):
             bool: True if the current position is a goal position, False otherwise.
         """
         if int(self.env_map[self.position[0]][self.position[1]]) == 2 and self.position != self.goal:
+            self.false_goal_touched += 1
             return True
         return False
+    
+    def get_grid_id(self):
+        return self.env_grid.get(self.position, None)
+
     
     def view_of_maze_complete(self):
         if len(self.viewed_squares) == self.map_observation_size:
@@ -619,10 +651,6 @@ class SunburstMazeDiscrete(gym.Env):
         if self.is_false_goal():
             return self.rewards["is_false_goal"]
 
-        
-        if self.is_false_goal():
-            return self.rewards["is_false_goal"]
-
         return reward
 
     def render_q_value_overlay(self, q_values):
@@ -636,6 +664,7 @@ class SunburstMazeDiscrete(gym.Env):
             None
         """
         self.render_maze.draw_q_values(q_values)
+    
 
     def render(self):
         self._render_frame()
@@ -653,6 +682,8 @@ class SunburstMazeDiscrete(gym.Env):
                 self.wall_rays,
                 self.q_values,
                 self.past_actions,
+                self.env_grid,
+                self.color_map,
             )
 
     def render_rgb_array(self):

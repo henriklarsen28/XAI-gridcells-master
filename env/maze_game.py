@@ -70,7 +70,10 @@ class Maze:
         
         self.clock = pygame.time.Clock()
         self.framerate = framerate
+
         self.draw_frame(self.env_map, position, orientation, observed_squares_map, wall_rays)
+
+        
 
 
     def select_sprite(self, orientation: int):
@@ -103,6 +106,7 @@ class Maze:
         Returns:
         - None
         """
+
         for y in range(self.height):
             for x in range(self.width):
                 if env_map[y][x] == 1:
@@ -141,6 +145,9 @@ class Maze:
                             self.cell_size,
                         ),
                     )
+        
+        
+        
                         
 
     def draw_sprite(self, position: tuple, orientation: int) -> None:
@@ -287,6 +294,28 @@ class Maze:
                 arrow_orientation = (orientation + 1) % 4
             self.draw_triangle((position[0], position[1]), arrow_orientation, (255*(1-q_variance), 0, 0))
 
+    def render_grid_overlay(self, grid: dict, color_map: dict = None):
+        
+         # Ensure color_map is not None
+        if color_map is None:
+            color_map = {}
+            for grid_id in set(grid.values()):
+                # Default to random colors with random alpha (semi-transparent)
+                color_map[grid_id] = (np.random.randint(0, 255), np.random.randint(0, 255), np.random.randint(0, 255), 128)
+
+        # Render each cell using the color associated with its grid ID
+        for position, grid_id in grid.items():
+            color = color_map[grid_id]  # Retrieve the RGBA color
+            
+            # Create a new surface with per-pixel alpha to support transparency
+            cell_surface = pygame.Surface((self.cell_size, self.cell_size), pygame.SRCALPHA)
+            cell_surface.fill(color)  # Fill the surface with the RGBA color
+            
+            # Blit the transparent surface onto the main window
+            self.win.blit(cell_surface, (position[1] * self.cell_size, position[0] * self.cell_size))
+
+        
+
     def draw_frame(
         self,
         env_map: np.array,
@@ -296,6 +325,8 @@ class Maze:
         wall_rays: set,
         q_values: list = [],
         last_ten_actions = deque(maxlen=10),
+        grid_pos_to_id: dict = {},
+        grid_id_to_color: dict = {}
     ):
         """
         Draws a frame of the maze game.
@@ -311,13 +342,17 @@ class Maze:
         self.marked_squares = set()
         self.marked_2 = set()
         self.win.fill(grey)  # fill screen before drawing
+        self.render_grid_overlay(grid_pos_to_id, grid_id_to_color)
         self.draw_maze(env_map)
+        
+    
         #self.draw_action_tail(last_ten_actions)
         #self.draw_rays(position, orientation, wall_rays)
+
         self.draw_marked_blocks(observed_squares_map)
 
         if self.render_mode == "human":
-            self.draw_q_values(q_values)
+            # self.draw_q_values(q_values)
             self.draw_sprite(position, orientation)
             pygame.display.flip()
         self.clock.tick(self.framerate)

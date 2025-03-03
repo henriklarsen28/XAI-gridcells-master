@@ -17,11 +17,11 @@ import numpy as np
 import pygame
 import torch
 import wandb
-from agent.explain_network import ExplainNetwork, grad_sam
+from dtqn_agent import DTQN_Agent
 from torch.nn.utils.rnn import pad_sequence
 from tqdm import tqdm
 
-from dtqn_agent import DTQN_Agent
+from agent.explain_network import ExplainNetwork, grad_sam
 from env import SunburstMazeDiscrete
 from utils.calculate_fov import calculate_fov_matrix_size
 from utils.sequence_preprocessing import (
@@ -36,7 +36,7 @@ wandb.login()
 # Define the CSV file path relative to the project root
 map_path_train = os.path.join(project_root, "env/map_no_goal/map_closed_doors_left.csv")
 map_path_test = os.path.join(project_root, "env/map_no_goal/map_closed_doors_left.csv")
-map_path_random = os.path.join(project_root, "env/random_generated_maps/goal")
+map_path_random = os.path.join(project_root, "env/random_generated_maps/goal/medium")
 map_path_random_files = [os.path.join(map_path_random, f) for f in os.listdir(map_path_random) if os.path.isfile(os.path.join(map_path_random, f))]
 
 device = torch.device("cpu")
@@ -109,13 +109,18 @@ class Model_TrainTest:
 
         self.transformer = config["transformer"]
         self.sequence_length = self.transformer["sequence_length"]
+
         map_path = config["map_path_train"]
         if not self.train_mode:
             map_path = config["map_path_test"]
+        self.random_maps = config["random_maps"]
+
+        self.grid_length = config["grid_length"]
 
         # Define Env
         self.env = SunburstMazeDiscrete(
             maze_file=map_path,
+            random_maps=self.random_maps,
             render_mode=render_mode,
             max_steps_per_episode=self.max_steps,
             random_start_position=self.random_start_position,
@@ -125,7 +130,9 @@ class Model_TrainTest:
             fov=self.fov,
             ray_length=self.ray_length,
             number_of_rays=self.number_of_rays,
+            grid_length=self.grid_length,
         )
+
         self.env.metadata["render_fps"] = (
             self.render_fps
         )  # For max frame rate make it 0
@@ -168,8 +175,14 @@ class Model_TrainTest:
 
         self.save_path = model_path + self.save_path
 
+
+
         # Training loop over episodes
         for episode in range(1, self.max_episodes + 1):
+            
+            # Count episode number from 1
+            self.env.episode_iterations = episode 
+            false_goal = 0
 
             state, _ = self.env.reset()
 
@@ -256,11 +269,13 @@ class Model_TrainTest:
 
                 state = next_state
                 total_reward += reward
+
                 steps_done += 1
 
             # Appends for tracking history
             self.reward_history.append(total_reward)  # episode reward
             total_steps += steps_done
+            false_goal = self.env.false_goal_touched
 
             # Decay epsilon at the end of each episode
             self.agent.update_epsilon()
@@ -290,6 +305,7 @@ class Model_TrainTest:
                     "Reward per episode": total_reward,
                     "Epsilon": self.agent.epsilon,
                     "Steps done": steps_done,
+                    "False goal touched": false_goal,
                     "Gif:": (wandb.Video(gif, fps=4, format="gif") if gif else None),
                 },
                 commit=True,
@@ -479,7 +495,7 @@ class Model_TrainTest:
         q_val_list = ex_network.generate_q_values(env=self.env, model=self.agent.model)
         self.env.q_values = q_val_list
         # Testing loop over episodes
-        for episode in tqdm(range(1, max_episodes + 1)):
+        for episode in range(1, max_episodes + 1):
             state, _ = self.env.reset(seed=seed)
             done = False
             truncation = False
@@ -491,7 +507,7 @@ class Model_TrainTest:
             while not done and not truncation:
 
                 state = state_preprocess(state, device)
-                sequence = add_to_sequence(sequence, state)
+                sequence = add_to_sequence(sequence, state, device)
                 tensor_sequence = torch.stack(list(sequence))
                 tensor_sequence = padding_sequence(
                     tensor_sequence, self.sequence_length, device
@@ -515,36 +531,11 @@ class Model_TrainTest:
                 # print("Hello", frame)
 
                 next_state_preprosessed = state_preprocess(next_state, device)
-                new_sequence = add_to_sequence(sequence, next_state_preprosessed)
+                new_sequence = add_to_sequence(sequence, next_state_preprosessed, device)
                 tensor_new_sequence = torch.stack(list(new_sequence))
                 tensor_new_sequence = padding_sequence(
-                    tensor_new_sequence, self.sequnence_length
+                    tensor_new_sequence, self.sequence_length, device
                 )
-
-                # block_1 = att_weights_list[0]  # Block 1
-                # block_2 = att_weights_list[1]  # Block 2
-                # block_3 = att_weights_list[2]  # Block 3
-
-                # block = block_3  # Block 2
-                # #gradients = self.agent.calculate_gradients(
-                # #    tensor_sequence, tensor_new_sequence, reward, block=2
-                # #)
-                # # print('gradients', gradients)
-                # step_dicti["step"] = steps_done
-                # step_dicti["position"] = self.env.position
-                # step_dicti["tensors"] = grad_sam(
-                #     block,
-                #     gradients,
-                #     block=2,
-                #     episode=episode,
-                #     step=steps_done,
-                #     rgb_array=None,
-                #     plot=False,
-                # )
-                # step_dicti["is_stuck"] = (
-                #     True if self.env.has_not_moved(self.env.position) else False
-                # )
-                # step_dicti["orientation"] = self.env.orientation
 
                 state = next_state
                 total_reward += reward
@@ -606,23 +597,24 @@ def get_num_states(map_path):
 if __name__ == "__main__":
     # Parameters:
 
-    train_mode = True
+    train_mode = False
 
     render = True
     render_mode = "human"
 
+    map_version = map_path_test.split("/")[-2]
+
     if train_mode:
         render_mode = "rgb_array" if render else None
-
-    map_version = map_path_test.split("/")[-2]
+        map_version = map_path_train.split("/")[-2]
 
     # Read the map file to find the number of states
     # num_states = get_num_states(map_path_train)
 
     fov_config = {
-        "fov": math.pi / 1.5,
-        "ray_length": 15,
-        "number_of_rays": 100,
+        "fov": math.pi / 1.2,
+        "ray_length": 10,
+        "number_of_rays": 20,
     }
     half_fov = fov_config["fov"] / 2
     matrix_size = calculate_fov_matrix_size(fov_config["ray_length"], half_fov)
@@ -633,12 +625,17 @@ if __name__ == "__main__":
     config = {
         "train_mode": train_mode,
         "map_path_train": map_path_random_files, # if this is a list it will select a random map from the list
-        "map_path_test": map_path_test,
+        "map_path_test": map_path_random_files,
+        "map_path": map_path_test,
+        "random_maps": True,
+        
         "render": render,
         "render_mode": render_mode,
+
         "model_name": "vivid-firebrand-872",
-        "RL_load_path": f"./model/transformers/seq_len_45/model_vivid-firebrand-872/sunburst_maze_map_v0_5100.pth",
+        "RL_load_path": f"./models/model_rose-pyramid-152/sunburst_maze_map_no_goal_5000.pth",
         "save_path": f"/sunburst_maze_{map_version}",
+
         "loss_function": "mse",
         "learning_rate": 0.0001,
         "batch_size": 128,
@@ -649,24 +646,25 @@ if __name__ == "__main__":
         "epsilon_min": 0.01,
         "discount_factor": 0.88,
         "alpha": 0.1,
-        "map_path": map_path_test,
+        
         "target_model_update": 10,  # hard update of the target model
-        "max_steps_per_episode": 300,
+        "max_steps_per_episode": 100,
+
         "random_start_position": True,
-        "random_goal_position": True,
+        "random_goal_position": False,
+
         "rewards": {
-            "is_goal": 200 / 200,
-            "hit_wall": -0.5 / 200,
-            "has_not_moved": -0.2 / 200,
-            "new_square": 2 / 200,
-            "max_steps_reached": -0.5 / 200,
-            "penalty_per_step": -0.01 / 200,
-            "goal_in_sight": 0 / 200,
-            "number_of_squares_visible": 0 / 200,
-            "is_false_goal": 0 / 200,
+            "is_goal": 2.5,
+            "hit_wall": -0.1,
+            "has_not_moved": -0.05,
+            "new_square": 0.0025,
+            "max_steps_reached": -0.25,
+            "penalty_per_step": -0.002,
+            "number_of_squares_visible": 0,
+            "goal_in_sight": 0.1,
+			"is_false_goal": -0.2,
             # and the number of squares viewed (set in the env)
         },
-        # TODO
         "observation_space": {
             "position": True,
             "orientation": True,
@@ -677,14 +675,17 @@ if __name__ == "__main__":
         "save_interval": 100,
         "memory_capacity": 200_000,
         "render_fps": 15,
+
         "num_states": num_states,
+
         "clip_grad_normalization": 3,
         "fov": math.pi / 1.5,
         "ray_length": 20,
         "number_of_rays": 100,
+        "grid_length": 4, # 4x4 grid
+
         "transformer": {
-            "sequence_length": 45,
-            "n_embd": 128,
+            "sequence_length": 15,
             "n_embd": 128,
             "n_head": 8,
             "n_layer": 3,

@@ -84,6 +84,19 @@ class Block(nn.Module):
         x = x + sa_out
         x = x + self.ffwd(self.ln2(x))
         return x, att_weights
+    
+class FeedForward_Final(nn.Module):
+    def __init__(self, n_embd, action_dim):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(n_embd, 2 * n_embd),
+            nn.ReLU(),
+            nn.Linear(2 * n_embd, 2 * n_embd),
+            nn.ReLU(),
+            nn.Linear(2 * n_embd, action_dim))
+
+    def forward(self, x):
+        return self.net(x)
 
 
 class Transformer(nn.Module):
@@ -107,9 +120,7 @@ class Transformer(nn.Module):
             *[Block(n_embd, n_head, block_size, dropout) for _ in range(n_layer)]
         )
         self.ln_f = nn.LayerNorm(n_embd)
-        self.output = nn.Linear(
-            n_embd, output_dim
-        )  # Optional: add hidden layers after the final decoder layer
+        self.output = FeedForward_Final(n_embd, output_dim)
         self.apply(self.init_weights)
 
     def init_weights(self, module):
@@ -137,9 +148,10 @@ class Transformer(nn.Module):
             att_weights_list.append(att_weights)
 
         # x = self.blocks(x)
-        x = self.ln_f(x[:,-1])
+        x = self.ln_f(x)
 
         x = self.output(x.to(torch.float32))
+        x = x[:, -1, :]
         return x, att_weights_list
 
 

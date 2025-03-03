@@ -2,6 +2,37 @@ import numpy as np
 from PIL import Image
 import random as rd
 
+def build_grid_layout(env_map: np.array, num_cells: int):
+    """
+    Builds a grid layout for the environment map.
+
+    Parameters:
+    - env_map (list of lists): The environment map representing the maze.
+    - num_cells (int): The number of cells in the grid layout.
+
+    Returns:
+    - grid_layout (list of lists): start_row, end_row, start_col, end_col
+    """
+    total_rows, total_cols = env_map.shape
+    # Calculate heights and widths accounting for remainder
+    subgrid_height = (total_rows + num_cells - 1) // num_cells
+    subgrid_width = (total_cols + num_cells - 1) // num_cells
+
+    grid_layout = {}
+    grid_id = 0
+    # Create indices for subgrids
+    for row_start in range(0, total_rows, subgrid_height):
+        for col_start in range(0, total_cols, subgrid_width):
+            row_end = min(row_start + subgrid_height, total_rows)
+            col_end = min(col_start + subgrid_width, total_cols)
+            # Assign grid index to each cell within the subgrid
+            for row in range(row_start, row_end):
+                for col in range(col_start, col_end):
+                    grid_layout[(row, col)] = grid_id
+            grid_id += 1
+
+    return grid_layout
+
 def get_map(map_path):
 
     map = map_path
@@ -19,6 +50,7 @@ def read_map(map_file):
 
 
 def build_map(map_file):
+    assert map_file is not None, "Map file is not defined"
     lines = read_map(map_file)
     env_map = []
     for line in lines:

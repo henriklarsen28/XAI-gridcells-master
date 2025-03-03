@@ -7,9 +7,8 @@ import numpy as np
 import torch
 from torch import nn, optim
 
-from replay_memory import ReplayMemory
-
-# from agent.transformer_decoder_decoupled import TransformerDQN
+from .replay_memory import ReplayMemory
+from .transformer_decoder import Transformer
 
 
 def get_attention_gradients(module, grad_input, grad_output):
@@ -45,10 +44,10 @@ class DTQN_Agent:
         seed,
         transformer_param,
     ):
-        if transformer_param["decouple_positional_embedding"]:
+        '''if transformer_param["decouple_positional_embedding"]:
             from transformer_decoder_decoupled import Transformer
         else:
-            from transformer_decoder import Transformer
+            from transformer_decoder import Transformer'''
 
         # To save the history of network loss
         self.loss_history = []
