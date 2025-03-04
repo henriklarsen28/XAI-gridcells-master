@@ -12,20 +12,23 @@ import math
 import gymnasium as gym
 import numpy as np
 import torch
+from eval_policy import eval_policy
 from ppo import PPO_agent
 
 import env.continuous.register_env as register_env
-from env import SunburstMazeContinuous, SunburstMazeDiscrete
-from utils.state_preprocess import state_preprocess
 
 # Define the CSV file path relative to the project root
 map_path_train = os.path.join(
     project_root, "env/random_generated_maps/goal/large/map_circular_4_19.csv"
 )
-map_path_test = os.path.join(project_root, "env/map_v0/map_open_doors_90_degrees.csv")
-map_path_test_2 = os.path.join(
-    project_root, "env/map_v0/map_open_doors_horizontal_v2.csv"
-)
+
+map_path_random = os.path.join(project_root, "env/random_generated_maps/goal/large")
+map_path_random_files = [
+    os.path.join(map_path_random, f)
+    for f in os.listdir(map_path_random)
+    if os.path.isfile(os.path.join(map_path_random, f))
+]
+
 
 device = torch.device(
     "mps" if torch.backends.mps.is_available() else "cpu"
@@ -81,11 +84,10 @@ class Model_TrainTest:
         self.number_of_rays = config["number_of_rays"]
 
         map_path = map_path_train
-        if not self.train_mode:
-            map_path = map_path_test
+        
 
         # Define Env
-        
+
         self.env = gym.make(
             "SunburstMazeContinuous-v0",
             maze_file=map_path,
@@ -98,7 +100,7 @@ class Model_TrainTest:
             ray_length=self.ray_length,
             number_of_rays=self.number_of_rays,
         )
-        #self.env = gym.make("Pendulum-v1", render_mode=self.render_mode)
+        # self.env = gym.make("Pendulum-v1", render_mode=self.render_mode)
         self.agent = PPO_agent(
             env=self.env,
             device=device,
@@ -111,26 +113,33 @@ class Model_TrainTest:
         """
         self.agent.learn(20_000_000)
 
-    def test(self, max_episodes=100):
+    def test(self):
         """
         Reinforcement learning testing loop.
         """
         self.agent.load_model(self.policy_load_path, self.critic_load_path)
-        self.agent.rollout(max_episodes, render=True)
+        policy_network = self.agent.policy_network
+        eval_policy(
+            policy=policy_network,
+            env=self.env,
+            sequence_length=self.agent.sequence_length,
+            device=device,
+            render=True,
+            max_steps=self.max_steps,
+            random_map_path=map_path_random_files,
+        )
 
 
 if __name__ == "__main__":
     # Parameters:
 
-    train_mode = True
+    train_mode = False
 
     render = True
     render_mode = "human"
 
     if train_mode:
         render_mode = "rgb_array" if render else None
-
-    map_version = map_path_test.split("/")[-2]
 
     # Read the map file to find the number of states
     # num_states = get_num_states(map_path_train)
@@ -147,9 +156,8 @@ if __name__ == "__main__":
         "map_path_train": map_path_train,
         "render": render,
         "render_mode": render_mode,
-        "model_name": "vivid-firebrand-872",
-        "policy_load_path": f"./model/transformers/seq_len_45/model_vivid-firebrand-872/sunburst_maze_map_v0_5100.pth",
-        "critic_load_path": "/model/transformers/ppo/model_vivid-firebrand-872/sunburst_maze_map_v0_5100.pth",
+        "policy_load_path": f"./model/transformers/ppo/model_fiery-shadow-1144/policy_network_200.pth",
+        "critic_load_path": "/model/transformers/ppo/model_fiery-shadow-1144/critic_network_200.pth",
         # "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 3e-4,
@@ -166,7 +174,6 @@ if __name__ == "__main__":
             "policy_kl_range": 0.0008,
             "policy_params": 5,
         },
-        "map_path": map_path_train,
         "max_steps_per_episode": 500,
         "random_start_position": True,
         "random_goal_position": False,
@@ -195,10 +202,10 @@ if __name__ == "__main__":
         "ray_length": fov_config["ray_length"],
         "number_of_rays": fov_config["number_of_rays"],
         "transformer": {
-            "sequence_length": 25,
-            "n_embd": 196,
+            "sequence_length": 30,
+            "n_embd": 128,
             "n_head": 6,
-            "n_layer": 3,
+            "n_layer": 2,
             "dropout": 0.2,
             "decouple_positional_embedding": False,
         },
@@ -210,8 +217,6 @@ if __name__ == "__main__":
     # Train
     if train_mode:
         DRL.train()
-        # DRL.train_from_model()
     else:
-        # Test
-        # DRL.test(max_episodes=config["total_episodes"])
-        DRL.test(max_episodes=100)
+        DRL.test()
+
