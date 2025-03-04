@@ -9,12 +9,14 @@ import pandas as pd
 import torch
 
 
-def save_to_csv(dataset: deque, file_name: str):
+def save_to_csv(dataset: deque, file_name: str, path: str):
+    if not os.path.exists(path):
+        os.makedirs(path)
     dataset = [state.tolist() for state in dataset]
     # Convert from list of tensors to list of numpy arrays
     df = pd.DataFrame(dataset)
     
-    df.to_csv(f"./dataset/{file_name}", index=False)
+    df.to_csv(os.path.join(path, f"./dataset/{file_name}"), index=False)
 
 def shuffle_and_trim_datasets(dataset: deque, max_length: int):
     # shuffle the dataset

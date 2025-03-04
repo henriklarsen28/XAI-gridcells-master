@@ -22,7 +22,7 @@ from env import SunburstMazeContinuous
 from utils.calculate_fov import calculate_fov_matrix_size
 from utils.sequence_preprocessing import add_to_sequence, padding_sequence
 from utils.state_preprocess import state_preprocess
-from xai.cav.continuous.eval_policy import eval_policy
+from xai.cav.continuous.eval_policy_ff import eval_policy
 from xai.cav.process_data import (
     build_random_dataset,
     find_model_files,
