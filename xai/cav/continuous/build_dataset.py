@@ -95,7 +95,8 @@ def build_csv_dataset(
         render=True,
         max_steps=config["max_steps_per_episode"],
     ):
-    # print("Collected observations", len(collected_observations), collected_observations[0])
+        # print("Collected observations", len(collected_observations), collected_observations[0])
+        # TODO: Update model
 
         for observation, position in collected_observations:
             for observation_step, position_step in zip(observation, position):
