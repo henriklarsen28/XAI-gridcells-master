@@ -13,8 +13,11 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import wandb
-from .transformer_decoder import Transformer
-from .transformer_decoder_policy import TransformerPolicy
+from attention_pooling import AttentionPooling
+from transformer_decoder import Transformer
+from transformer_decoder_policy import TransformerPolicy
+from network import FeedForwardNN
+from network_policy import FeedForwardNNPolicy
 from torch import nn
 from torch.nn.utils.rnn import pad_sequence
 
@@ -652,7 +655,7 @@ class PPO_agent:
         self.entropy_step = (self.entorpy_coefficient - self.entropy_min) / config[
             "entropy"
         ]["step"]
-        self.normalize_advantage = True
+        self.normalize_advantage = config["PPO"]["normalize_advantage"]
 
     def __init_learn(self):
         wandb.login()
