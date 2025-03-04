@@ -6,19 +6,19 @@ import os
 import random as rd
 import sys
 from collections import deque
-
+ 
 import pandas as pd
 import torch
-
+ 
 # get the path to the project root directory and add it to sys.path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
  
 sys.path.append(project_root)
  
 import gymnasium as gym
-
+ 
+from agent.ppo.gated_transformer_decoder_policy import TransformerPolicy
 from agent.ppo.ppo import PPO_agent
-from agent.ppo_ff.network_policy import FeedForwardNNPolicy
 from env import SunburstMazeContinuous
 from utils.calculate_fov import calculate_fov_matrix_size
 from utils.sequence_preprocessing import add_to_sequence, padding_sequence
@@ -34,44 +34,22 @@ from xai.cav.process_data import (
     shuffle_and_trim_datasets,
     split_dataset_into_train_test,
 )
-
+ 
 device = torch.device("cpu")
  
-rewards =  {
-            "is_goal": 2,
-            "hit_wall": -0.01,
-            "has_not_moved": -0.005,
-            "new_square": 0.0025,
-            "max_steps_reached": -0.025,
-            "penalty_per_step": -0.0002,
-            "number_of_squares_visible": 0,
-            "goal_in_sight": 0.1,
-            "is_false_goal": -0.01,
-    }
 fov_config = {
             "fov": math.pi / 1.5,
-            "ray_length": 10,
-            "number_of_rays": 100,
+            "ray_length": 15,
+            "number_of_rays": 40,
             }
- 
-hyperparameters = {
-                'timesteps_per_batch': 2048,
-                'max_timesteps_per_episode': 250,
-                'gamma': 0.99,
-                'n_updates_per_iteration': 10,
-                'lr': 3e-4,
-                'clip': 0.2,
-                'render': True,
-                'render_every_i': 10
-              }
  
  
 config = {
  
         # MODEL PATHS
-        "model_path": "../../../agent/ppo/models/feed-forward/colorful-sunset-826/actor",
-        "model_name": "colorful-sunset-826", # TODO: change to the correct model name
-        "model_episodes": [675, 1500, 2925], # TODO: change to the correct model episodes
+        "model_path": "../../../agent/ppo/models/transformers/expert-durian-1146/actor",
+        "model_name": "expert-durian-1146", # TODO: change to the correct model name
+        "model_episodes": [100, 150, 200], # TODO: change to the correct model episodes
  
         # PPO
         "policy_load_path": "../../../agent/ppo/models/transformers/expert-durian-1146/actor",
@@ -109,6 +87,7 @@ config = {
             "clip_grad_normalization": 0.5,
             "policy_kl_range": 0.0008,
             "policy_params": 5,
+            "normalize_advantage": True,
         },
  
         "map_path": None,
@@ -149,14 +128,15 @@ config = {
         "entropy": {"coefficient": 0.015, "min": 0.0001, "step": 1_000},
     }
  
+print("config", config["PPO"])
  
 env = SunburstMazeContinuous(
     maze_file=config['env_path'],
-    max_steps_per_episode=hyperparameters["max_timesteps_per_episode"],
+    max_steps_per_episode=config["max_steps_per_episode"],
     render_mode=config["render_mode"],
     random_start_position=config["random_start_position"],
     random_goal_position=config["random_goal_position"],
-    rewards=rewards,
+    rewards=config["rewards"],
     fov=fov_config["fov"],
     ray_length=fov_config["ray_length"],
     number_of_rays=fov_config["number_of_rays"],
@@ -179,8 +159,6 @@ def build_csv_dataset(actor_model_paths: list, dataset_path: str, dataset_subfol
         print(f"Didn't specify model file. Exiting.", flush=True)
         sys.exit(0)
  
-    print(f"Testing {actor_model}", flush=True)
- 
     con = Concepts(
         grid_pos_to_id=env.env_grid, # TODO: Build grid layout in continous environment
     )
@@ -199,21 +177,31 @@ def build_csv_dataset(actor_model_paths: list, dataset_path: str, dataset_subfol
  
     sys.exit()"""
  
-    policy = FeedForwardNNPolicy(obs_dim, act_dim)
+    policy = TransformerPolicy(
+            input_dim=obs_dim,
+            output_dim=act_dim,
+            num_envs=3,
+            block_size=config["transformer"]["sequence_length"],
+            n_embd=config["transformer"]["n_embd"],
+            n_head=config["transformer"]["n_head"],
+            n_layer=config["transformer"]["n_layer"],
+            dropout=config["transformer"]["dropout"],
+            device=device
+        )
  
-    # Load in the actor model saved by the PPO algorithm
-    policy.load_state_dict(torch.load(actor_model, map_location=device))
  
     # Evaluate policy
-    collected_observations = eval_policy(policy=policy, env=env, device=device, render=True)
+    collected_observations = eval_policy(policy=policy, actor_model_paths=actor_model_paths, env=env, sequence_length=config["transformer"]["sequence_length"], device=device, render=True, max_steps=config["max_steps_per_episode"])
+    print("Collected observations", len(collected_observations), collected_observations[0])
  
     #TODO: Update model
  
+    count = 0
     for observation, position in collected_observations:
+        for observation_step, position_step in zip(observation, position):
         # print(len(observation_sequence))
-        if rd.random() > 0.4:
-            con.in_grid_square(observation, position)
- 
+            if rd.random() > 0.4:
+                con.in_grid_square(observation_step, position_step)
  
     path = os.path.join(dataset_path, dataset_subfolder)
  
@@ -251,10 +239,11 @@ def main():
     print("model files:", model_files)
  
     build_csv_dataset(model_files, dataset_path, 'raw_data', max_length=config["cav"]["dataset_max_length"])
-    build_random_dataset(dataset_path, "raw_data")
-    split_dataset_into_train_test(dataset_path, ratio = 0.8)
-    grid_observation_dataset(dataset_path, 'raw_data', model_name=config["model_name"], map_name=config["env_name"]) # specifically for grid layout concept
+    #build_random_dataset(dataset_path, "raw_data")
+    #split_dataset_into_train_test(dataset_path, ratio = 0.8)
+    #grid_observation_dataset(dataset_path, 'raw_data', model_name=config["model_name"], map_name=config["env_name"]) # specifically for grid layout concept
  
  
 if __name__ == "__main__":
     main()
+ 
