@@ -423,9 +423,9 @@ class PPO_agent:
 
                 # Get action and log probability (transformer expects a full sequence, so we pass collected states)
                 action, log_prob = self.get_action(tensor_obs)  # Pass full sequence
-                with torch.no_grad():
+                """with torch.no_grad():
                     value, _ = self.critic_network(tensor_obs.unsqueeze(0))
-                    value = value.squeeze()
+                    value = value.squeeze()"""
 
                 obs, reward, terminated, truncated, _ = self.env.step(action)
                 obs = obs.flatten()
@@ -444,13 +444,13 @@ class PPO_agent:
 
                 tensor_next_obs = torch.stack(list(next_ep_obs)).to(self.device)
                 tensor_next_obs = self.preprocess_ep_obs(tensor_next_obs)
-                with torch.no_grad():
+                """with torch.no_grad():
                     next_value, _ = self.critic_network(tensor_next_obs.unsqueeze(0))
-                    next_value = next_value.squeeze()
+                    next_value = next_value.squeeze()"""
                 # ep_acts.append(action)
                 ep_rews.append(reward)
-                ep_values.append(value)
-                ep_next_values.append(next_value)
+                #ep_values.append(value)
+                #ep_next_values.append(next_value)
                 ep_dones.append(done)
 
                 batch_acts.append(action)
@@ -470,8 +470,8 @@ class PPO_agent:
             # batch_obs.append(torch.stack(ep_tensor_seq))
             batch_lens.append(ep_t + 1)
             batch_rews.append(torch.tensor(ep_rews, dtype=torch.float))
-            batch_values.append(torch.tensor(ep_values, dtype=torch.float))
-            batch_next_values.append(torch.tensor(ep_next_values, dtype=torch.float))
+            #batch_values.append(torch.tensor(ep_values, dtype=torch.float))
+            #batch_next_values.append(torch.tensor(ep_next_values, dtype=torch.float))
             batch_dones.append(torch.tensor(ep_dones, dtype=torch.float))
 
             """attention_masks = torch.zeros((len(batch_obs), self.sequence_length))
