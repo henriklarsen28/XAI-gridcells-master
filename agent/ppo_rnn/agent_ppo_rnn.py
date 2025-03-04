@@ -111,12 +111,6 @@ class Model_TrainTest:
         """
         self.agent.learn(20_000_000)
 
-    def test(self, max_episodes=100):
-        """
-        Reinforcement learning testing loop.
-        """
-        self.agent.load_model(self.policy_load_path, self.critic_load_path)
-        self.agent.rollout(max_episodes, render=True)
 
 
 if __name__ == "__main__":
@@ -165,18 +159,19 @@ if __name__ == "__main__":
             "clip_grad_normalization": 0.5,
             "policy_kl_range": 0.0008,
             "policy_params": 5,
+            "normalize_advantages": False,
         },
         "map_path": map_path_train,
         "max_steps_per_episode": 500,
         "random_start_position": True,
         "random_goal_position": False,
         "rewards": {
-            "is_goal": 10,
+            "is_goal": 5,
             "hit_wall": -0.001,
             "has_not_moved": -0.005,
             "new_square": 0.0,
             "max_steps_reached": -0.025,
-            "penalty_per_step": -0.0002,
+            "penalty_per_step": -0.00002,
             "number_of_squares_visible": 0,
             "goal_in_sight": 0.001,
             "is_false_goal": 0,
@@ -195,7 +190,7 @@ if __name__ == "__main__":
         "ray_length": fov_config["ray_length"],
         "number_of_rays": fov_config["number_of_rays"],
         "transformer": {
-            "sequence_length": 10,
+            "sequence_length": 5,
             "n_embd": 196,
             "n_head": 6,
             "n_layer": 3,
@@ -214,4 +209,4 @@ if __name__ == "__main__":
     else:
         # Test
         # DRL.test(max_episodes=config["total_episodes"])
-        DRL.test(max_episodes=100)
+        #DRL.test(max_episodes=100)

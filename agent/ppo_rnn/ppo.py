@@ -130,7 +130,7 @@ class PPO_agent:
 
         self.policy_network = RNN(
             input_dim=self.obs_dim,
-            hidden_dim=128,
+            hidden_dim=n_embd,
             output_dim=self.act_dim,
             num_layers=1,
             dropout=dropout,
@@ -139,7 +139,7 @@ class PPO_agent:
 
         self.critic_network = RNN(
             input_dim=self.obs_dim,
-            hidden_dim=128,
+            hidden_dim=n_embd,
             output_dim=1,
             num_layers=1,
             dropout=dropout,
@@ -252,8 +252,8 @@ class PPO_agent:
 
             # Normalize the advantages
             # advantages = rtgs_batch
-
-            advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+            if self.normalize_advantages:
+                advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
             for _ in range(self.n_updates_per_iteration):
                 value_new, current_log_prob, entropy, env_classes_batch = self.evaluate(
                     obs_batch, actions_batch, attention_masks
@@ -749,6 +749,7 @@ class PPO_agent:
         self.entropy_step = (self.entorpy_coefficient - self.entropy_min) / config[
             "entropy"
         ]["step"]
+        self.normalize_advantages = config["PPO"]["normalize_advantages"]
 
     def entorpy_coefficient_decay(self):
         self.entorpy_coefficient -= self.entropy_step
