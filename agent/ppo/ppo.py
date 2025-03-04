@@ -178,7 +178,7 @@ class PPO_agent:
 
             # rollouts = self.rollout(iteration_counter)  # Collect rollouts
             # minibatches = self.batch_rollouts(rollouts)  # Create mini-batches
-
+            """
             # Minibatches
             minibatches = self.generate_minibatches(
                 obs_batch,
@@ -190,7 +190,7 @@ class PPO_agent:
 
             timestep_counter += sum(lens)
             iteration_counter += 1
-
+            """
             for (
                 obs_batch,
                 actions_batch,
