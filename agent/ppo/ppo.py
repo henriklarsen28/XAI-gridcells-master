@@ -180,7 +180,7 @@ class PPO_agent:
             # minibatches = self.batch_rollouts(rollouts)  # Create mini-batches
 
             # Minibatches
-            """minibatches = self.generate_minibatches(
+            minibatches = self.generate_minibatches(
                 obs_batch,
                 actions_batch,
                 log_probs_batch,
@@ -191,7 +191,7 @@ class PPO_agent:
             timestep_counter += sum(lens)
             iteration_counter += 1
 
-            """for (
+            for (
                 obs_batch,
                 actions_batch,
                 log_probs_batch,
@@ -217,6 +217,7 @@ class PPO_agent:
                 advantages = (advantages - advantages.mean()) / (
                     advantages.std() + 1e-8
                 )
+                # print(value, value.shape)
 
             for i in range(self.n_updates_per_iteration):
                 print(f"Iteration: {iteration_counter}. Update: {i}")
@@ -691,24 +692,6 @@ class PPO_agent:
 
         return advantages, returns
 
-        """ # Iterate through episodes in reverse order
-        for ep_rews, ep_dones in zip(reversed(rewards), reversed(dones)):
-            for t in reversed(range(len(ep_rews))):
-                delta = (
-                    ep_rews[t]
-                    + self.gamma * values_extended[t + 1] * (1 - ep_dones[t])
-                    - values[t]
-                )
-                gae = delta + self.gamma * self.gae_lambda * (1 - ep_dones[t]) * gae
-                advantages.insert(0, gae)
-        """
-        advantages = torch.tensor(advantages, dtype=torch.float, device=self.device)
-
-        # Compute value targets as advantages + value estimates
-        returns = advantages + values
-
-        return advantages, returns
-
     """
 
     def compute_gae(self, rewards, states, gamma=0.99, lam=0.95):
@@ -786,7 +769,9 @@ class PPO_agent:
         self.entorpy_coefficient -= self.entropy_step
         self.entorpy_coefficient = max(self.entropy_min, self.entorpy_coefficient)
 
-    def generate_minibatches(self, obs, actions, log_probs, rtgs, env_class_target):
+    def generate_minibatches(
+        self, obs, actions, log_probs, rtgs, env_class_target
+    ):
         minibatches = []
 
         indices = torch.randperm(self.batch_size)
