@@ -58,6 +58,7 @@ def split_dataset_into_train_test(
 
         print('train dataset', train_dataset)
 
+        # TODO: The dataset type is different for handling PPO Transformers (from eval_policy) - need to handle this
         train = [
             [torch.tensor(ast.literal_eval(state)) for state in states]
             for _, states in train_dataset.iterrows()
@@ -107,7 +108,7 @@ def build_random_dataset(dataset_path: str, dataset_subfolder = ''):
     dataset = pd.concat([pd.read_csv(f) for f in files])
     
     # shuffle and sample the dataset
-    random_sample = dataset.sample(n=100, frac=None, random_state=42).reset_index(drop=True)
+    random_sample = dataset.sample(n=1500, frac=None, random_state=42).reset_index(drop=True)
     
     # Split into positive and negative
     half = len(random_sample) // 2  # Use integer division directly
