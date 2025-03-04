@@ -1,5 +1,6 @@
 import os
 import sys
+
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.append(project_root)
 
@@ -14,10 +15,8 @@ import numpy as np
 import pygame
 from gymnasium import spaces
 
-
-from env.file_manager import build_map, build_grid_layout
 from env.continuous.maze_game_continuous import Maze
-
+from env.file_manager import build_grid_layout, build_map
 from utils import calculate_fov_matrix_size, step_angle
 
 checkpoints = [
@@ -471,7 +470,7 @@ class SunburstMazeContinuous(gym.Env):
         # print ("Length of viewed squares: ",  len(self.viewed_squares))
         # print("Proporition of viewed squares: ", len(self.viewed_squares) / self.map_observation_size)
 
-        return observation, reward, terminated, False, info
+        return observation, reward, False, False, info
 
     def get_grid_id(self):
         return self.env_grid.get(self.position, None)
@@ -547,7 +546,7 @@ class SunburstMazeContinuous(gym.Env):
                 self.observed_squares_map,
                 self.wall_rays,
                 [],
-                self.past_actions,
+                [],
                 self.env_grid,
                 self.color_map,
             )

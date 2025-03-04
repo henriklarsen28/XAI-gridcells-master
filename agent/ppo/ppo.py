@@ -13,7 +13,6 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import wandb
-from attention_pooling import AttentionPooling
 from gated_transformer_decoder import Transformer
 from gated_transformer_decoder_policy import TransformerPolicy
 from network import FeedForwardNN

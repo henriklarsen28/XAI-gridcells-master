@@ -22,6 +22,7 @@ from utils.calculate_fov import calculate_fov_matrix_size
 from utils.sequence_preprocessing import add_to_sequence, padding_sequence
 from utils.state_preprocess import state_preprocess
 from xai.cav.concept_definition import Concepts
+from xai.cav.process_data import save_to_csv, shuffle_and_trim_datasets, split_dataset_into_train_test, save_config, find_model_files, build_random_dataset, grid_observation_dataset
 
 device = torch.device("cpu")
 fov_config = {
@@ -92,7 +93,7 @@ config = {
     }
 
 
-def build_csv_dataset(model_paths: list, dataset_path: str, dataset_subfolder: str = ''):
+def build_csv_dataset(model_paths: list, dataset_path: str, dataset_subfolder: str = '', max_length: int = 1500):
     # Load early agent data
 
     epsilon = 0.2
@@ -166,163 +167,15 @@ def build_csv_dataset(model_paths: list, dataset_path: str, dataset_subfolder: s
             for sub_key, sub_val in val.items():
                 if sub_val:
                     filename = str(key) + '_' + str(sub_key)
-                    data_preprocessed = shuffle_and_trim_datasets(sub_val)
+                    data_preprocessed = shuffle_and_trim_datasets(sub_val, max_length)
                     save_to_csv(data_preprocessed, filename, path)
         else:
             if val:
-                data_preprocessed = shuffle_and_trim_datasets(val)
+                data_preprocessed = shuffle_and_trim_datasets(val, max_length)
                 save_to_csv(data_preprocessed, filename, path)
 
-    save_config(dataset_path)
+    save_config(dataset_path, config)
 
-def shuffle_and_trim_datasets(dataset: deque):
-    max_length = config["cav"]["dataset_max_length"]
-    # shuffle the dataset
-    data = list(dataset)
-    rd.shuffle(data)
-    # trim the dataset
-    if len(data) >= max_length:
-        data = data[:max_length]
-    return data
-
-def split_dataset_into_train_test(
-    dataset_path: str, dataset_subfolder = '', ratio: float = 0.8
-): 
-    # check if the folder 'train' and 'test' exists in the dataset path, if not create them
-    train_dir = os.path.join(dataset_path, "train" if not dataset_subfolder == '' else dataset_subfolder)
-    test_dir = os.path.join(dataset_path, "test" if not dataset_subfolder == '' else dataset_subfolder)
-
-    raw_data_dir = os.path.join(dataset_path, dataset_subfolder)
-    
-    print("Splitting dataset into training and test set")
-    # walk through the dataset path directory
-    for file in os.listdir(raw_data_dir):
-        file_path = os.path.join(raw_data_dir, file)
-        # check if the file is a csv file
-        if not file.endswith(".csv"):
-            continue
-        dataset = pd.read_csv(file_path)
-        # Split the dataset into a training and test set
-        train_size = int(len(dataset) * ratio)
-        train_dataset = dataset[:train_size]
-        test_dataset = dataset[train_size:]
-
-        print('train dataset', train_dataset)
-
-        train = [
-            [torch.tensor(ast.literal_eval(state)) for state in states]
-            for _, states in train_dataset.iterrows()
-        ]
-        test = [
-            [torch.tensor(ast.literal_eval(state)) for state in states]
-            for _, states in test_dataset.iterrows()
-        ]
-
-        filename = os.path.splitext(file)[0]
-        save_to_csv(train, f"{filename}_train", train_dir)
-        save_to_csv(test, f"{filename}_test", test_dir)
-
-
-def save_to_csv(dataset: list, file_name: str, path: str):
-    data = [[state.tolist() for state in sequence] for sequence in dataset]
-    # Convert from list of tensors to list of numpy arrays
-    df = pd.DataFrame(data)
-    if os.path.exists(path) == False:
-        os.makedirs(path)
-
-    df.to_csv(f"{path}/{file_name}.csv", index=False)
-
-def save_config(dataset_path: str):
-    if os.path.exists(dataset_path) == False:
-        os.makedirs(dataset_path)
-    with open(os.path.join(dataset_path, "config.json"), "w") as f:
-        json.dump(config, f, indent=4)
-
-def find_model_files(base_path: str, ep_ids: list):
-
-    # find the model file that ends with a specific number followed by '.pth'
-    try:
-        files = os.listdir(base_path)
-    except FileNotFoundError:
-        print(f"Directory {base_path} does not exist.")
-        return None
-
-    ep_ids = sorted(ep_ids, reverse=False)
-
-    model_files = []
-
-    for num in ep_ids:
-        for file in files:
-            if file.endswith(f"_{num}.pth"):
-                path = os.path.join(base_path, file)
-                model_files.append(path)
-    return model_files
-
-def build_random_dataset(dataset_path, dataset_subfolder):
-    file_path = os.path.join(dataset_path, dataset_subfolder)
-    # load and concatenate all CSV files
-    print("Building random dataset")
-    files = [os.path.join(file_path, f) for f in os.listdir(file_path) if f.endswith('.csv')]
-    dataset = pd.concat([pd.read_csv(f) for f in files])
-    
-    # shuffle and sample the dataset
-    random_sample = dataset.sample(n=1500, frac=None, random_state=42).reset_index(drop=True)
-    
-    # Split into positive and negative
-    half = len(random_sample) // 2  # Use integer division directly
-    random_positive = random_sample.iloc[:half]
-    random_negative = random_sample.iloc[half:]
-
-    random_positive.to_csv(f"{os.path.join(dataset_path, 'random_positive.csv')}", index=False)
-    random_negative.to_csv(f"{os.path.join(dataset_path, 'random_negative.csv')}", index=False)
-
-def get_positive_negative_data(concept: str, datapath: str):
-    negative_files = []
-    positive_file = None
-
-    print('Datapath:', datapath)
-    for file in os.listdir(datapath):
-        file_path = os.path.join(datapath, file)
-        if file.startswith(concept):
-            positive_file = file_path
-            print('Positive file:', positive_file)
-        else:
-            negative_files.append(file_path)
-
-    if positive_file is None:
-        raise FileNotFoundError("Positive file not found")
-    
-    positive_df = pd.read_csv(positive_file)
-    
-    # Determine sample size: at least 1500 lines or the length of the positive file content, whichever is greater
-    sample_size = max(1500, len(positive_df))
-
-    # Aggregate negative file content and then sample
-    neg_dfs = []
-    for neg_file in negative_files:
-        neg_df = pd.read_csv(neg_file)
-        neg_dfs.append(neg_df)
-
-    negative_df = pd.concat(neg_dfs)
-    negative_df = negative_df.sample(sample_size)
-    
-    return positive_df, negative_df
-
-def grid_observation_dataset(dataset_path, dataset_subfolder, model_name: str, map_name: str):
-    for i in range(15):
-        concept = "grid_observations_" + str(i)
-        negative_file_test = os.path.join(dataset_path, 'test', f"{concept}_negative_test.csv")
-        negative_file_train = os.path.join(dataset_path, 'train',f"{concept}_negative_train.csv")
-
-        if not os.path.exists(negative_file_test):
-            positive_file_test, negative_file_test = get_positive_negative_data(concept, os.path.join(dataset_path, dataset_subfolder))
-            positive_file_test.to_csv(os.path.join(dataset_path, 'test', f"{concept}_positive_test.csv"), index=False)
-            negative_file_test.to_csv(os.path.join(dataset_path, 'test', f"{concept}_negative_test.csv"), index=False)
-        
-        if not os.path.exists(negative_file_train):
-            positive_file_train, negative_file_train = get_positive_negative_data(concept, datapath = f"dataset/{model_name}/{map_name}/raw_data")
-            positive_file_train.to_csv(os.path.join(dataset_path, 'train', f"{concept}_positive_train.csv"), index=False)
-            negative_file_train.to_csv(os.path.join(dataset_path, 'train', f"{concept}_negative_train.csv"), index=False)
 
 def run_agent(env: SunburstMazeDiscrete, agent: DTQN_Agent, models: list):
 
@@ -365,10 +218,6 @@ def run_agent(env: SunburstMazeDiscrete, agent: DTQN_Agent, models: list):
             observation_sequence = add_to_sequence(observation_sequence, state, device)
             position_sequence.append(env.position)
             tensor_sequence = torch.stack(list(observation_sequence))
-            # tensor_sequence = padding_sequence(tensor_sequence, sequence_length, device)
-            # print(tensor_sequence.shape)
-            # q_val_list = generate_q_values(env=self.env, model=self.agent.model)
-            # self.env.q_values = q_val_list
 
             action, _ = agent.select_action(tensor_sequence)
             action_sequence.append(action)
@@ -412,9 +261,9 @@ def main():
     if not os.path.exists(dataset_directory_test):
         os.makedirs(dataset_directory_test, exist_ok=True)
 
-    build_csv_dataset(model_files, dataset_path, 'raw_data')
+    build_csv_dataset(model_files, dataset_path, 'raw_data', max_length=config["cav"]["dataset_max_length"])
     build_random_dataset(dataset_path, "raw_data")
-    #split_dataset_into_train_test(dataset_path, ratio = 0.8)
+    split_dataset_into_train_test(dataset_path, ratio = 0.8)
     grid_observation_dataset(dataset_path, 'raw_data', model_name=config["model_name"], map_name=config["env_name"]) # specifically for grid layout concept
 
 

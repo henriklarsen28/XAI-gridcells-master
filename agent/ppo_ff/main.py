@@ -16,11 +16,10 @@ import sys
 import gymnasium as gym
 import torch
 from arguments import get_args
-from network import FeedForwardNN
-from network_policy import FeedForwardNNPolicy
 from eval_policy import eval_policy
 from network import FeedForwardNN
-from ppo import PPO
+from network_policy import FeedForwardNNPolicy
+from ppo import PPO_agent
 
 from env import SunburstMazeContinuous
 from utils.calculate_fov import calculate_fov_matrix_size
@@ -43,7 +42,7 @@ def train(env, hyperparameters, actor_model, critic_model):
 	print(f"Training", flush=True)
 
 	# Create a model for PPO.
-	model = PPO(policy_class=FeedForwardNNPolicy, critic_class=FeedForwardNN, env=env, **hyperparameters)
+	model = PPO_agent(policy_class=FeedForwardNNPolicy, critic_class=FeedForwardNN, env=env, **hyperparameters)
 
 	# Tries to load in an existing actor/critic model to continue training on
 	if actor_model != '' and critic_model != '':
