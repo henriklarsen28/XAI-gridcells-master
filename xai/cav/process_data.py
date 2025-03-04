@@ -91,7 +91,6 @@ def save_config(dataset_path: str, config: dict):
     with open(os.path.join(dataset_path, "config.json"), "w") as f:
         json.dump(config, f, indent=4)
 
-
 def find_model_files(base_path: str, ep_ids: list):
 
     # find the model file that ends with a specific number followed by '.pth'
