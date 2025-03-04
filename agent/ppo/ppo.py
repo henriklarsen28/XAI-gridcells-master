@@ -155,8 +155,6 @@ class PPO_agent:
         self.cov_var = torch.full(size=(self.act_dim,), fill_value=0.5).to(self.device)
         self.cov_mat = torch.diag(self.cov_var).to(self.device)
 
-        mp.set_start_method("spawn", force=True)
-
     def learn(self, total_timesteps):
         self.__init_learn()
         timestep_counter = 0
@@ -528,7 +526,6 @@ class PPO_agent:
                 tensor_next_obs = self.preprocess_ep_obs(tensor_next_obs)
 
                 ep_rews.append(reward)
-
                 ep_dones.append(done)
 
                 batch_acts.append(action)
