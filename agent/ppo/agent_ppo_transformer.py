@@ -133,8 +133,7 @@ class Model_TrainTest:
 if __name__ == "__main__":
     # Parameters:
 
-    train_mode = False
-
+    train_mode = True
     render = True
     render_mode = "human"
 
@@ -202,10 +201,10 @@ if __name__ == "__main__":
         "ray_length": fov_config["ray_length"],
         "number_of_rays": fov_config["number_of_rays"],
         "transformer": {
-            "sequence_length": 30,
-            "n_embd": 128,
+            "sequence_length": 45,
+            "n_embd": 196,
             "n_head": 6,
-            "n_layer": 2,
+            "n_layer": 3,
             "dropout": 0.2,
             "decouple_positional_embedding": False,
         },
