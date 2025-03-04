@@ -45,10 +45,6 @@ agent/ppo/gifs/*
 agent/ppo/models/*
 agent/ppo/model/*
 agent/ppo_test_code/models/*
-
-agent/ppo/model/*
-agent/ppo_test_code/models/*
-
 agent/ppo_rnn/gifs/*
 agent/ppo_rnn/model/*
 agent/ppo_rnn/wandb/*
