@@ -350,7 +350,8 @@ class CAV:
 
             if episode_number not in episode_numbers:
                 continue
-
+            
+            print("dataset directory train:", dataset_directory_train)
             (
                 positive,
                 negative,
@@ -627,9 +628,9 @@ def main():
     
     model_name ="model_rose-pyramid-152"
     model_load_path = f"../../agent/dqn/models/{model_name}"
-    map_name = "map_conditional_prob_10_4"
+    #map_name = "map_conditional_prob_10_4"
     #map_name = "map_circular_4_5"
-    #map_name = "map_two_rooms_9_8"
+    map_name = "map_two_rooms_9_8"
 
     dataset_directory_train = f"./dataset/{model_name}/{map_name}/train"
     dataset_directory_test = f"./dataset/{model_name}/{map_name}/test"

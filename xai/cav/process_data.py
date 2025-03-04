@@ -15,8 +15,11 @@ def save_to_csv(dataset: deque, file_name: str, path: str):
         os.makedirs(path)
 
     print("dataset", type(dataset[0]))
+    # Convert the sequences 
+    #dataset = [state.tolist() for state in dataset] if isinstance(dataset[0], torch.Tensor) else dataset
+
+    dataset = [[state.tolist() for state in sequence] for sequence in dataset]
     
-    dataset = [state.tolist() for state in dataset] if isinstance(dataset[0], torch.Tensor) else dataset
     # Convert from list of tensors to list of numpy arrays
     df = pd.DataFrame(dataset)
     
@@ -49,6 +52,9 @@ def split_dataset_into_train_test(
         file_path = os.path.join(raw_data_dir, file)
         # check if the file is a csv file
         if not file.endswith(".csv"):
+            continue
+        # If it already is a test or train file, skip it
+        if file.__contains__("train") or file.__contains__("test"):
             continue
         dataset = pd.read_csv(file_path)
         # Split the dataset into a training and test set
@@ -107,8 +113,10 @@ def build_random_dataset(dataset_path: str, dataset_subfolder = ''):
     files = [os.path.join(file_path, f) for f in os.listdir(file_path) if f.endswith('.csv')]
     dataset = pd.concat([pd.read_csv(f) for f in files])
     
+    dataset_length = len(dataset)
+    sample_size = min(1500, dataset_length)
     # shuffle and sample the dataset
-    random_sample = dataset.sample(n=1500, frac=None, random_state=42).reset_index(drop=True)
+    random_sample = dataset.sample(n=sample_size, frac=None, random_state=42).reset_index(drop=True)
     
     # Split into positive and negative
     half = len(random_sample) // 2  # Use integer division directly
@@ -137,7 +145,7 @@ def get_positive_negative_data(concept: str, datapath: str):
     positive_df = pd.read_csv(positive_file)
     
     # Determine sample size: at least 1500 lines or the length of the positive file content, whichever is greater
-    sample_size = max(1500, len(positive_df))
+    sample_size = min(max(1500, len(positive_df)),len(positive_df))
 
     # Aggregate negative file content and then sample
     neg_dfs = []

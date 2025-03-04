@@ -142,6 +142,7 @@ def build_csv_dataset(model_paths: list, dataset_path: str, dataset_subfolder: s
     # Containing a tuple of observation sequence, legal_actions, position sequence, action sequence
     collected_sequences = run_agent(env, agent, model_paths)
     # print("Length of collected sequences: ", len(collected_sequences))
+    print("Collected_seq",len(collected_sequences))
 
     for sequence in collected_sequences:
 
@@ -182,7 +183,7 @@ def run_agent(env: SunburstMazeDiscrete, agent: DTQN_Agent, models: list):
     collected_sequences = deque()
 
     sequence_length = config["transformer"]["sequence_length"]
-    max_episodes = 130
+    max_episodes = 20
     observation_sequence = deque(maxlen=sequence_length)
     position_sequence = deque(maxlen=sequence_length)
     action_sequence = deque(maxlen=sequence_length)

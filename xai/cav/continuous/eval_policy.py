@@ -125,9 +125,9 @@ def rollout(
             tensor_obs = torch.stack(list(ep_obs)).to(device)
             tensor_obs = preprocess_ep_obs(tensor_obs, sequence_length, device)
             tensor_obs = tensor_obs.unsqueeze(0)
-
-            observation_sequence = list(tensor_obs)
-            collected_observation_sequences.append(copy.deepcopy(observation_sequence))
+            if t > sequence_length:
+                observation_sequence = list(tensor_obs)
+                collected_observation_sequences.append(copy.deepcopy(observation_sequence))
             position = (int(env.position[0]), int(env.position[1]))
             collected_positions.append(copy.deepcopy(position))
 

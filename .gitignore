@@ -48,3 +48,5 @@ agent/ppo_test_code/models/*
 agent/ppo_rnn/gifs/*
 agent/ppo_rnn/model/*
 agent/ppo_rnn/wandb/*
+xai/cav/continuous/dataset/*
+

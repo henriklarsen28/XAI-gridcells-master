@@ -362,11 +362,11 @@ class PPO_agent:
             if iteration_counter % self.save_interval == 0:
                 torch.save(
                     self.policy_network.state_dict(),
-                    f"./model/transformers/ppo/model_{self.run.name}/policy_network_{iteration_counter}.pth",
+                    f"./models/transformers/ppo/model_{self.run.name}/policy_network_{iteration_counter}.pth",
                 )
                 torch.save(
                     self.critic_network.state_dict(),
-                    f"./model/transformers/ppo/model_{self.run.name}/critic_network_{iteration_counter}.pth",
+                    f"./models/transformers/ppo/model_{self.run.name}/critic_network_{iteration_counter}.pth",
                 )
                 """torch.save(
                     self.network.state_dict(),

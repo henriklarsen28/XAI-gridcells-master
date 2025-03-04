@@ -47,12 +47,12 @@ fov_config = {
 config = {
  
         # MODEL PATHS
-        "model_path": "../../../agent/ppo/models/transformers/expert-durian-1146/actor",
-        "model_name": "expert-durian-1146", # TODO: change to the correct model name
+        "model_path": "../../../agent/ppo/models/transformers/ppo/model_fiery-shadow-1144/actor",
+        "model_name": "model_fiery-shadow-1144", # TODO: change to the correct model name
         "model_episodes": [100, 150, 200], # TODO: change to the correct model episodes
  
         # PPO
-        "policy_load_path": "../../../agent/ppo/models/transformers/expert-durian-1146/actor",
+        "policy_load_path": "../../../agent/ppo/models/transformers/ppo/model_fiery-shadow-1144/actor",
         "critic_load_path": None,
         
         # ENVIRONMENT
@@ -192,8 +192,8 @@ def build_csv_dataset(actor_model_paths: list, dataset_path: str, dataset_subfol
  
     # Evaluate policy
     collected_observations = eval_policy(policy=policy, actor_model_paths=actor_model_paths, env=env, sequence_length=config["transformer"]["sequence_length"], device=device, render=True, max_steps=config["max_steps_per_episode"])
-    # print("Collected observations", len(collected_observations), collected_observations[0])
- 
+    print("Collected observations", len(collected_observations), collected_observations[0])
+    
     #TODO: Update model
  
     count = 0
@@ -239,10 +239,10 @@ def main():
     print("model files:", model_files)
     
     # Build a CSV dataset by running the model for a number of episodes and saves the data to a CSV file in the dataset path
-    #build_csv_dataset(model_files, dataset_path, 'raw_data', max_length=config["cav"]["dataset_max_length"])
+    build_csv_dataset(model_files, dataset_path, 'raw_data', max_length=config["cav"]["dataset_max_length"])
     
     # Using the raw dataset, build a random dataset
-    #build_random_dataset(dataset_path, "raw_data")
+    build_random_dataset(dataset_path, "raw_data")
 
     # Split the dataset into a training and test set
     split_dataset_into_train_test(dataset_path, ratio = 0.8)
