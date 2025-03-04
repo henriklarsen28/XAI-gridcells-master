@@ -108,7 +108,7 @@ def rollout(
 
         ep_obs = deque(maxlen=sequence_length)
 
-        while max_steps is None or t < max_steps:
+        while max_steps is None or t < max_steps and not done:
             t += 1
 
             obs = torch.tensor(obs, dtype=torch.float32).to(device)
