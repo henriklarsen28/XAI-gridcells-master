@@ -3,20 +3,26 @@ import copy
 import json
 import os
 import random as rd
-
 from collections import deque
+
 import pandas as pd
 import torch
 
 
 def save_to_csv(dataset: deque, file_name: str, path: str):
+
     if not os.path.exists(path):
         os.makedirs(path)
-    dataset = [state.tolist() for state in dataset]
+
+    print("dataset", type(dataset[0]))
+    
+    dataset = [state.tolist() for state in dataset] if isinstance(dataset[0], torch.Tensor) else dataset
     # Convert from list of tensors to list of numpy arrays
     df = pd.DataFrame(dataset)
     
-    df.to_csv(os.path.join(path, f"./dataset/{file_name}"), index=False)
+    print("Path:", path)
+    print("File name:", file_name)
+    df.to_csv(os.path.join(path, file_name + '.csv'), index=False)
 
 def shuffle_and_trim_datasets(dataset: deque, max_length: int):
     # shuffle the dataset
@@ -101,7 +107,7 @@ def build_random_dataset(dataset_path: str, dataset_subfolder = ''):
     dataset = pd.concat([pd.read_csv(f) for f in files])
     
     # shuffle and sample the dataset
-    random_sample = dataset.sample(n=1500, frac=None, random_state=42).reset_index(drop=True)
+    random_sample = dataset.sample(n=100, frac=None, random_state=42).reset_index(drop=True)
     
     # Split into positive and negative
     half = len(random_sample) // 2  # Use integer division directly

@@ -192,7 +192,7 @@ def build_csv_dataset(actor_model_paths: list, dataset_path: str, dataset_subfol
  
     # Evaluate policy
     collected_observations = eval_policy(policy=policy, actor_model_paths=actor_model_paths, env=env, sequence_length=config["transformer"]["sequence_length"], device=device, render=True, max_steps=config["max_steps_per_episode"])
-    print("Collected observations", len(collected_observations), collected_observations[0])
+    # print("Collected observations", len(collected_observations), collected_observations[0])
  
     #TODO: Update model
  
@@ -237,10 +237,17 @@ def main():
         os.makedirs(dataset_directory_test, exist_ok=True)
  
     print("model files:", model_files)
- 
-    build_csv_dataset(model_files, dataset_path, 'raw_data', max_length=config["cav"]["dataset_max_length"])
+    
+    # Build a CSV dataset by running the model for a number of episodes and saves the data to a CSV file in the dataset path
+    #build_csv_dataset(model_files, dataset_path, 'raw_data', max_length=config["cav"]["dataset_max_length"])
+    
+    # Using the raw dataset, build a random dataset
     #build_random_dataset(dataset_path, "raw_data")
-    #split_dataset_into_train_test(dataset_path, ratio = 0.8)
+
+    # Split the dataset into a training and test set
+    split_dataset_into_train_test(dataset_path, ratio = 0.8)
+
+    # Build a dataset for grid observations
     #grid_observation_dataset(dataset_path, 'raw_data', model_name=config["model_name"], map_name=config["env_name"]) # specifically for grid layout concept
  
  
