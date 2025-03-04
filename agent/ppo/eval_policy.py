@@ -98,11 +98,11 @@ def rollout(
     while True:
         
 		# Select and load a new random map
-        """env = random_maps(
+        env = random_maps(
             env=env,
 			random_map=True,
 			map_path_random_files=random_map_path,
-		)"""
+		)
 
         obs, _ = env.reset()
         done = False
