@@ -19,8 +19,16 @@ import env.continuous.register_env as register_env
 
 # Define the CSV file path relative to the project root
 map_path_train = os.path.join(
-    project_root, "env/random_generated_maps/goal/stretched/map_two_rooms_18_19.csv"
+    project_root, "env/random_generated_maps/goal/large/map_circular_4_19.csv"
 )
+
+map_path_random = os.path.join(project_root, "env/random_generated_maps/goal/large")
+map_path_random_files = [
+    os.path.join(map_path_random, f)
+    for f in os.listdir(map_path_random)
+    if os.path.isfile(os.path.join(map_path_random, f))
+]
+
 
 map_path_random = os.path.join(project_root, "env/random_generated_maps/goal/stretched")
 map_path_random_files = [
