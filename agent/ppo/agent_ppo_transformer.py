@@ -133,7 +133,7 @@ class Model_TrainTest:
 if __name__ == "__main__":
     # Parameters:
 
-    train_mode = True
+    train_mode = False
 
     render = True
     render_mode = "human"
@@ -179,14 +179,14 @@ if __name__ == "__main__":
         "random_goal_position": False,
         "rewards": {
             "is_goal": 6,
-            "hit_wall": -0.001,
-            "has_not_moved": -0.005,
+            "hit_wall": -0.01,
+            "has_not_moved": -0.05,
             "new_square": 0.0,
             "max_steps_reached": -0.025,
-            "penalty_per_step": -0.00002,
+            "penalty_per_step": -0.002,
             "number_of_squares_visible": 0,
             "goal_in_sight": 0.001,
-            "is_false_goal": -0.01,
+            "is_false_goal": -0.001,
             # and the proportion of number of squares viewed (set in the env)
         },
         # TODO
@@ -202,10 +202,10 @@ if __name__ == "__main__":
         "ray_length": fov_config["ray_length"],
         "number_of_rays": fov_config["number_of_rays"],
         "transformer": {
-            "sequence_length": 40,
-            "n_embd": 196,
+            "sequence_length": 30,
+            "n_embd": 128,
             "n_head": 6,
-            "n_layer": 3,
+            "n_layer": 2,
             "dropout": 0.2,
             "decouple_positional_embedding": False,
         },
