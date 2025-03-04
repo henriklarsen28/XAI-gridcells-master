@@ -18,8 +18,6 @@ import torch
 import torch.multiprocessing as mp
 import torch.nn.functional as F
 import wandb
-from network import FeedForwardNN
-from network_policy import FeedForwardNNPolicy
 from torch import nn
 from torch.nn.utils.rnn import pad_sequence
 from transformer_decoder import Transformer
