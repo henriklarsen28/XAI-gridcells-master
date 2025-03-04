@@ -158,90 +158,90 @@ class PPO_agent:
             # minibatches = self.batch_rollouts(rollouts)  # Create mini-batches
 
             # Minibatches
-            minibatches = self.generate_minibatches(
+            """minibatches = self.generate_minibatches(
                 obs_batch,
                 actions_batch,
                 log_probs_batch,
                 rtgs,
-            )
+            )"""
 
             timestep_counter += sum(lens)
             iteration_counter += 1
 
-            for (
+            """for (
                 obs_batch,
                 actions_batch,
                 log_probs_batch,
                 rtgs,
-            ) in minibatches:
+            ) in minibatches:"""
 
-                # print("Obs: ", obs, obs.shape)
-                # Calculate the advantages
-                value, _, _, _ = self.evaluate(
-                    obs_batch,
-                    actions_batch,
-                    attention_masks,
+            # print("Obs: ", obs, obs.shape)
+            # Calculate the advantages
+            value, _, _, _ = self.evaluate(
+                obs_batch,
+                actions_batch,
+                attention_masks,
+            )
+            # print(value, value.shape)
+
+            """# Normalize rewards
+            all_rewards = np.concatenate(rewards_batch)
+            mean = np.mean(all_rewards)
+            std = np.std(all_rewards) + 1e-8
+            rewards_batch = [(np.array(rewards) - mean) / std for rewards in rewards_batch]
+
+            rewards_batch = list(rewards_batch)"""
+
+            # advantages, returns = self.compute_gae(rewards_batch, value, dones_batch)
+
+            # rtgs = rtgs.unsqueeze(1)
+
+            advantages = rtgs - value.detach()
+
+            # Normalize the advantages
+            if self.normalize_advantage:
+                advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+            for _ in range(self.n_updates_per_iteration):
+                value_new, current_log_prob, entropy, env_classes_batch = self.evaluate(
+                    obs_batch, actions_batch, attention_masks
                 )
-                # print(value, value.shape)
+                #print("Current log prob: ", current_log_prob)
+                #print("Log probs batch: ", log_probs_batch)
+                ratio = torch.exp(current_log_prob - log_probs_batch)
 
-                """# Normalize rewards
-                all_rewards = np.concatenate(rewards_batch)
-                mean = np.mean(all_rewards)
-                std = np.std(all_rewards) + 1e-8
-                rewards_batch = [(np.array(rewards) - mean) / std for rewards in rewards_batch]
+                surrogate_loss1 = ratio * advantages
+                surrogate_loss2 = (
+                    torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * advantages
+                )
 
-                rewards_batch = list(rewards_batch)"""
+                policy_loss_ppo = (-torch.min(surrogate_loss1, surrogate_loss2)).mean()
+                """env_class_loss = F.cross_entropy(
+                    env_classes_batch, env_classes_target_batch.float()
+                )"""
 
-                # advantages, returns = self.compute_gae(rewards_batch, value, dones_batch)
-
-                # rtgs = rtgs.unsqueeze(1)
-
-                advantages = rtgs - value.detach()
-
-                # Normalize the advantages
-                if self.normalize_advantage:
-                    advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
-                for _ in range(self.n_updates_per_iteration):
-                    value_new, current_log_prob, entropy, env_classes_batch = self.evaluate(
-                        obs_batch, actions_batch, attention_masks
-                    )
-                    #print("Current log prob: ", current_log_prob)
-                    #print("Log probs batch: ", log_probs_batch)
-                    ratio = torch.exp(current_log_prob - log_probs_batch)
-    
-                    surrogate_loss1 = ratio * advantages
-                    surrogate_loss2 = (
-                        torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * advantages
-                    )
-
-                    policy_loss_ppo = (-torch.min(surrogate_loss1, surrogate_loss2)).mean()
-                    """env_class_loss = F.cross_entropy(
-                        env_classes_batch, env_classes_target_batch.float()
-                    )"""
-
-                    policy_loss = policy_loss_ppo  # - self.entorpy_coefficient * entropy
-                    # print("Kl",kl_div, "Entropy", entropy)
+                policy_loss = policy_loss_ppo  # - self.entorpy_coefficient * entropy
+                # print("Kl",kl_div, "Entropy", entropy)
 
 
-                    critic_loss = nn.MSELoss()(value_new, rtgs)
+                critic_loss = nn.MSELoss()(value_new, rtgs)
 
-                    # Normalize the gradients
-                    print("Policy loss step")
-                    self.policy_optimizer.zero_grad()
-                    policy_loss.backward(retain_graph=True)
-                    torch.nn.utils.clip_grad_norm_(
-                        self.policy_network.parameters(), self.clip_grad_normalization
-                    )
-                    self.policy_optimizer.step()
+                # Normalize the gradients
+                print("Policy loss step")
+                self.policy_optimizer.zero_grad()
+                policy_loss.backward(retain_graph=True)
+                torch.nn.utils.clip_grad_norm_(
+                    self.policy_network.parameters(), self.clip_grad_normalization
+                )
+                self.policy_optimizer.step()
 
-                    self.critic_optimizer.zero_grad()
-                    critic_loss.backward(retain_graph=True)
-                    torch.nn.utils.clip_grad_norm_(
-                        self.critic_network.parameters(), self.clip_grad_normalization
-                    )
-                    self.critic_optimizer.step()
-                    print("After")
-                    self.entorpy_coefficient_decay()
+                self.critic_optimizer.zero_grad()
+                critic_loss.backward(retain_graph=True)
+                torch.nn.utils.clip_grad_norm_(
+                    self.critic_network.parameters(), self.clip_grad_normalization
+                )
+                self.critic_optimizer.step()
+                print("After")
+                self.entorpy_coefficient_decay()
 
             gif = None
             if frames:
