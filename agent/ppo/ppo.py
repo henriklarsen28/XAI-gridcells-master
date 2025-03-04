@@ -172,9 +172,7 @@ class PPO_agent:
                 obs_batch,
                 actions_batch,
                 log_probs_batch,
-                _,
                 rtgs,
-                attention_masks,
             ) in minibatches:
 
                 # print("Obs: ", obs, obs.shape)
