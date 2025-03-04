@@ -33,7 +33,7 @@ map_path_random_files = [
 device = torch.device(
     "mps" if torch.backends.mps.is_available() else "cpu"
 )  # Was faster with cpu??? Loading between cpu and mps is slow maybe
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # device = torch.device("cpu")
 
 print(f"Device: {device}", flush=True)
@@ -133,7 +133,7 @@ class Model_TrainTest:
 if __name__ == "__main__":
     # Parameters:
 
-    train_mode = True
+    train_mode = False
     render = True
     render_mode = "human"
 
@@ -159,8 +159,8 @@ if __name__ == "__main__":
         "critic_load_path": "/model/transformers/ppo/model_fiery-shadow-1144/critic_network_200.pth",
         # "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
-        "learning_rate": 3e-4,
-        "batch_size": 3000,
+        "learning_rate": 3e-5,
+        "batch_size": 4096,
         "n_mini_batches": 5,
         "optimizer": "adam",
         "PPO": {
@@ -168,24 +168,24 @@ if __name__ == "__main__":
             "gae_lambda": 0.95,
             "n_updates_per_iteration": 10,  # hard update of the target model
             "clip": 0.2,
-            "clip_grad_normalization": 0.5,
+            "clip_grad_normalization": 1,
             "policy_kl_range": 0.0008,
             "policy_params": 5,
             "normalize_advantage": True,
         },
-        "max_steps_per_episode": 500,
+        "max_steps_per_episode": 400,
         "random_start_position": True,
         "random_goal_position": False,
         "rewards": {
-            "is_goal": 6,
-            "hit_wall": -0.01,
-            "has_not_moved": -0.05,
+            "is_goal": 10/10,
+            "hit_wall": -0.001/10,
+            "has_not_moved": -0.005/10,
             "new_square": 0.0,
-            "max_steps_reached": -0.025,
-            "penalty_per_step": -0.002,
+            "max_steps_reached": -0.025/10,
+            "penalty_per_step": -0.00002/10,
             "number_of_squares_visible": 0,
-            "goal_in_sight": 0.001,
-            "is_false_goal": -0.001,
+            "goal_in_sight": 0.001/10,
+            "is_false_goal": 0,
             # and the proportion of number of squares viewed (set in the env)
         },
         # TODO
@@ -201,9 +201,9 @@ if __name__ == "__main__":
         "ray_length": fov_config["ray_length"],
         "number_of_rays": fov_config["number_of_rays"],
         "transformer": {
-            "sequence_length": 45,
+            "sequence_length": 30,
             "n_embd": 196,
-            "n_head": 6,
+            "n_head": 8,
             "n_layer": 3,
             "dropout": 0.2,
             "decouple_positional_embedding": False,
