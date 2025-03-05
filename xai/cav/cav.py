@@ -59,8 +59,7 @@ episode_numbers = [
 ]
 episode_numbers = [
     "100",
-    "150",
-    "200"
+    "3500",
 ]
 
 # episode_numbers = ["100", "200"]
@@ -330,6 +329,7 @@ class CAV:
         accuracy, cav = self.cav_model(
             positive_train, negative_train, positive_test, negative_test
         )
+        print("Accuracy: ", accuracy, "Block: ", block, "Episode: ", episode_number)
         self.cav_list.append((block, episode_number, accuracy))
         return cav
 
@@ -350,6 +350,7 @@ class CAV:
 
             if episode_number not in episode_numbers:
                 continue
+
             
             print("dataset directory train:", dataset_directory_train)
             (
@@ -357,10 +358,10 @@ class CAV:
                 negative,
                 positive_test,
                 negative_test,
-                q_values_positive,
-                q_values_negative,
+                _,
+                _,
                 q_values_positive_test,
-                q_values_negative_test,
+                _,
             ) = self.read_dataset(
                     concept=concept,
                     dataset_directory_train=dataset_directory_train,
@@ -394,10 +395,10 @@ class CAV:
                     negative,
                     positive_test,
                     negative_test,
-                    q_values_positive,
-                    q_values_negative,
+                    _,
+                    _,
                     q_values_positive_test,
-                    q_values_negative_test,
+                    _,
                 ) = self.read_dataset(
                     concept=concept,
                     dataset_directory_train=dataset_directory_train,
@@ -477,7 +478,7 @@ class CAV:
         cav_list = torch.load(f"./results/cav/cav_list_{concept}.pt")
         return cav_list
 
-    def plot_cav(self, concept: str, tcav: bool = False):
+    def plot_cav(self, concept: str):
 
         if len(self.cav_list) == 0:
             self.cav_list = self.load_cav(concept)
@@ -592,12 +593,12 @@ def main():
     dataset_directory_random = f"./dataset/{model_name}/{map_name}"
     save_path = f"./results/cav/{model_name}/{map_name}"
 
-    concept = "random"
-    cav = CAV()
-    cav.calculate_cav(concept, dataset_directory_random, dataset_directory_random, model_load_path, sensitivity=False)
-    cav.plot_cav(concept)
+    #concept = "random"
+    #cav = CAV()
+    #cav.calculate_cav(concept, dataset_directory_random, dataset_directory_random, model_load_path, sensitivity=False)
+    #cav.plot_cav(concept)
 
-    """for i in range(15):
+    for i in range(-1,16):
         concept = f"grid_observations_{i}"
         # grid_observation_dataset(model_name, concept)
         # cav = CAV()
@@ -610,7 +611,7 @@ def main():
                 cav.calculate_cav(concept, dataset_directory_train, dataset_directory_test, model_load_path, sensitivity=False, action_index=action)
                 cav.plot_cav(concept)
                 #tcav = cav.tcav_list
-                #analysis.add_total_tcav_scores(tcav)"""
+                #analysis.add_total_tcav_scores(tcav)
 
     #cav_list = torch.load(f"./cav_list_{concept}.pt")
     #cav.cav_list = cav_list
