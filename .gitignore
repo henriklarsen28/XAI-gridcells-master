@@ -41,3 +41,6 @@ agent/ppo_rnn/gifs/*
 agent/ppo_rnn/model/*
 agent/ppo_rnn/wandb/*
 
+xai/cav/results/cav/*.pt
+xai/cav/results/cav/**/*.pt
+xai/cav/results/**/*.png
