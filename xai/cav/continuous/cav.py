@@ -25,7 +25,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 
 sys.path.append(project_root)
 
-from agent.dqn.transformer_decoder import Transformer
+from agent.ppo.gated_transformer_decoder import Transformer
 from utils import CAV_dataset
 from utils.calculate_fov import calculate_fov_matrix_size
 
@@ -116,7 +116,7 @@ def create_activation_dataset(
     requires_grad: bool = False,
     action_index: int = 0,
 ):
-
+    print("Creating activation dataset for ", model_path)
     fov_config = {
         "fov": math.pi / 1.5,
         "ray_length": 15,

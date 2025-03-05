@@ -123,6 +123,6 @@ def build_csv_dataset(
     split_dataset_into_train_test(dataset_path, dataset_subfolder, ratio = 0.8)
 
     # Build a dataset for grid observations
-    grid_observation_dataset(dataset_path, dataset_subfolder, model_name=config["model_name"], map_name=config["env_name"], grid_size=grid_size) # specifically for grid layout concept
+    grid_observation_dataset(dataset_path, grid_size=grid_size) # specifically for grid layout concept
     
     print("Finished building dataset!")
