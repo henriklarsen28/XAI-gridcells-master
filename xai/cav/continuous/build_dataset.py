@@ -41,7 +41,8 @@ def build_csv_dataset(
         config: dict,
         actor_model_paths: list, 
         dataset_path: str,
-        dataset_subfolder: str = ''):
+        dataset_subfolder: str = '',
+        grid_size: int = 16):
  
     # If the actor model is not specified, then exit
     if actor_model_paths == '':
@@ -122,6 +123,6 @@ def build_csv_dataset(
     split_dataset_into_train_test(dataset_path, dataset_subfolder, ratio = 0.8)
 
     # Build a dataset for grid observations
-    grid_observation_dataset(dataset_path, dataset_subfolder, model_name=config["model_name"], map_name=config["env_name"]) # specifically for grid layout concept
+    grid_observation_dataset(dataset_path, dataset_subfolder, model_name=config["model_name"], map_name=config["env_name"], grid_size=grid_size) # specifically for grid layout concept
     
     print("Finished building dataset!")

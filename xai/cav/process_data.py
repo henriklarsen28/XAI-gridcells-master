@@ -160,8 +160,8 @@ def get_positive_negative_data(concept: str, datapath: str):
     return positive_df, negative_df
 
 
-def grid_observation_dataset(dataset_path, dataset_subfolder, model_name: str, map_name: str):
-    for i in range(16):
+def grid_observation_dataset(dataset_path, grid_size: int):
+    for i in range(grid_size):
         concept = "grid_observations_" + str(i)
         negative_file_test = os.path.join(dataset_path, 'test', f"{concept}_negative_test.csv")
         negative_file_train = os.path.join(dataset_path, 'train',f"{concept}_negative_train.csv")

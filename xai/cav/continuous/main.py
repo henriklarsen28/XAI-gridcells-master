@@ -2,12 +2,19 @@ from agent.ppo.ppo import PPO_agent
 from env import SunburstMazeContinuous
 from xai.cav.process_data import find_model_files
 from xai.cav.continuous.build_dataset import build_csv_dataset
+from xai.cav.cav import CAV, Analysis
 
 import math
 import torch
 import os
 
 def main():
+    fov_config = {
+        "fov": math.pi / 1.5,
+        "ray_length": 15,
+        "number_of_rays": 40,
+    }
+
     config = {
     
             # MODEL PATHS
@@ -27,7 +34,21 @@ def main():
     
     
             "cav": {
-                "dataset_max_length" : 1500
+                "dataset_max_length" : 1500,
+                "episode_numbers" : [
+                    "100",
+                    "500",
+                    "1000",
+                    "1500",
+                    "2000",
+                    "2500",
+                    "3000",
+                    "3500",
+                    "4000",
+                    "4500",
+                    "5000",
+                    "5200"
+                ]
             },
             
             # RENDERING
@@ -128,6 +149,8 @@ def main():
     dataset_path = os.path.join('./dataset/', model_name, config["env_name"])
     dataset_subfolder = 'raw_data'
 
+    episode_numbers=config["cav"]["episode_numbers"]
+
     # CAV 
     model_load_path = f"../../agent/dqn/models/{model_name}"
     #map_name = "map_conditional_prob_10_4"
@@ -137,7 +160,9 @@ def main():
     dataset_directory_train = f"./dataset/{model_name}/{map_name}/train"
     dataset_directory_test = f"./dataset/{model_name}/{map_name}/test"
     dataset_directory_random = f"./dataset/{model_name}/{map_name}"
-    save_path = f"./results/cav/{model_name}/{map_name}"
+    save_path = f"./results/{model_name}/{map_name}"
+
+    
 
     dataset_directory_train = f"{dataset_path}/train"
     dataset_directory_test = f"{dataset_path}/test"
@@ -149,6 +174,8 @@ def main():
 
     print("Model files:", model_files)
 
+    grid_size = 16
+
     # Build the dataset
     build_csv_dataset(
         env=env, 
@@ -157,11 +184,12 @@ def main():
         model_files=model_files, 
         dataset_path=dataset_path, 
         dataset_subfolder=dataset_subfolder, 
-        config=config)
+        config=config,
+        grid_size=grid_size)
 
     
     # Train CAV for grid observations
-    for i in range(15):
+    for i in range(grid_size):
         concept = f"grid_observations_{i}"
         # grid_observation_dataset(model_name, concept)
         # cav = CAV()
@@ -171,8 +199,8 @@ def main():
             analysis = Analysis(average)
             for _ in range(average):
                 cav = CAV()
-                cav.calculate_cav(concept, dataset_directory_train, dataset_directory_test, model_load_path, sensitivity=False, action_index=action)
-                cav.plot_cav(concept)
+                cav.calculate_cav(concept, dataset_directory_train, dataset_directory_test, model_load_path, sensitivity=False, action_index=action, episode_numbers=episode_numbers, save_path=save_path)
+                cav.plot_cav(concept, episode_numbers, save_path)
 
 
 

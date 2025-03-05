@@ -33,7 +33,7 @@ device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cp
 
 activations = {}
 
-episode_numbers = [
+'''episode_numbers = [
     "100",
     "500",
     "1000",
@@ -62,7 +62,7 @@ episode_numbers = [
     "150",
     "200"
 ]
-
+'''
 # episode_numbers = ["100", "200"]
 
 
@@ -341,8 +341,13 @@ class CAV:
         model_dir: str,
         sensitivity: bool = False,
         action_index: int = 0,
+        episode_numbers: list = None,
+        save_path: str = None,
     ):
         model_list = os.listdir(model_dir)
+        save_path = os.path.join(save_path, "activations")
+        if not os.path.exists(save_path):
+            os.makedirs(save_path, exist_ok=True)
 
         for model in model_list:
             model_path = os.path.join(model_dir, model)
@@ -428,7 +433,7 @@ class CAV:
                         episode_number,
                     )
         # Save the CAV list
-        torch.save(self.cav_list, f"./results/cav/cav_list_{concept}.pt")
+        torch.save(self.cav_list, os.path.join(save_path, f"_{concept}.pt"))
         # torch.save(self.tcav_list, f"./results/tcav/tcav_list_{concept}.pt")
 
     def calculate_sensitivity(
@@ -477,13 +482,18 @@ class CAV:
         cav_list = torch.load(f"./results/cav/cav_list_{concept}.pt")
         return cav_list
 
-    def plot_cav(self, concept: str, tcav: bool = False):
+    def plot_cav(self, concept: str, tcav: bool = False, episode_numbers: list = None, save_path: str = None):
+
+        save_path = os.path.join(save_path, "plots")
+        if not os.path.exists(save_path):
+            os.makedirs(save_path, exist_ok=True)
+        save_path = os.path.join(save_path, concept)
 
         if len(self.cav_list) == 0:
             self.cav_list = self.load_cav(concept)
         print(self.cav_list[0])
 
-        self.plot(concept, self.cav_list, f"results/plots/cav_{concept}")
+        self.plot(concept, self.cav_list, save_path)
 
     def plot_tcav(self, concept: str, action: int = 0):
 
@@ -497,7 +507,7 @@ class CAV:
 
         self.plot(concept, self.tcav_list, f"tcav_{concept}", action=action)
 
-    def plot(self, concept: str, cav_list: list, name: str = "cav", action: int = 0):
+    def plot(self, concept: str, cav_list: list, save_path: str, action: int = 0):
 
         # Extract data
         blocks = np.array([t[0] for t in cav_list])
@@ -549,7 +559,7 @@ class CAV:
         # Colorbar for accuracy
         fig.colorbar(surf, ax=ax, label="Accuracy")
 
-        plt.savefig(f"./{name}_action_{action}.png")
+        plt.savefig(os.path.join(save_path, f"_{action}.png"))
         # plt.show()
 
 
@@ -578,7 +588,7 @@ class Analysis:
     def get_tcav(self):
         return self.total_tcav
 
-def main():
+'''def main():
     
     model_name ="model_rose-pyramid-152"
     model_load_path = f"../../agent/dqn/models/{model_name}"
@@ -624,7 +634,7 @@ def main():
     # cav.tcav_list = total_tcav
 
     # cav.plot_tcav(concept, action=action)
-    '''total_tcav0 = torch.load("tcav_list_goal_action_0.pt")
+    total_tcav0 = torch.load("tcav_list_goal_action_0.pt")
     total_tcav1 = torch.load("tcav_list_goal_action_1.pt")
     total_tcav2 = torch.load("tcav_list_goal_action_2.pt")
 
@@ -639,10 +649,11 @@ def main():
             ) / 3
     cav.tcav_list = average_tcav
 
-    cav.plot_tcav(concept, action=0)'''
+    cav.plot_tcav(concept, action=0)
     #cav.calculate_cav("goal", model_load_path)
     #cav.plot_cav("random")
 
 
 if __name__ == "__main__":
     main()
+'''
