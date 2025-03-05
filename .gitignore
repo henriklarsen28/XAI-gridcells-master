@@ -8,22 +8,15 @@ agent/losses_rewards.csv
 agent/gifs*
 agent/matrix.csv
 agent/attention_plot*
-xai/cav/dataset/*
-xai/cav/cav_ff/dataset/*
-agent/grad_sam/*
-xai/cav/*.pt
-xai/cav/*.png
-
-xai/cav/cav_ff/*.pt
 agent/grad_sam/*
 
-
+agent/**/*.pth
+agent/grad_sam/*
 agent/attention_plot/*
-xai/cav/*.pt
-xai/cav/*.csv
-xai/cav/*.png
-xai/cav/dataset/*
-xai/cav/cav_ff/dataset/*
+
+xai/cav/**/*.pt
+xai/cav/**/*.csv
+xai/cav/**/*.png
 
 
 agent/ppo_test_code/gifs/*
@@ -33,7 +26,6 @@ agent/ppo_test_code/gifs/*
 agent/ppo_test_code/__pycache__/*
 agent/ppo_test_code/ppo_actor.pth
 agent/ppo_test_code/ppo_critic.pth
-
 
 agent/dqn/wandb/*
 agent/dqn/gifs/*
@@ -48,5 +40,4 @@ agent/ppo_test_code/models/*
 agent/ppo_rnn/gifs/*
 agent/ppo_rnn/model/*
 agent/ppo_rnn/wandb/*
-xai/cav/continuous/dataset/*
 
