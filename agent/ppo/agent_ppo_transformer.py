@@ -207,7 +207,7 @@ if __name__ == "__main__":
             "sequence_length": 30,
             "n_embd": 196,
             "n_head": 8,
-            "n_layer": 2,
+            "n_layer": 3,
             "dropout": 0.2,
             "decouple_positional_embedding": False,
         },
