@@ -636,12 +636,12 @@ def main():
     dataset_directory_test = f"./dataset/{model_name}/{map_name}/test"
     dataset_directory_random = f"./dataset/{model_name}/{map_name}"
 
-    #concept = "random"
-    #cav = CAV()
-    #cav.calculate_cav(concept, dataset_directory_random, dataset_directory_random, model_load_path, sensitivity=False)
-    #cav.plot_cav(concept)
+    concept = "random"
+    cav = CAV()
+    cav.calculate_cav(concept, dataset_directory_random, dataset_directory_random, model_load_path, sensitivity=False)
+    cav.plot_cav(concept)
 
-    for i in range(15):
+    """for i in range(15):
         concept = f"grid_observations_{i}"
         # grid_observation_dataset(model_name, concept)
         # cav = CAV()
@@ -654,7 +654,7 @@ def main():
                 cav.calculate_cav(concept, dataset_directory_train, dataset_directory_test, model_load_path, sensitivity=False, action_index=action)
                 cav.plot_cav(concept)
                 #tcav = cav.tcav_list
-                #analysis.add_total_tcav_scores(tcav)
+                #analysis.add_total_tcav_scores(tcav)"""
 
     #cav_list = torch.load(f"./cav_list_{concept}.pt")
     #cav.cav_list = cav_list
