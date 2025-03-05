@@ -1,0 +1,53 @@
+{
+    "model_path": "../../../agent/dqn/models/",
+    "model_name": "model_rose-pyramid-152",
+    "model_episodes": [
+        400,
+        2500,
+        5000
+    ],
+    "env_name": "map_two_rooms_9_8",
+    "env_path": "../../../env/random_generated_maps/goal/medium/map_two_rooms_9_8.csv",
+    "max_steps_per_episode": 250,
+    "random_start_position": true,
+    "random_goal_position": false,
+    "rewards": {
+        "is_goal": 1.0,
+        "hit_wall": -0.0025,
+        "has_not_moved": -0.001,
+        "new_square": 0.01,
+        "max_steps_reached": -0.0025,
+        "penalty_per_step": -5e-05,
+        "goal_in_sight": 0.0,
+        "number_of_squares_visible": 0.0,
+        "is_false_goal": 0.0
+    },
+    "observation_space": {
+        "position": true,
+        "orientation": true,
+        "steps_to_goal": false,
+        "last_known_steps": 0,
+        "salt_and_pepper_noise": 0
+    },
+    "save_interval": 100,
+    "memory_capacity": 200000,
+    "render_fps": 100,
+    "num_states": 680,
+    "clip_grad_normalization": 3,
+    "fov": 2.0943951023931953,
+    "ray_length": 20,
+    "number_of_rays": 100,
+    "grid_length": 4,
+    "transformer": {
+        "sequence_length": 15,
+        "n_embd": 128,
+        "n_head": 8,
+        "n_layer": 3,
+        "dropout": 0.3,
+        "state_dim": 680,
+        "decouple_positional_embedding": false
+    },
+    "cav": {
+        "dataset_max_length": 1500
+    }
+}

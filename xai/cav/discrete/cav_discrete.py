@@ -18,6 +18,7 @@ from scipy.interpolate import griddata
 
 # from logistic_regression import LogisticRegression
 from sklearn.linear_model import LogisticRegression
+import pickle
 from torch.utils.data import DataLoader, random_split
 
 # get the path to the project root directory and add it to sys.path
@@ -118,19 +119,19 @@ def create_activation_dataset(
 
     fov_config = {
         "fov": math.pi / 1.5,
-        "ray_length": 15,
-        "number_of_rays": 40,
+        "ray_length": 20,
+        "number_of_rays": 100,
     }
     half_fov = fov_config["fov"] / 2
     matrix_size = calculate_fov_matrix_size(fov_config["ray_length"], half_fov)
     num_states = matrix_size[0] * matrix_size[1]
     num_states += 4
 
-    sequence_length = 30
+    sequence_length = 15
     n_embd = 128
-    n_head = 6
-    n_layer = 2
-    dropout = 0.2
+    n_head = 8
+    n_layer = 3
+    dropout = 0.3
     state_dim = num_states
 
     action_space = 3
@@ -263,6 +264,8 @@ class CAV:
         negative_train: torch.Tensor,
         positive_test: torch.Tensor,
         negative_test: torch.Tensor,
+        concept: str,
+        env_name: str,
     ):
 
         positive_train_labels = np.ones(len(positive_train))
@@ -308,6 +311,8 @@ class CAV:
 
         self.model.fit(train_data, train_labels)
 
+        pickle.dump(self.model, open(f"{env_name}_{concept}.pkl", "wb"))
+
         # Test the model
         score = self.model.score(test_data, test_labels)
 
@@ -322,12 +327,15 @@ class CAV:
         negative_train,
         positive_test,
         negative_test,
+        concept_name,
+        env_name,
     ):
 
         # positive_file = f"dataset/activations/positive_{concept}_activations_{block}.pt"
         # negative_file = f"dataset/activations/negative_{concept}_activations_{block}.pt"
+        concept = f"{concept_name}_episode_{episode_number}_block_{block}"
         accuracy, cav = self.cav_model(
-            positive_train, negative_train, positive_test, negative_test
+            positive_train, negative_train, positive_test, negative_test, concept, env_name
         )
         print("Accuracy: ", accuracy, "Block: ", block, "Episode: ", episode_number)
         self.cav_list.append((block, episode_number, accuracy))
@@ -336,6 +344,7 @@ class CAV:
     def calculate_cav(
         self,
         concept: str,
+        env_name: str,
         dataset_directory_train: str,
         dataset_directory_test: str,
         model_dir: str,
@@ -380,6 +389,8 @@ class CAV:
                 negative,
                 positive_test,
                 negative_test,
+                concept,
+                env_name
             )
             print("HEllo")
             # Calculate the tcav
@@ -418,6 +429,8 @@ class CAV:
                     negative,
                     positive_test,
                     negative_test,
+                    concept,
+                    env_name,
                 )
 
                 if sensitivity:
@@ -598,7 +611,7 @@ def main():
     #cav.calculate_cav(concept, dataset_directory_random, dataset_directory_random, model_load_path, sensitivity=False)
     #cav.plot_cav(concept)
 
-    for i in range(-1,16):
+    for i in range(16):
         concept = f"grid_observations_{i}"
         # grid_observation_dataset(model_name, concept)
         # cav = CAV()
@@ -608,7 +621,7 @@ def main():
             analysis = Analysis(average)
             for _ in range(average):
                 cav = CAV()
-                cav.calculate_cav(concept, dataset_directory_train, dataset_directory_test, model_load_path, sensitivity=False, action_index=action)
+                cav.calculate_cav(concept, map_name, dataset_directory_train, dataset_directory_test, model_load_path, sensitivity=False, action_index=action)
                 cav.plot_cav(concept)
                 #tcav = cav.tcav_list
                 #analysis.add_total_tcav_scores(tcav)
