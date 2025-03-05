@@ -202,9 +202,9 @@ if __name__ == "__main__":
         "number_of_rays": fov_config["number_of_rays"],
         "transformer": {
             "sequence_length": 30,
-            "n_embd": 128,
+            "n_embd": 196,
             "n_head": 8,
-            "n_layer": 2,
+            "n_layer": 3,
             "dropout": 0.2,
             "decouple_positional_embedding": False,
         },

@@ -48,3 +48,6 @@ agent/ppo_rnn/model/*
 agent/ppo_rnn/wandb/*
 agent/dqn/models/
 xai/cav/continuous/dataset/
+xai/cav/discrete/dataset/*
+xai/cav/results/cav/*
+xai/cav/results/**/*.png
