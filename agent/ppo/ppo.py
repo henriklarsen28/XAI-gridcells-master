@@ -253,6 +253,8 @@ class PPO_agent:
 
             lens = np.array(lens)
 
+            torch.cuda.empty_cache()
+            
             wandb.log(
                 {
                     "Timesteps": timestep_counter,
@@ -271,6 +273,16 @@ class PPO_agent:
                 },
                 commit=True,
             )
+
+            # Clean the variables
+            del obs_batch
+            del actions_batch
+            del log_probs_batch
+            del batch_rews
+            del rtgs
+            del env_classes_target
+            del lens
+            del attention_masks
 
             if iteration_counter % self.save_interval == 0:
                 torch.save(
