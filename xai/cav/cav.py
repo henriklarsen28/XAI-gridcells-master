@@ -578,37 +578,6 @@ class Analysis:
     def get_tcav(self):
         return self.total_tcav
 
-def get_positive_negative_data(concept: str, datapath: str):
-    negative_files = []
-    positive_file = None
-
-    print('Datapath:', datapath)
-    for file in os.listdir(datapath):
-        file_path = os.path.join(datapath, file)
-        if file.startswith(concept):
-            positive_file = file_path
-            print('Positive file:', positive_file)
-        else:
-            negative_files.append(file_path)
-
-    if positive_file is None:
-        raise FileNotFoundError("Positive file not found")
-    
-    pos_df = pd.read_csv(positive_file)
-    
-    # Determine sample size: at least 1500 lines or the length of the positive file content, whichever is greater
-    sample_size = max(1500, len(pos_df))
-
-    # Aggregate negative file content and then sample
-    neg_dfs = []
-    for neg_file in negative_files:
-        neg_df = pd.read_csv(neg_file)
-        neg_dfs.append(neg_df)
-
-    negative_df = pd.concat(neg_dfs)
-    negative_df = negative_df.sample(sample_size)
-    
-    return negative_df
 
 def main():
     
