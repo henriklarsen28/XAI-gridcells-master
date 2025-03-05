@@ -11,7 +11,7 @@ import pandas as pd
 import torch
 
 # get the path to the project root directory and add it to sys.path
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 
 sys.path.append(project_root)
 
@@ -37,12 +37,12 @@ num_states = matrix_size[0] * matrix_size[1]
 
  # Parameters
 config = {
-    "model_path": "../../agent/dqn/models/",
+    "model_path": "../../../agent/dqn/models/",
     "model_name": "model_rose-pyramid-152",
     "model_episodes": [400, 2500, 5000],
 
     "env_name": "map_two_rooms_9_8",
-    "env_path": "../../env/random_generated_maps/goal/medium/map_two_rooms_9_8.csv",
+    "env_path": "../../../env/random_generated_maps/goal/medium/map_two_rooms_9_8.csv",
 
     "max_steps_per_episode": 250,
     "random_start_position": True,
@@ -183,7 +183,7 @@ def run_agent(env: SunburstMazeDiscrete, agent: DTQN_Agent, models: list):
     collected_sequences = deque()
 
     sequence_length = config["transformer"]["sequence_length"]
-    max_episodes = 20
+    max_episodes = 120
     observation_sequence = deque(maxlen=sequence_length)
     position_sequence = deque(maxlen=sequence_length)
     action_sequence = deque(maxlen=sequence_length)
