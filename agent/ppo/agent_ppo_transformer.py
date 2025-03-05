@@ -177,7 +177,7 @@ if __name__ == "__main__":
         "random_start_position": True,
         "random_goal_position": False,
         "rewards": {
-            "is_goal": 10/10,
+            "is_goal": 30/10,
             "hit_wall": -0.001/10,
             "has_not_moved": -0.005/10,
             "new_square": 0.0,
@@ -202,9 +202,9 @@ if __name__ == "__main__":
         "number_of_rays": fov_config["number_of_rays"],
         "transformer": {
             "sequence_length": 30,
-            "n_embd": 196,
+            "n_embd": 128,
             "n_head": 8,
-            "n_layer": 3,
+            "n_layer": 2,
             "dropout": 0.2,
             "decouple_positional_embedding": False,
         },

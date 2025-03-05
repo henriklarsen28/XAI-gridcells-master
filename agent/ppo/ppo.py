@@ -283,6 +283,8 @@ class PPO_agent:
             del env_classes_target
             del lens
             del attention_masks
+            del frames
+            torch.cuda.empty_cache()
 
             if iteration_counter % self.save_interval == 0:
                 torch.save(
