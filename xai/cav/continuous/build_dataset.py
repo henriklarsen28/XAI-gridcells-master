@@ -19,6 +19,7 @@ import gymnasium as gym
 from agent.ppo.ppo import PPO_agent
 from agent.ppo.transformer_decoder_policy import TransformerPolicy
 from env import SunburstMazeContinuous
+
 from utils.calculate_fov import calculate_fov_matrix_size
 from utils.sequence_preprocessing import add_to_sequence, padding_sequence
 from utils.state_preprocess import state_preprocess
@@ -33,144 +34,100 @@ from xai.cav.process_data import (
     shuffle_and_trim_datasets,
     split_dataset_into_train_test,
 )
-
-
+ 
+ 
 def build_csv_dataset(
-    env: SunburstMazeContinuous,
-    device,
-    config: dict,
-    actor_model_paths: list,
-    dataset_path: str,
-    dataset_subfolder: str = "",
-    grid_size: int = 16,
-):
-    fov_config = {
-            "fov": math.pi / 1.5,
-            "ray_length": 15,
-            "number_of_rays": 40,
-            }
+        env:SunburstMazeContinuous, 
+        device,
+        config: dict,
+        actor_model_paths: list, 
+        dataset_path: str,
+        dataset_subfolder: str = ''):
+ 
+    # If the actor model is not specified, then exit
+    if actor_model_paths == '':
+        print(f"Didn't specify model file. Exiting.", flush=True)
+        sys.exit(0)
+
+    # If the actor model is not specified, then exit
+    if actor_model_paths == "":
+        print(f"Didn't specify model file. Exiting.", flush=True)
+        sys.exit(0)
+
+    con = Concepts(
+        grid_pos_to_id=env.env_grid,
+    )
+
+    con.clear_datasets()
+
+    # Extract out dimensions of observation and action spaces
+    obs_dim = env.observation_space.shape[0]
+    act_dim = env.action_space.shape[0]
+
+    # Build our policy the same way we build our actor model in PPO
+    """model = torch.load(actor_model, map_location=device)
+
+    for name, param in model.items():
+        print(name, len(param))
+
+    sys.exit()"""
+
+    policy = TransformerPolicy(
+        input_dim=obs_dim,
+        output_dim=act_dim,
+        num_envs=3,
+        block_size=config["transformer"]["sequence_length"],
+        n_embd=config["transformer"]["n_embd"],
+        n_head=config["transformer"]["n_head"],
+        n_layer=config["transformer"]["n_layer"],
+        dropout=config["transformer"]["dropout"],
+            device=device
+    )
  
  
+    # Evaluate policy
+    collected_observations = eval_policy(policy=policy, actor_model_paths=actor_model_paths, env=env, sequence_length=config["transformer"]["sequence_length"], device=device, render=True, max_steps=config["max_steps_per_episode"])
+    print("Collected observations", len(collected_observations), collected_observations[0])
     
-    env = SunburstMazeContinuous(
-        maze_file=config['env_path'],
-        max_steps_per_episode=config["max_steps_per_episode"],
-        render_mode=config["render_mode"],
-        random_start_position=config["random_start_position"],
-        random_goal_position=config["random_goal_position"],
-        rewards=config["rewards"],
-        fov=fov_config["fov"],
-        ray_length=fov_config["ray_length"],
-        number_of_rays=fov_config["number_of_rays"],
-        grid_length=config["grid_length"]
-    )
-    
-    agent = PPO_agent(
-        env=env,
-        device=device,
-        config=config
-    )
-    
-    def build_csv_dataset(actor_model_paths: list, dataset_path: str, dataset_subfolder = '', max_length:int = 1500):
-        # Load early agent data
-        actor_model = actor_model_paths[0] # TODO: set up actor model paths
-    
-    
-        # If the actor model is not specified, then exit
-        if actor_model_paths == "":
-            print(f"Didn't specify model file. Exiting.", flush=True)
-            sys.exit(0)
+    #TODO: Update model
+ 
+    count = 0
+    for observation, position in collected_observations:
+        for observation_step, position_step in zip(observation, position):
+        # print(len(observation_sequence))
+            if rd.random() > 0.4:
+                con.in_grid_square(observation_step, position_step)
+ 
+    path = os.path.join(dataset_path, dataset_subfolder)
 
-        con = Concepts(
-            grid_pos_to_id=env.env_grid,
-        )
-
-        con.clear_datasets()
-
-        # Extract out dimensions of observation and action spaces
-        obs_dim = env.observation_space.shape[0]
-        act_dim = env.action_space.shape[0]
-
-        # Build our policy the same way we build our actor model in PPO
-        """model = torch.load(actor_model, map_location=device)
-    
-        for name, param in model.items():
-            print(name, len(param))
-    
-        sys.exit()"""
-
-        policy = TransformerPolicy(
-            input_dim=obs_dim,
-            output_dim=act_dim,
-            num_envs=3,
-            block_size=config["transformer"]["sequence_length"],
-            n_embd=config["transformer"]["n_embd"],
-            n_head=config["transformer"]["n_head"],
-            n_layer=config["transformer"]["n_layer"],
-            dropout=config["transformer"]["dropout"],
-            device=device,
-        )
+    max_length = config["cav"]["dataset_max_length"]
+ 
+    if os.path.exists(path) == False:
+        os.makedirs(path)
+    for key, val in con.datasets.items():
+        filename = key
+        if isinstance(val, dict):
+            for sub_key, sub_val in val.items():
+                if sub_val:
+                    filename = str(key) + '_' + str(sub_key)
+                    data_preprocessed = shuffle_and_trim_datasets(sub_val, max_length)
+                    save_to_csv(data_preprocessed, filename, path)
+        else:
+            if val:
+                data_preprocessed = shuffle_and_trim_datasets(val, max_length)
+                save_to_csv(data_preprocessed, filename, path)
         
-        # Evaluate policy
-        for collected_observations in eval_policy(
-            policy=policy,
-            actor_model_paths=actor_model_paths,
-            env=env,
-            sequence_length=config["transformer"]["sequence_length"],
-            device=device,
-            render=True,
-            max_steps=config["max_steps_per_episode"],
-        ):
-            # print("Collected observations", len(collected_observations), collected_observations[0])
-            # TODO: Update model
+    
+    # Save the config as a file for reference
+    save_config(dataset_path, config)
+    
+    # Using the raw dataset, build a random dataset
+    build_random_dataset(dataset_path, dataset_subfolder)
 
-            for observation, position in collected_observations:
-                for observation_step, position_step in zip(observation, position):
-                    # print(len(observation_sequence))
-                    if rd.random() > 0.4:
-                        con.in_grid_square(observation_step, position_step)
+    # Split the dataset into a training and test set
+    split_dataset_into_train_test(dataset_path, dataset_subfolder, ratio = 0.8)
 
-            # Clear the collected observations
-            collected_observations.clear()
-        
-
-        path = os.path.join(dataset_path, dataset_subfolder)
-
-        max_length = config["cav"]["dataset_max_length"]
-
-        if os.path.exists(path) == False:
-            os.makedirs(path)
-        for key, val in con.datasets.items():
-            filename = key
-            if isinstance(val, dict):
-                for sub_key, sub_val in val.items():
-                    if sub_val:
-                        filename = str(key) + "_" + str(sub_key)
-                        data_preprocessed = shuffle_and_trim_datasets(sub_val, max_length)
-                        if len(data_preprocessed) > 1:
-                            save_to_csv(data_preprocessed, filename, path)
-                        else:
-                            print("Not enough data to save to CSV for ", key)
-            else:
-                if val:
-                    data_preprocessed = shuffle_and_trim_datasets(val, max_length)
-                    if len(data_preprocessed) > 1:
-                        save_to_csv(data_preprocessed, filename, path)
-                    else:
-                        print("Not enough data to save to CSV for ", key)
-
-        # Save the config as a file for reference
-        save_config(dataset_path, config)
-
-        # Using the raw dataset, build a random dataset
-        build_random_dataset(dataset_path, dataset_subfolder)
-
-        # Split the dataset into a training and test set
-        split_dataset_into_train_test(dataset_path, dataset_subfolder, ratio=0.8)
-        
-        # Build a dataset for grid observations
-        grid_observation_dataset(
-            dataset_path, grid_size=grid_size
-        )  # specifically for grid layout concept
-
-        print("Finished building dataset!")
+    # Build a dataset for grid observations
+    grid_observation_dataset(dataset_path, dataset_subfolder, model_name=config["model_name"], map_name=config["env_name"]) # specifically for grid layout concept
+    
+    print("Finished building dataset!")

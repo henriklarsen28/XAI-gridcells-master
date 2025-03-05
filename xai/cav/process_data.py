@@ -16,7 +16,7 @@ def save_to_csv(dataset: deque, file_name: str, path: str):
 
     print("dataset", type(dataset[0]))
     # Convert the sequences 
-    #dataset = [state.tolist() for state in dataset] if isinstance(dataset[0], torch.Tensor) else dataset
+    #dataset = [state.tolist() for state in dataset]
 
     dataset = [[state.tolist() for state in sequence] for sequence in dataset]
     
@@ -150,6 +150,8 @@ def get_positive_negative_data(concept: str, datapath: str):
     negative_files = []
     positive_file = None
 
+    print('Concept:', concept)
+    print('Datapath:', datapath)
     for file in os.listdir(datapath):
         file_path = os.path.join(datapath, file)
         base_name, extension = os.path.splitext(file)
@@ -167,12 +169,11 @@ def get_positive_negative_data(concept: str, datapath: str):
 
     if positive_file is None:
         return None, None
-
-    print("Reading positive file", positive_file)
+    
     positive_df = pd.read_csv(positive_file)
     
     # Determine sample size: at least 1500 lines or the length of the positive file content, whichever is greater
-    sample_size = min(max(1500, len(positive_df)),len(positive_df))
+    sample_size = min(1500, len(positive_df))
 
     # Aggregate negative file content and then sample
     neg_dfs = []
