@@ -272,7 +272,6 @@ class PPO_agent:
             lens = np.array(lens)
 
             torch.cuda.empty_cache()
-
             wandb.log(
                 {
                     "Timesteps": timestep_counter,
