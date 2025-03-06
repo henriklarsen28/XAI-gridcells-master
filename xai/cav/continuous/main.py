@@ -23,10 +23,9 @@ def main():
 
     config = {
         # MODEL PATHS
-        
-        "model_path": "../../../agent/ppo/models/transformers/expert-durian-1146/actor",
-        "model_name": "expert-durian-1146",  # TODO: change to the correct model name
-        "model_episodes": [100, 150, 200],  # TODO: change to the correct model episodes
+        "model_path": "../../../agent/ppo/models/transformers/icy-violet-1223/actor",
+        "model_name": "icy-violet-1223",  # NOTE: make sure to update
+        "model_episodes": [575, 675, 775],  # NOTE: for eval_policy
         # PPO
         "policy_load_path": None,
         "critic_load_path": None,
@@ -34,14 +33,10 @@ def main():
         "env_name": "map_circular_4_19",  # TODO: change to the correct env name
         "env_path": "../../../env/random_generated_maps/goal/large/map_circular_4_19.csv",  # TODO: Change to the correct path for what the model was trained on
         # "env_path": "../../../env/map_v0/map_open_doors_horizontal.csv",
-        "grid_length": 4,
+        "grid_length": 7,  # 7 x 7 grid
         "cav": {
             "dataset_max_length": 1500,
-            "episode_numbers": [
-                "25",
-                "75",
-                "200"
-            ],
+            "episode_numbers": ["100", "200", "300", "400", "500", "600", "700"],
         },
         # RENDERING
         "train_mode": False,
@@ -105,12 +100,6 @@ def main():
 
     device = torch.device("cpu")
 
-    fov_config = {
-        "fov": math.pi / 1.5,
-        "ray_length": 15,
-        "number_of_rays": 40,
-    }
-
     # print("config", config["PPO"])
 
     env = SunburstMazeContinuous(
@@ -126,28 +115,21 @@ def main():
         grid_length=config["grid_length"],
     )
 
-    # agent = PPO_agent(env=env, device=device, config=config)
-
     # BUILD DATASET
-    # model_path = os.path.join(config["model_path"], config["model_name"])
     model_name = config["model_name"]
     model_files = find_model_files(config["model_path"], config["model_episodes"])
-    dataset_path = os.path.join("./dataset/", model_name, config["env_name"])
+    grid_length = "grid_length_" + str(config["grid_length"])
+    dataset_path = os.path.join(
+        "./dataset/", model_name, config["env_name"], grid_length
+    )
     dataset_subfolder = "raw_data"
 
     episode_numbers = config["cav"]["episode_numbers"]
 
     # CAV
-    # model_load_path = f"../../agent/dqn/models/{model_name}"
-    # map_name = "map_conditional_prob_10_4"
-    # map_name = "map_circular_4_5"
-    map_name = "map_two_rooms_9_8"
-
-    dataset_directory_train = f"./dataset/{model_name}/{map_name}/train"
-    dataset_directory_test = f"./dataset/{model_name}/{map_name}/test"
+    map_name = config["env_name"]
     dataset_directory_random = f"./dataset/{model_name}/{map_name}"
-    save_path = f"./results/{model_name}/{map_name}"
-
+    save_path = f"./results/{model_name}/{map_name}/{grid_length}"
     dataset_directory_train = f"{dataset_path}/train"
     dataset_directory_test = f"{dataset_path}/test"
 
@@ -156,9 +138,8 @@ def main():
     if not os.path.exists(dataset_directory_test):
         os.makedirs(dataset_directory_test, exist_ok=True)
 
-    # print("Model files:", model_files)
-
-    grid_size = 16
+    # Number of grid observations in the environment
+    grid_size = env.num_cells
 
     # Build the dataset
     build_csv_dataset(
@@ -186,7 +167,9 @@ def main():
                 # check if the concept exists by checking if the concept name exists in the dataset
                 filename = f"{concept}_positive_train.csv"
                 if filename not in os.listdir(dataset_directory_train):
-                    print(f"Concept {concept} does not exist in the dataset. Skipping...")
+                    print(
+                        f"Concept {concept} does not exist in the dataset. Skipping..."
+                    )
                     continue
                 cav.calculate_cav(
                     concept=concept,
@@ -204,5 +187,6 @@ def main():
                     save_path=save_path,
                 )
 
-if __name__ == '__main__':
-	main()
+
+if __name__ == "__main__":
+    main()

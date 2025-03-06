@@ -34,7 +34,7 @@ device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cp
 
 activations = {}
 
-'''episode_numbers = [
+"""episode_numbers = [
     "100",
     "500",
     "1000",
@@ -63,7 +63,7 @@ episode_numbers = [
     "150",
     "200"
 ]
-'''
+"""
 # episode_numbers = ["100", "200"]
 
 
@@ -87,7 +87,7 @@ def get_activations(
 
     if embedding:
         output = get_embedding_activations(model, input)
-        #print('q val type', q_value[0])
+        # print('q val type', q_value[0])
         return output
 
     block_int = int(block_name.split("_")[-1])
@@ -95,7 +95,7 @@ def get_activations(
     block = model.blocks[block_int]
     block.register_forward_hook(get_activation(block_name))
     output, _, _, _ = model(input)
-    #print("Block activations")
+    # print("Block activations")
     return output
 
 
@@ -104,8 +104,8 @@ def get_embedding_activations(model: TransformerPolicy, input):
     embedding = model.token_embedding
     embedding.register_forward_hook(get_activation("embedding"))
     output, _, _, _ = model(input)
-    #print("Embedding activations")
-    #print('q val', q_value.size())
+    # print("Embedding activations")
+    # print('q val', q_value.size())
     return output
 
 
@@ -153,7 +153,9 @@ def create_activation_dataset(
     model = model.to(device)
 
     # Load the model
-    model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
+    model.load_state_dict(
+        torch.load(model_path, map_location=device, weights_only=True)
+    )
     model.eval()
     episode_number = model_path.split("_")[-1].split(".")[0]
 
@@ -169,20 +171,19 @@ def create_activation_dataset(
     state_tensors = torch.stack(
         [torch.stack(sequence).float().to(device) for sequence in sequences]
     ).requires_grad_(requires_grad)
-    #print(state_tensors.shape)
+    # print(state_tensors.shape)
     if embedding:
         output = get_activations(model, state_tensors, embedding=embedding)
         activation = activations["embedding"]["output"]
-        #print("Activation embedding:", activation)
+        # print("Activation embedding:", activation)
 
     else:
         block_name = f"block_{block}"
         output = get_activations(model, state_tensors, block_name, embedding=embedding)
         activation = activations[block_name]["output"][0]
-        #print("Activations:", activation)
+        # print("Activations:", activation)
 
     assert isinstance(activation, torch.Tensor), "Activation must be a tensor"
-
 
     return activation, output
 
@@ -210,7 +211,6 @@ class CAV:
         sensitivity: bool = True,
         action_index: int = 0,
     ):
-        
 
         positive, output_positive = create_activation_dataset(
             f"{dataset_directory_train}/{concept}_positive_train.csv",
@@ -221,7 +221,6 @@ class CAV:
             action_index=action_index,
         )
         assert isinstance(positive, torch.Tensor), "Positive must be a tensor"
-        
 
         negative, output_negative = create_activation_dataset(
             f"{dataset_directory_train}/{concept}_negative_train.csv",
@@ -271,7 +270,7 @@ class CAV:
         positive_test: torch.Tensor,
         negative_test: torch.Tensor,
         save_path: str,
-        concept: str
+        concept: str,
     ):
 
         positive_train_labels = np.ones(len(positive_train))
@@ -339,13 +338,18 @@ class CAV:
         positive_test,
         negative_test,
         save_path,
-        concept
+        concept,
     ):
 
         # positive_file = f"dataset/activations/positive_{concept}_activations_{block}.pt"
         # negative_file = f"dataset/activations/negative_{concept}_activations_{block}.pt"
         accuracy, cav = self.cav_model(
-            positive_train, negative_train, positive_test, negative_test, save_path, concept
+            positive_train,
+            negative_train,
+            positive_test,
+            negative_test,
+            save_path,
+            concept,
         )
         self.cav_list.append((block, episode_number, accuracy))
         return cav
@@ -383,14 +387,14 @@ class CAV:
                 q_values_positive_test,
                 q_values_negative_test,
             ) = self.read_dataset(
-                    concept=concept,
-                    dataset_directory_train=dataset_directory_train,
-                    dataset_directory_test=dataset_directory_test,
-                    model_path=model_path,
-                    block = 0,
-                    embedding=True,
-                    sensitivity=sensitivity,
-                    action_index=action_index,
+                concept=concept,
+                dataset_directory_train=dataset_directory_train,
+                dataset_directory_test=dataset_directory_test,
+                model_path=model_path,
+                block=0,
+                embedding=True,
+                sensitivity=sensitivity,
+                action_index=action_index,
             )
 
             cav = self.calculate_single_cav(
@@ -401,16 +405,18 @@ class CAV:
                 positive_test,
                 negative_test,
                 save_path,
-                concept
+                concept,
             )
-            #print("HEllo")
+            # print("HEllo")
             # Calculate the tcav
             if sensitivity:
                 self.calculate_tcav(
                     cav, positive_test, q_values_positive_test, 0, episode_number
                 )
 
-            for block in range(1, 3): # NOTE: This must be changed depending on the num blocks (3 blocks here)
+            for block in range(
+                1, 3
+            ):  # NOTE: This must be changed depending on the num blocks (3 blocks here)
                 # load dataset
                 (
                     positive,
@@ -426,13 +432,13 @@ class CAV:
                     dataset_directory_train=dataset_directory_train,
                     dataset_directory_test=dataset_directory_test,
                     model_path=model_path,
-                    block = block - 1,
+                    block=block - 1,
                     embedding=False,
                     sensitivity=sensitivity,
                     action_index=action_index,
                 )
 
-                #print("Block: ", block, model_path, episode_number)
+                # print("Block: ", block, model_path, episode_number)
                 cav = self.calculate_single_cav(
                     block,
                     episode_number,
@@ -441,7 +447,7 @@ class CAV:
                     positive_test,
                     negative_test,
                     save_path,
-                    concept
+                    concept,
                 )
 
                 if sensitivity:
@@ -454,7 +460,9 @@ class CAV:
                     )
         # Save the CAV list
         torch.save(self.cav_list, os.path.join(save_path_activations, f"{concept}.pt"))
-        print("CAV list saved to:", os.path.join(save_path_activations, f"{concept}.pt"))
+        print(
+            "CAV list saved to:", os.path.join(save_path_activations, f"{concept}.pt")
+        )
         # torch.save(self.tcav_list, f"./results/tcav/tcav_list_{concept}.pt")
 
     def calculate_sensitivity(
@@ -469,8 +477,8 @@ class CAV:
             network_output, torch.Tensor
         ), "Network output must be a tensor"
         # assert all(type(n) for n in network_output) == torch.Tensor, "Network output must be a tensor"
-        #print(activations[0])
-        #print(network_output[0])
+        # print(activations[0])
+        # print(network_output[0])
         outputs = torch.autograd.grad(
             outputs=network_output,
             inputs=activations,
@@ -503,7 +511,13 @@ class CAV:
         cav_list = torch.load(f"./results/cav/cav_list_{concept}.pt")
         return cav_list
 
-    def plot_cav(self, concept: str, tcav: bool = False, episode_numbers: list = None, save_path: str = None):
+    def plot_cav(
+        self,
+        concept: str,
+        tcav: bool = False,
+        episode_numbers: list = None,
+        save_path: str = None,
+    ):
 
         save_path_plots = os.path.join(save_path, "plots")
         if not os.path.exists(save_path_plots):
@@ -512,7 +526,7 @@ class CAV:
 
         if len(self.cav_list) == 0:
             self.cav_list = self.load_cav(concept)
-        #print(self.cav_list[0])
+        # print(self.cav_list[0])
 
         self.plot(concept, self.cav_list, save_path_plots)
 
@@ -524,7 +538,7 @@ class CAV:
             for inner_key, inner_value in inner_dict.items()
         ]
         # self.tcav_list = list(self.tcav_list.items())
-        #print(self.tcav_list)
+        # print(self.tcav_list)
 
         self.plot(concept, self.tcav_list, f"tcav_{concept}", action=action)
 
@@ -610,7 +624,8 @@ class Analysis:
     def get_tcav(self):
         return self.total_tcav
 
-'''def main():
+
+"""def main():
     
     model_name ="model_rose-pyramid-152"
     model_load_path = f"../../agent/dqn/models/{model_name}"
@@ -678,4 +693,4 @@ class Analysis:
 
 if __name__ == "__main__":
     main()
-'''
+"""
