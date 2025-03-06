@@ -171,6 +171,7 @@ if __name__ == "__main__":
             "clip_grad_normalization": 1,
             "policy_kl_range": 0.0008,
             "policy_params": 5,
+            "env_loss_factor": 0.02,
             "normalize_advantage": True,
         },
         "max_steps_per_episode": 400,
