@@ -236,7 +236,7 @@ class PPO_agent:
 
                 #print(env_class_loss)
 
-                policy_loss = policy_loss_ppo  + 0.2 * env_class_loss # - self.entorpy_coefficient * entropy
+                policy_loss = policy_loss_ppo  + self.env_loss_factor * env_class_loss # - self.entorpy_coefficient * entropy
                 # print("Kl",kl_div, "Entropy", entropy)
 
                 critic_loss = nn.MSELoss()(value_new, rtgs)
@@ -508,7 +508,7 @@ class PPO_agent:
 
         attention_mask = (obs.sum(dim=-1) != 0).to(torch.float32)
         mean, std, _, _ = self.policy_network(obs)
-        dist = torch.distributions.MultivariateNormal(mean, std)
+        dist = torch.distributions.MultivariateNormal(mean, self.cov_mat)
 
         action = dist.sample()
         log_prob = dist.log_prob(action)
@@ -657,6 +657,7 @@ class PPO_agent:
             "entropy"
         ]["step"]
         self.normalize_advantage = config["PPO"]["normalize_advantage"]
+        self.env_loss_factor = config["PPO"]["env_loss_factor"]
 
     def __init_learn(self):
         wandb.login()
