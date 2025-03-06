@@ -124,7 +124,9 @@ def get_positive_negative_data(concept: str, datapath: str):
     for file in os.listdir(datapath):
         file_path = os.path.join(datapath, file)
         base_name, extension = os.path.splitext(file)
-        if base_name == concept:
+        print("Base name:", base_name)
+        print("Concept", concept)
+        if base_name.startswith(concept) and (base_name == concept or base_name[len(concept):len(concept)+1] == '_'):
             positive_file = file_path
             print('Positive file:', positive_file)
         else:
@@ -133,7 +135,8 @@ def get_positive_negative_data(concept: str, datapath: str):
     if positive_file is None:
         return None, None
     
-    positive_df = pd.read_csv(positive_file)
+    if positive_df:
+        positive_df = pd.read_csv(positive_file)
     
     # Determine sample size: at least 1500 lines or the length of the positive file content, whichever is greater
     sample_size = min(1500, len(positive_df))
