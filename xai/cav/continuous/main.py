@@ -200,3 +200,9 @@ def main():
                 )
                 cav.plot_cav(
                     concept=concept,
+                    episode_numbers=episode_numbers,
+                    save_path=save_path,
+                )
+
+if __name__ == '__main__':
+	main()
