@@ -70,7 +70,7 @@ class SunburstMazeContinuous(gym.Env):
                     self.map_observation_size += 1
 
         if grid_length:
-            self.env_grid = build_grid_layout(self.env_map, grid_length)
+            self.env_grid, self.num_cells = build_grid_layout(self.env_map, grid_length)
         
         self.color_map = {}
         for value in set(self.env_grid.values()):

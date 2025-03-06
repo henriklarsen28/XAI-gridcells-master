@@ -30,8 +30,10 @@ def build_grid_layout(env_map: np.array, num_cells: int):
                 for col in range(col_start, col_end):
                     grid_layout[(row, col)] = grid_id
             grid_id += 1
+    
+    num_cells = grid_id + 1
 
-    return grid_layout
+    return grid_layout, num_cells
 
 def get_map(map_path):
 
