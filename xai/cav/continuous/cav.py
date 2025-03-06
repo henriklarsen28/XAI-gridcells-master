@@ -2,6 +2,7 @@ import ast
 import copy
 import math
 import os
+import pickle
 import random as rd
 import sys
 from collections import defaultdict
@@ -25,7 +26,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 
 sys.path.append(project_root)
 
-from agent.ppo.gated_transformer_decoder import Transformer
+from agent.ppo.gated_transformer_decoder_policy import TransformerPolicy
 from utils import CAV_dataset
 from utils.calculate_fov import calculate_fov_matrix_size
 
@@ -77,7 +78,7 @@ def get_activation(name):
 
 
 def get_activations(
-    model: Transformer, input, block_name: str = None, embedding: bool = True
+    model: TransformerPolicy, input, block_name: str = None, embedding: bool = True
 ):
     """
     Get the activations of the model for the training data.
@@ -85,27 +86,27 @@ def get_activations(
     activations.clear()
 
     if embedding:
-        q_value = get_embedding_activations(model, input)
+        output = get_embedding_activations(model, input)
         #print('q val type', q_value[0])
-        return q_value
+        return output
 
     block_int = int(block_name.split("_")[-1])
 
     block = model.blocks[block_int]
     block.register_forward_hook(get_activation(block_name))
-    q_value, _ = model(input)
-    print("Block activations")
-    return q_value
+    output, _, _, _ = model(input)
+    #print("Block activations")
+    return output
 
 
-def get_embedding_activations(model: Transformer, input):
+def get_embedding_activations(model: TransformerPolicy, input):
 
     embedding = model.token_embedding
     embedding.register_forward_hook(get_activation("embedding"))
-    q_value, _ = model(input)
-    print("Embedding activations")
+    output, _, _, _ = model(input)
+    #print("Embedding activations")
     #print('q val', q_value.size())
-    return q_value
+    return output
 
 
 def create_activation_dataset(
@@ -125,8 +126,9 @@ def create_activation_dataset(
     half_fov = fov_config["fov"] / 2
     matrix_size = calculate_fov_matrix_size(fov_config["ray_length"], half_fov)
     num_states = matrix_size[0] * matrix_size[1]
-    num_states += 4
+    num_states += 1
 
+    num_envs = 3
     sequence_length = 30
     n_embd = 128
     n_head = 6
@@ -137,15 +139,16 @@ def create_activation_dataset(
     action_space = 2
 
     # Initiate the network models
-    model = Transformer(
-        state_dim,
-        action_space,
-        sequence_length,
-        n_embd,
-        n_head,
-        n_layer,
-        dropout,
-        device,
+    model = TransformerPolicy(
+        input_dim=state_dim,
+        output_dim=action_space,
+        num_envs=num_envs,
+        block_size=sequence_length,
+        n_embd=n_embd,
+        n_head=n_head,
+        n_layer=n_layer,
+        dropout=dropout,
+        device=device,
     )
     model = model.to(device)
 
@@ -153,9 +156,10 @@ def create_activation_dataset(
     model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
     model.eval()
     episode_number = model_path.split("_")[-1].split(".")[0]
+
     # Read the dataset
     dataset = pd.read_csv(dataset_path)
-    print("reading dataset:", dataset_path)
+    print("Reading dataset:", dataset_path)
     # print(dataset.head(10))
     sequences = [
         [torch.tensor(ast.literal_eval(state)) for state in states]
@@ -165,20 +169,22 @@ def create_activation_dataset(
     state_tensors = torch.stack(
         [torch.stack(sequence).float().to(device) for sequence in sequences]
     ).requires_grad_(requires_grad)
-    print(state_tensors.shape)
+    #print(state_tensors.shape)
     if embedding:
-        q_val = get_activations(model, state_tensors, embedding=embedding)
+        output = get_activations(model, state_tensors, embedding=embedding)
         activation = activations["embedding"]["output"]
+        #print("Activation embedding:", activation)
 
     else:
         block_name = f"block_{block}"
-        q_val = get_activations(model, state_tensors, block_name, embedding=embedding)
+        output = get_activations(model, state_tensors, block_name, embedding=embedding)
         activation = activations[block_name]["output"][0]
+        #print("Activations:", activation)
 
     assert isinstance(activation, torch.Tensor), "Activation must be a tensor"
 
 
-    return activation, q_val[:, :, action_index]
+    return activation, output
 
 
 class CAV:
@@ -206,7 +212,7 @@ class CAV:
     ):
         
 
-        positive, q_values_positive = create_activation_dataset(
+        positive, output_positive = create_activation_dataset(
             f"{dataset_directory_train}/{concept}_positive_train.csv",
             model_path,
             block,
@@ -217,7 +223,7 @@ class CAV:
         assert isinstance(positive, torch.Tensor), "Positive must be a tensor"
         
 
-        negative, q_values_negative = create_activation_dataset(
+        negative, output_negative = create_activation_dataset(
             f"{dataset_directory_train}/{concept}_negative_train.csv",
             model_path,
             block,
@@ -227,7 +233,7 @@ class CAV:
         )
         assert isinstance(negative, torch.Tensor), "Negative must be a tensor"
 
-        positive_test, q_values_positive_test = create_activation_dataset(
+        positive_test, output_positive_test = create_activation_dataset(
             f"{dataset_directory_test}/{concept}_positive_test.csv",
             model_path,
             block,
@@ -237,7 +243,7 @@ class CAV:
         )
         assert isinstance(positive_test, torch.Tensor), "Positive_test must be a tensor"
 
-        negative_test, q_values_negative_test = create_activation_dataset(
+        negative_test, output_negative_test = create_activation_dataset(
             f"{dataset_directory_test}/{concept}_negative_test.csv",
             model_path,
             block,
@@ -252,10 +258,10 @@ class CAV:
             negative,
             positive_test,
             negative_test,
-            q_values_positive,
-            q_values_negative,
-            q_values_positive_test,
-            q_values_negative_test,
+            output_positive,
+            output_negative,
+            output_positive_test,
+            output_negative_test,
         )
 
     def cav_model(
@@ -264,6 +270,8 @@ class CAV:
         negative_train: torch.Tensor,
         positive_test: torch.Tensor,
         negative_test: torch.Tensor,
+        save_path: str,
+        concept: str
     ):
 
         positive_train_labels = np.ones(len(positive_train))
@@ -309,6 +317,13 @@ class CAV:
 
         self.model.fit(train_data, train_labels)
 
+        # save the model as pickle file
+        save_path_models = os.path.join(save_path, "models")
+        if not os.path.exists(save_path_models):
+            os.makedirs(save_path_models, exist_ok=True)
+        save_path_models = os.path.join(save_path_models, f"{concept}.pkl")
+        pickle.dump(self.model, open(save_path_models, "wb"))
+
         # Test the model
         score = self.model.score(test_data, test_labels)
 
@@ -323,12 +338,14 @@ class CAV:
         negative_train,
         positive_test,
         negative_test,
+        save_path,
+        concept
     ):
 
         # positive_file = f"dataset/activations/positive_{concept}_activations_{block}.pt"
         # negative_file = f"dataset/activations/negative_{concept}_activations_{block}.pt"
         accuracy, cav = self.cav_model(
-            positive_train, negative_train, positive_test, negative_test
+            positive_train, negative_train, positive_test, negative_test, save_path, concept
         )
         self.cav_list.append((block, episode_number, accuracy))
         return cav
@@ -345,9 +362,9 @@ class CAV:
         save_path: str = None,
     ):
         model_list = os.listdir(model_dir)
-        save_path = os.path.join(save_path, "activations")
-        if not os.path.exists(save_path):
-            os.makedirs(save_path, exist_ok=True)
+        save_path_activations = os.path.join(save_path, "activations")
+        if not os.path.exists(save_path_activations):
+            os.makedirs(save_path_activations, exist_ok=True)
 
         for model in model_list:
             model_path = os.path.join(model_dir, model)
@@ -355,8 +372,7 @@ class CAV:
 
             if episode_number not in episode_numbers:
                 continue
-            
-            print("dataset directory train:", dataset_directory_train)
+
             (
                 positive,
                 negative,
@@ -384,15 +400,17 @@ class CAV:
                 negative,
                 positive_test,
                 negative_test,
+                save_path,
+                concept
             )
-            print("HEllo")
+            #print("HEllo")
             # Calculate the tcav
             if sensitivity:
                 self.calculate_tcav(
                     cav, positive_test, q_values_positive_test, 0, episode_number
                 )
 
-            for block in range(1, 4):
+            for block in range(1, 3): # NOTE: This must be changed depending on the num blocks (3 blocks here)
                 # load dataset
                 (
                     positive,
@@ -414,7 +432,7 @@ class CAV:
                     action_index=action_index,
                 )
 
-                print("Block: ", block, model_path, episode_number)
+                #print("Block: ", block, model_path, episode_number)
                 cav = self.calculate_single_cav(
                     block,
                     episode_number,
@@ -422,6 +440,8 @@ class CAV:
                     negative,
                     positive_test,
                     negative_test,
+                    save_path,
+                    concept
                 )
 
                 if sensitivity:
@@ -433,7 +453,8 @@ class CAV:
                         episode_number,
                     )
         # Save the CAV list
-        torch.save(self.cav_list, os.path.join(save_path, f"_{concept}.pt"))
+        torch.save(self.cav_list, os.path.join(save_path_activations, f"{concept}.pt"))
+        print("CAV list saved to:", os.path.join(save_path_activations, f"{concept}.pt"))
         # torch.save(self.tcav_list, f"./results/tcav/tcav_list_{concept}.pt")
 
     def calculate_sensitivity(
@@ -448,8 +469,8 @@ class CAV:
             network_output, torch.Tensor
         ), "Network output must be a tensor"
         # assert all(type(n) for n in network_output) == torch.Tensor, "Network output must be a tensor"
-        print(activations[0])
-        print(network_output[0])
+        #print(activations[0])
+        #print(network_output[0])
         outputs = torch.autograd.grad(
             outputs=network_output,
             inputs=activations,
@@ -484,16 +505,16 @@ class CAV:
 
     def plot_cav(self, concept: str, tcav: bool = False, episode_numbers: list = None, save_path: str = None):
 
-        save_path = os.path.join(save_path, "plots")
-        if not os.path.exists(save_path):
-            os.makedirs(save_path, exist_ok=True)
-        save_path = os.path.join(save_path, concept)
+        save_path_plots = os.path.join(save_path, "plots")
+        if not os.path.exists(save_path_plots):
+            os.makedirs(save_path_plots, exist_ok=True)
+        save_path_plots = os.path.join(save_path_plots, concept)
 
         if len(self.cav_list) == 0:
             self.cav_list = self.load_cav(concept)
-        print(self.cav_list[0])
+        #print(self.cav_list[0])
 
-        self.plot(concept, self.cav_list, save_path)
+        self.plot(concept, self.cav_list, save_path_plots)
 
     def plot_tcav(self, concept: str, action: int = 0):
 
@@ -503,7 +524,7 @@ class CAV:
             for inner_key, inner_value in inner_dict.items()
         ]
         # self.tcav_list = list(self.tcav_list.items())
-        print(self.tcav_list)
+        #print(self.tcav_list)
 
         self.plot(concept, self.tcav_list, f"tcav_{concept}", action=action)
 
@@ -559,7 +580,8 @@ class CAV:
         # Colorbar for accuracy
         fig.colorbar(surf, ax=ax, label="Accuracy")
 
-        plt.savefig(os.path.join(save_path, f"_{action}.png"))
+        plt.savefig(save_path + f"_{action}.png")
+        print(f"Plot saved to {save_path}_{action}.png")
         # plt.show()
 
 

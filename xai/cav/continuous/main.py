@@ -1,15 +1,16 @@
 import math
 import os
+import sys
 
 import torch
-import sys
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 sys.path.append(project_root)
 
-from env import SunburstMazeContinuous
-from cav import CAV, Analysis
 from build_dataset import build_csv_dataset
+from cav import CAV, Analysis
+
+from env import SunburstMazeContinuous
 from xai.cav.process_data import find_model_files
 
 
@@ -30,25 +31,16 @@ def main():
         "policy_load_path": None,
         "critic_load_path": None,
         # ENVIRONMENT
-        "env_name": "map_two_rooms_18_19",  # TODO: change to the correct env name
-        "env_path": "../../../env/random_generated_maps/goal/large/map_two_rooms_18_19.csv",  # TODO: Change to the correct path for what the model was trained on
+        "env_name": "map_circular_4_19",  # TODO: change to the correct env name
+        "env_path": "../../../env/random_generated_maps/goal/large/map_circular_4_19.csv",  # TODO: Change to the correct path for what the model was trained on
         # "env_path": "../../../env/map_v0/map_open_doors_horizontal.csv",
         "grid_length": 4,
         "cav": {
             "dataset_max_length": 1500,
             "episode_numbers": [
-                "100",
-                "500",
-                "1000",
-                "1500",
-                "2000",
-                "2500",
-                "3000",
-                "3500",
-                "4000",
-                "4500",
-                "5000",
-                "5200",
+                "25",
+                "75",
+                "200"
             ],
         },
         # RENDERING
@@ -119,7 +111,7 @@ def main():
         "number_of_rays": 40,
     }
 
-    print("config", config["PPO"])
+    # print("config", config["PPO"])
 
     env = SunburstMazeContinuous(
         maze_file=config["env_path"],
@@ -164,12 +156,12 @@ def main():
     if not os.path.exists(dataset_directory_test):
         os.makedirs(dataset_directory_test, exist_ok=True)
 
-    print("Model files:", model_files)
+    # print("Model files:", model_files)
 
     grid_size = 16
 
     # Build the dataset
-    '''build_csv_dataset(
+    build_csv_dataset(
         env=env,
         device=device,
         config=config,
@@ -177,11 +169,11 @@ def main():
         dataset_path=dataset_path,
         dataset_subfolder=dataset_subfolder,
         grid_size=grid_size,
-    )'''
+    )
 
     # Train CAV for grid observations
     for i in range(grid_size):
-        print("CAVing...")
+        print("CAVing for grid observation", i)
         concept = f"grid_observations_{i}"
         # grid_observation_dataset(model_name, concept)
         # cav = CAV()
@@ -191,6 +183,11 @@ def main():
             analysis = Analysis(average)
             for _ in range(average):
                 cav = CAV()
+                # check if the concept exists by checking if the concept name exists in the dataset
+                filename = f"{concept}_positive_train.csv"
+                if filename not in os.listdir(dataset_directory_train):
+                    print(f"Concept {concept} does not exist in the dataset. Skipping...")
+                    continue
                 cav.calculate_cav(
                     concept=concept,
                     dataset_directory_train=dataset_directory_train,
@@ -203,9 +200,3 @@ def main():
                 )
                 cav.plot_cav(
                     concept=concept,
-                    episode_numbers=episode_numbers,
-                    save_path=save_path,
-                )
-
-if __name__ == '__main__':
-	main()

@@ -82,7 +82,7 @@ def build_csv_dataset(
  
     # Evaluate policy
     collected_observations = eval_policy(policy=policy, actor_model_paths=actor_model_paths, env=env, sequence_length=config["transformer"]["sequence_length"], device=device, render=True, max_steps=config["max_steps_per_episode"])
-    print("Collected observations", len(collected_observations), collected_observations[0])
+    #print("Collected observations", len(collected_observations), collected_observations[0])
     
     #TODO: Update model
  

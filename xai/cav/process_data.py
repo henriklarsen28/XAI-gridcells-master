@@ -23,8 +23,8 @@ def save_to_csv(dataset: deque, file_name: str, path: str):
     # Convert from list of tensors to list of numpy arrays
     df = pd.DataFrame(dataset)
     
-    print("Path:", path)
-    print("File name:", file_name)
+    #print("Path:", path)
+    #print("File name:", file_name)
     df.to_csv(os.path.join(path, file_name + '.csv'), index=False)
 
 def shuffle_and_trim_datasets(dataset: deque, max_length: int):
@@ -62,7 +62,7 @@ def split_dataset_into_train_test(
         train_dataset = dataset[:train_size]
         test_dataset = dataset[train_size:]
 
-        print('train dataset', train_dataset)
+        #print('train dataset', train_dataset)
 
         # TODO: The dataset type is different for handling PPO Transformers (from eval_policy) - need to handle this
         train = [
@@ -130,8 +130,8 @@ def get_positive_negative_data(concept: str, datapath: str):
     negative_files = []
     positive_file = None
 
-    print('Concept:', concept)
-    print('Datapath:', datapath)
+    #print('Concept:', concept)
+    #print('Datapath:', datapath)
     for file in os.listdir(datapath):
         file_path = os.path.join(datapath, file)
         if file.startswith(concept):

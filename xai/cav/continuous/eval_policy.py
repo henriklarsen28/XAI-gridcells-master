@@ -126,8 +126,9 @@ def rollout(
             tensor_obs = preprocess_ep_obs(tensor_obs, sequence_length, device)
             tensor_obs = tensor_obs.unsqueeze(0)
             if t > sequence_length:
-                observation_sequence = list(tensor_obs)
+                observation_sequence = list(tensor_obs.squeeze(0))
                 collected_observation_sequences.append(copy.deepcopy(observation_sequence))
+                #print("Length of collected observation sequences", len(collected_observation_sequences))
             position = (int(env.position[0]), int(env.position[1]))
             collected_positions.append(copy.deepcopy(position))
 
