@@ -170,7 +170,7 @@ class PPO_agent:
                 log_probs_batch,
                 batch_rews,
                 rtgs,
-                env_classes_target,
+                batch_env_classes_target,
                 lens,
                 attention_masks,
                 frames,
@@ -206,17 +206,7 @@ class PPO_agent:
             )
             # print(value, value.shape)
 
-            """# Normalize rewards
-            all_rewards = np.concatenate(rewards_batch)
-            mean = np.mean(all_rewards)
-            std = np.std(all_rewards) + 1e-8
-            rewards_batch = [(np.array(rewards) - mean) / std for rewards in rewards_batch]
-
-            rewards_batch = list(rewards_batch)"""
-
             # advantages, returns = self.compute_gae(rewards_batch, value, dones_batch)
-
-            # rtgs = rtgs.unsqueeze(1)
 
             advantages = rtgs - value.detach()
 
@@ -225,8 +215,9 @@ class PPO_agent:
                 advantages = (advantages - advantages.mean()) / (
                     advantages.std() + 1e-8
                 )
+
             for _ in range(self.n_updates_per_iteration):
-                value_new, current_log_prob, entropy, env_classes_batch = self.evaluate(
+                value_new, current_log_prob, entropy, batch_env_classes = self.evaluate(
                     obs_batch, actions_batch, attention_masks
                 )
                 # print("Current log prob: ", current_log_prob)
@@ -239,11 +230,13 @@ class PPO_agent:
                 )
 
                 policy_loss_ppo = (-torch.min(surrogate_loss1, surrogate_loss2)).mean()
-                """env_class_loss = F.cross_entropy(
-                    env_classes_batch, env_classes_target_batch.float()
-                )"""
+                env_class_loss = F.cross_entropy(
+                    batch_env_classes, batch_env_classes_target.float()
+                )
 
-                policy_loss = policy_loss_ppo  # - self.entorpy_coefficient * entropy
+                #print(env_class_loss)
+
+                policy_loss = policy_loss_ppo  + 0.2 * env_class_loss # - self.entorpy_coefficient * entropy
                 # print("Kl",kl_div, "Entropy", entropy)
 
                 critic_loss = nn.MSELoss()(value_new, rtgs)
@@ -303,7 +296,7 @@ class PPO_agent:
             del log_probs_batch
             del batch_rews
             del rtgs
-            del env_classes_target
+            del batch_env_classes_target
             del lens
             del attention_masks
             del frames
@@ -312,11 +305,11 @@ class PPO_agent:
             if iteration_counter % self.save_interval == 0:
                 torch.save(
                     self.policy_network.state_dict(),
-                    f"./model/transformers/ppo/model_{self.run.name}/policy_network_{iteration_counter}.pth",
+                    f"./models/transformers/ppo/model_{self.run.name}/policy_network_{iteration_counter}.pth",
                 )
                 torch.save(
                     self.critic_network.state_dict(),
-                    f"./model/transformers/ppo/model_{self.run.name}/critic_network_{iteration_counter}.pth",
+                    f"./models/transformers/ppo/model_{self.run.name}/critic_network_{iteration_counter}.pth",
                 )
                 """torch.save(
                     self.network.state_dict(),
@@ -368,12 +361,10 @@ class PPO_agent:
         batch_acts = []
         batch_log_probs = []
         batch_rews = []
-        batch_values = []
-        batch_next_values = []
         batch_dones = []
         batch_rtgs = []
         batch_lens = []
-        env_classes_target = []
+        batch_env_classes_target = []
         batch_attention_masks = []
 
         frames = []
@@ -383,8 +374,6 @@ class PPO_agent:
             ep_obs = deque(maxlen=self.sequence_length)
             next_ep_obs = deque(maxlen=self.sequence_length)
             ep_rews = []
-            ep_values = []
-            ep_next_values = []
             ep_dones = []
             ep_attention_mask = []
 
@@ -406,9 +395,6 @@ class PPO_agent:
 
                 # Get action and log probability (transformer expects a full sequence, so we pass collected states)
                 action, log_prob = self.get_action(tensor_obs)  # Pass full sequence
-                """with torch.no_grad():
-                    value, _ = self.critic_network(tensor_obs.unsqueeze(0))
-                    value = value.squeeze()"""
 
                 obs, reward, terminated, truncated, _ = self.env.step(action)
                 obs = obs.flatten()
@@ -427,13 +413,9 @@ class PPO_agent:
 
                 tensor_next_obs = torch.stack(list(next_ep_obs)).to(self.device)
                 tensor_next_obs = self.preprocess_ep_obs(tensor_next_obs)
-                """with torch.no_grad():
-                    next_value, _ = self.critic_network(tensor_next_obs.unsqueeze(0))
-                    next_value = next_value.squeeze()"""
-                # ep_acts.append(action)
+
                 ep_rews.append(reward)
-                # ep_values.append(value)
-                # ep_next_values.append(next_value)
+
                 ep_dones.append(done)
 
                 batch_acts.append(action)
@@ -444,6 +426,16 @@ class PPO_agent:
                     attention_masks[:length] = 1
 
                 ep_attention_mask.append(attention_masks)
+
+                env_id = torch.tensor(self.env_2_id[self.env.unwrapped.maze_file])
+                batch_env_classes_target.append(
+                    torch.nn.functional.one_hot(
+                        env_id,
+                        num_classes=len(self.env_2_id),
+                    )
+                )
+
+                # print("Env", self.env.unwrapped.maze_file, self.env_2_id[self.env.unwrapped.maze_file])
 
                 if done:
                     break
@@ -464,42 +456,15 @@ class PPO_agent:
         batch_log_probs = torch.tensor(
             batch_log_probs, dtype=torch.float, device=self.device
         )
-        # batch_rews = torch.stack(batch_rews)
-        # batch_values = torch.stack(batch_values)
-        # batch_next_values = torch.stack(batch_next_values)
-        # batch_dones = torch.stack(batch_dones)
         batch_lens = torch.tensor(batch_lens)
-        # batch_attention_masks = torch.stack(batch_attention_masks)
 
-        # print(batch_obs.shape)
-        # print(batch_acts)
-        # print(batch_log_probs.shape)
-        # print(batch_values.shape)
-
-        """# Pad sequences to the max episode length in the batch
-        batch_obs = pad_sequence(
-            batch_obs, batch_first=True
-        )  # Shape: [batch_size, max_len, obs_dim]"""
-
-        """batch_acts = pad_sequence(batch_acts, batch_first=True)
-        batch_dones = pad_sequence(batch_dones, batch_first=True)"""
-
-        # batch_dones = batch_dones.unsqueeze(2)
 
         # Compute RTGs
         batch_rtgs = self.compute_rtgs(batch_rews)
 
-        # Create attention masks (1 for real data, 0 for padding)
 
-        """env_classes_target.append(
-            torch.nn.functional.one_hot(
-                torch.tensor(self.env_2_id[self.env.maze_file]),
-                num_classes=len(self.env_2_id),
-            )
-        )  # TODO: This is not updated for the env change each episode"""
-        env_classes_target.append(torch.tensor([1, 0, 0], dtype=torch.float32))
 
-        env_classes_target = torch.stack(env_classes_target)
+        batch_env_classes_target = torch.stack(batch_env_classes_target)
 
         # advantages, returns = self.compute_gae(batch_rews, batch_values, batch_next_values, batch_dones)
 
@@ -519,7 +484,7 @@ class PPO_agent:
             batch_log_probs,
             batch_rews,
             batch_rtgs,
-            env_classes_target,
+            batch_env_classes_target,
             batch_lens,
             batch_attention_masks,
             frames,
@@ -703,10 +668,9 @@ class PPO_agent:
         if not os.path.exists(self.gif_path):
             os.makedirs(self.gif_path)
 
-        model_path = f"./model/transformers/ppo/model_{self.run.name}"
+        model_path = f"./models/transformers/ppo/model_{self.run.name}"
         if not os.path.exists(model_path):
             os.makedirs(model_path)
-
 
         config_path = f"{model_path}/config"
         if not os.path.exists(config_path):
@@ -714,10 +678,10 @@ class PPO_agent:
 
         # Save the config file as json
         with open(f"{config_path}/policy_params.json", "w") as f:
-            f.write(self.policy_params)
+            f.write(str(self.policy_params))
 
         with open(f"{config_path}/critic_params.json", "w") as f:
-            f.write(self.critic_params)
+            f.write(str(self.critic_params))
 
     def entorpy_coefficient_decay(self):
         self.entorpy_coefficient -= self.entropy_step
