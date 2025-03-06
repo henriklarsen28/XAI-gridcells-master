@@ -13,12 +13,12 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import wandb
-from transformer_decoder import Transformer
-from transformer_decoder_policy import TransformerPolicy
 from network import FeedForwardNN
 from network_policy import FeedForwardNNPolicy
 from torch import nn
 from torch.nn.utils.rnn import pad_sequence
+from transformer_decoder import Transformer
+from transformer_decoder_policy import TransformerPolicy
 
 # from gated_transformer_decoder_combined import Transformer
 
@@ -74,6 +74,28 @@ class PPO_agent:
         self.device = device
 
         self.env_2_id = env_2_id_dict()
+
+        self.policy_params = {
+            "input_dim": self.obs_dim,
+            "output_dim": self.act_dim,
+            "block_size": self.sequence_length,
+            "num_envs": len(self.env_2_id),
+            "n_embd": n_embd,
+            "n_head": n_head,
+            "n_layer": n_layer,
+            "dropout": dropout,
+            "device": self.device,
+        }
+        self.critic_params = {
+            "input_dim": self.obs_dim,
+            "output_dim": 1,
+            "block_size": self.sequence_length,
+            "n_embd": n_embd,
+            "n_head": n_head,
+            "n_layer": n_layer,
+            "dropout": dropout,
+            "device": self.device,
+        }
 
         self.policy_network = TransformerPolicy(
             input_dim=self.obs_dim,
@@ -200,13 +222,15 @@ class PPO_agent:
 
             # Normalize the advantages
             if self.normalize_advantage:
-                advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+                advantages = (advantages - advantages.mean()) / (
+                    advantages.std() + 1e-8
+                )
             for _ in range(self.n_updates_per_iteration):
                 value_new, current_log_prob, entropy, env_classes_batch = self.evaluate(
                     obs_batch, actions_batch, attention_masks
                 )
-                #print("Current log prob: ", current_log_prob)
-                #print("Log probs batch: ", log_probs_batch)
+                # print("Current log prob: ", current_log_prob)
+                # print("Log probs batch: ", log_probs_batch)
                 ratio = torch.exp(current_log_prob - log_probs_batch)
 
                 surrogate_loss1 = ratio * advantages
@@ -221,7 +245,6 @@ class PPO_agent:
 
                 policy_loss = policy_loss_ppo  # - self.entorpy_coefficient * entropy
                 # print("Kl",kl_div, "Entropy", entropy)
-
 
                 critic_loss = nn.MSELoss()(value_new, rtgs)
 
@@ -254,7 +277,7 @@ class PPO_agent:
             lens = np.array(lens)
 
             torch.cuda.empty_cache()
-            
+
             wandb.log(
                 {
                     "Timesteps": timestep_counter,
@@ -684,13 +707,23 @@ class PPO_agent:
         if not os.path.exists(model_path):
             os.makedirs(model_path)
 
+
+        config_path = f"{model_path}/config"
+        if not os.path.exists(config_path):
+            os.makedirs(config_path)
+
+        # Save the config file as json
+        with open(f"{config_path}/policy_params.json", "w") as f:
+            f.write(self.policy_params)
+
+        with open(f"{config_path}/critic_params.json", "w") as f:
+            f.write(self.critic_params)
+
     def entorpy_coefficient_decay(self):
         self.entorpy_coefficient -= self.entropy_step
         self.entorpy_coefficient = max(self.entropy_min, self.entorpy_coefficient)
 
-    def generate_minibatches(
-        self, obs, actions, log_probs, rtgs
-    ):
+    def generate_minibatches(self, obs, actions, log_probs, rtgs):
         minibatches = []
 
         indices = torch.randperm(self.batch_size)
