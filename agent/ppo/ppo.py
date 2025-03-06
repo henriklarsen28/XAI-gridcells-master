@@ -230,13 +230,15 @@ class PPO_agent:
                 )
 
                 policy_loss_ppo = (-torch.min(surrogate_loss1, surrogate_loss2)).mean()
-                env_class_loss = F.cross_entropy(
+                env_class_loss = self.env_loss_factor * F.cross_entropy(
                     batch_env_classes, batch_env_classes_target.float()
                 )
 
-                #print(env_class_loss)
+                # print(env_class_loss)
 
-                policy_loss = policy_loss_ppo  + self.env_loss_factor * env_class_loss # - self.entorpy_coefficient * entropy
+                policy_loss = (
+                    policy_loss_ppo + env_class_loss
+                )  # - self.entorpy_coefficient * entropy
                 # print("Kl",kl_div, "Entropy", entropy)
 
                 critic_loss = nn.MSELoss()(value_new, rtgs)
@@ -277,7 +279,7 @@ class PPO_agent:
                     "Rewards per episode": rtgs.mean().item(),
                     # "Rewards mean": rewads_mean,
                     "Policy_ppo loss": policy_loss_ppo.mean().item(),
-                    # "Env_class loss": env_class_loss.item(),
+                    "Env_class loss": env_class_loss.item(),
                     "Policy loss": policy_loss.item(),
                     "Critic loss": critic_loss.item(),
                     # "Environment": self.env_2_id[self.env.maze_file],
@@ -458,11 +460,8 @@ class PPO_agent:
         )
         batch_lens = torch.tensor(batch_lens)
 
-
         # Compute RTGs
         batch_rtgs = self.compute_rtgs(batch_rews)
-
-
 
         batch_env_classes_target = torch.stack(batch_env_classes_target)
 
