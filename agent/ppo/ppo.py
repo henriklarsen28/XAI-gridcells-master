@@ -508,7 +508,7 @@ class PPO_agent:
 
         attention_mask = (obs.sum(dim=-1) != 0).to(torch.float32)
         mean, std, _, _ = self.policy_network(obs)
-        dist = torch.distributions.MultivariateNormal(mean, self.cov_mat)
+        dist = torch.distributions.MultivariateNormal(mean, std)
 
         action = dist.sample()
         log_prob = dist.log_prob(action)
