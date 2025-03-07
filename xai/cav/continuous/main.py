@@ -23,7 +23,7 @@ def main():
 
     config = {
         # MODEL PATHS
-        "model_path": "../../../agent/ppo/models/transformers/icy-violet-1223/actor",
+        "model_path": "../../../agent/ppo/models/transformers/ppo/model_icy-violet-1223/actor",
         "model_name": "icy-violet-1223",  # NOTE: make sure to update
         "model_episodes": [575, 675, 775],  # NOTE: for eval_policy
         # PPO
