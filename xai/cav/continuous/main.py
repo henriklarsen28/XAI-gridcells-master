@@ -21,18 +21,20 @@ def main():
         "number_of_rays": 40,
     }
 
+    map_path= "map_circular_4_19"
+    model_name = "icy-violet-1223"
+
     config = {
         # MODEL PATHS
-        "model_path": "../../../agent/ppo/models/transformers/ppo/model_icy-violet-1223/actor",
-        "model_name": "icy-violet-1223",  # NOTE: make sure to update
+        "model_path": f"../../../agent/ppo/models/transformers/ppo/model_{model_name}/actor",
+        "model_name": f"{model_name}",  # NOTE: make sure to update
         "model_episodes": [575, 825, 1050],  # NOTE: for eval_policy
         # PPO
         "policy_load_path": None,
         "critic_load_path": None,
         # ENVIRONMENT
-        "env_name": "map_circular_4_19",  # TODO: change to the correct env name
-        "env_path": "../../../env/random_generated_maps/goal/large/map_circular_4_19.csv",  # TODO: Change to the correct path for what the model was trained on
-        # "env_path": "../../../env/map_v0/map_open_doors_horizontal.csv",
+        "env_name": f"{map_path}",
+        "env_path": f"../../../env/random_generated_maps/goal/large/{map_path}.csv",
         "grid_length": 7,  # 7 x 7 grid
         "cav": {
             "dataset_max_length": 1500,
@@ -42,7 +44,7 @@ def main():
         "train_mode": False,
         "map_path_train": None,
         "render": True,
-        "render_mode": "human",
+        "render_mode": None, #"human",
         # HYPERPARAMETERS
         "loss_function": "mse",
         "learning_rate": 3e-4,
