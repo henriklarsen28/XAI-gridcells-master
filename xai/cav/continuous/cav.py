@@ -26,45 +26,13 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 
 sys.path.append(project_root)
 
-from agent.ppo.transformer_decoder_policy import TransformerPolicy
+from agent.ppo.gated_transformer_decoder_policy import TransformerPolicy
 from utils import CAV_dataset
 from utils.calculate_fov import calculate_fov_matrix_size
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
 activations = {}
-
-"""episode_numbers = [
-    "100",
-    "500",
-    "1000",
-    "2000",
-    "3000",
-    "4000",
-    "5000",
-    "5200",
-]
-episode_numbers = [
-    "100",
-    "500",
-    "1000",
-    "1500",
-    "2000",
-    "2500",
-    "3000",
-    "3500",
-    "4000",
-    "4500",
-    "5000",
-    "5200",
-]
-episode_numbers = [
-    "100",
-    "150",
-    "200"
-]
-"""
-# episode_numbers = ["100", "200"]
 
 
 def get_activation(name):
@@ -130,8 +98,8 @@ def create_activation_dataset(
 
     num_envs = 3
     sequence_length = 30
-    n_embd = 196
-    n_head = 8
+    n_embd = 128
+    n_head = 6
     n_layer = 2
     dropout = 0.2
     state_dim = num_states
@@ -324,9 +292,9 @@ class CAV:
 
         concept_model_path = os.path.join(save_path_models, concept)
         os.makedirs(concept_model_path, exist_ok=True)
-        
-        save_path_models = os.path.join(save_path_models, f"{concept}_block_{block}_episode_{episode}.pkl")
-        pickle.dump(self.model, open(concept_model_path, "wb"))
+
+        save_path_models = os.path.join(concept_model_path, f"{concept}_block_{block}_episode_{episode}.pkl")
+        pickle.dump(self.model, open(save_path_models, "wb"))
 
         # Test the model
         score = self.model.score(test_data, test_labels)
@@ -374,8 +342,7 @@ class CAV:
     ):
         model_list = os.listdir(model_dir)
         save_path_activations = os.path.join(save_path, "activations")
-        if not os.path.exists(save_path_activations):
-            os.makedirs(save_path_activations, exist_ok=True)
+        os.makedirs(save_path_activations, exist_ok=True)
 
         for model in model_list:
             model_path = os.path.join(model_dir, model)
