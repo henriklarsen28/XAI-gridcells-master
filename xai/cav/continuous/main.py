@@ -21,14 +21,14 @@ def main():
         "number_of_rays": 40,
     }
 
-    map_path= "map_circular_4_19"
-    model_name = "icy-violet-1223"
+    map_path = "map_circular_4_19"
+    model_name = "kind-water-1258"
 
     config = {
         # MODEL PATHS
-        "model_path": f"../../../agent/ppo/models/transformers/ppo/model_{model_name}/actor",
+        "model_path": f"../../../agent/ppo/models/transformers/{model_name}/actor",
         "model_name": f"{model_name}",  # NOTE: make sure to update
-        "model_episodes": [575, 825, 1050],  # NOTE: for eval_policy
+        "model_episodes": [400, 500, 600],  # NOTE: for eval_policy
         # PPO
         "policy_load_path": None,
         "critic_load_path": None,
@@ -38,13 +38,13 @@ def main():
         "grid_length": 7,  # 7 x 7 grid
         "cav": {
             "dataset_max_length": 1500,
-            "episode_numbers": ["100", "200", "300", "400", "500", "600", "700"],
+            "episode_numbers": ["100", "200", "300", "400", "500", "600"],
         },
         # RENDERING
         "train_mode": False,
         "map_path_train": None,
         "render": True,
-        "render_mode": None, #"human",
+        "render_mode": "human",  # "human",
         # HYPERPARAMETERS
         "loss_function": "mse",
         "learning_rate": 3e-4,
@@ -67,7 +67,7 @@ def main():
         "random_start_position": True,
         "random_goal_position": False,
         "rewards": {
-            "is_goal": 5,
+            "is_goal": 3,
             "hit_wall": -0.001,
             "has_not_moved": -0.005,
             "new_square": 0.0,
@@ -91,8 +91,8 @@ def main():
         "number_of_rays": fov_config["number_of_rays"],
         "transformer": {
             "sequence_length": 30,
-            "n_embd": 128,
-            "n_head": 6,
+            "n_embd": 196,
+            "n_head": 8,
             "n_layer": 2,
             "dropout": 0.2,
             "decouple_positional_embedding": False,

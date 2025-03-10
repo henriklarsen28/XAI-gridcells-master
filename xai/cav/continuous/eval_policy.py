@@ -15,7 +15,7 @@ from env import SunburstMazeContinuous
 from utils.sequence_preprocessing import add_to_sequence
 
 import copy
-from agent.ppo.gated_transformer_decoder_policy import TransformerPolicy
+from agent.ppo.transformer_decoder_policy import TransformerPolicy
 
 
 
@@ -182,7 +182,7 @@ def eval_policy(policy:TransformerPolicy, actor_model_paths, env, sequence_lengt
     actor_model = actor_model_paths[0]
     policy.load_state_dict(torch.load(actor_model, map_location=device))
 
-    max_episodes = 140
+    max_episodes = 3
 
     for ep_num, (ep_len, ep_ret, collected_observation_sequences, collected_positions) in enumerate(
         rollout(policy, actor_model, env, render, sequence_length, device, max_steps=max_steps)
