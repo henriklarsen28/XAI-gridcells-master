@@ -117,13 +117,18 @@ def build_csv_dataset(
                 if sub_val:
                     filename = str(key) + '_' + str(sub_key)
                     data_preprocessed = shuffle_and_trim_datasets(sub_val, max_length)
-                    save_to_csv(data_preprocessed, filename, path)
+                    if len(data_preprocessed) > 1:
+                        save_to_csv(data_preprocessed, filename, path)
+                    else:
+                        print("Not enough data to save to CSV for ", key)
         else:
             if val:
                 data_preprocessed = shuffle_and_trim_datasets(val, max_length)
-                save_to_csv(data_preprocessed, filename, path)
-        
-    
+                if len(data_preprocessed) > 1:
+                    save_to_csv(data_preprocessed, filename, path)
+                else:
+                    print("Not enough data to save to CSV for ", key)
+
     # Save the config as a file for reference
     save_config(dataset_path, config)
     
