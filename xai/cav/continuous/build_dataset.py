@@ -78,7 +78,7 @@ def build_csv_dataset(
         dropout=config["transformer"]["dropout"],
         device=device,
     )
-
+    
     # Evaluate policy
     for collected_observations in eval_policy(
         policy=policy,
@@ -125,7 +125,7 @@ def build_csv_dataset(
 
     # Split the dataset into a training and test set
     split_dataset_into_train_test(dataset_path, dataset_subfolder, ratio=0.8)
-
+    
     # Build a dataset for grid observations
     grid_observation_dataset(
         dataset_path, grid_size=grid_size

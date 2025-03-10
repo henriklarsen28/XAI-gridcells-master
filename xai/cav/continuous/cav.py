@@ -271,6 +271,8 @@ class CAV:
         negative_test: torch.Tensor,
         save_path: str,
         concept: str,
+        episode: str,
+        block: str,
     ):
 
         positive_train_labels = np.ones(len(positive_train))
@@ -318,10 +320,13 @@ class CAV:
 
         # save the model as pickle file
         save_path_models = os.path.join(save_path, "models")
-        if not os.path.exists(save_path_models):
-            os.makedirs(save_path_models, exist_ok=True)
-        save_path_models = os.path.join(save_path_models, f"{concept}.pkl")
-        pickle.dump(self.model, open(save_path_models, "wb"))
+        os.makedirs(save_path_models, exist_ok=True)
+
+        concept_model_path = os.path.join(save_path_models, concept)
+        os.makedirs(concept_model_path, exist_ok=True)
+        
+        save_path_models = os.path.join(save_path_models, f"{concept}_block_{block}_episode_{episode}.pkl")
+        pickle.dump(self.model, open(concept_model_path, "wb"))
 
         # Test the model
         score = self.model.score(test_data, test_labels)
@@ -350,6 +355,8 @@ class CAV:
             negative_test,
             save_path,
             concept,
+            str(episode_number),
+            str(block),
         )
         self.cav_list.append((block, episode_number, accuracy))
         return cav
