@@ -26,7 +26,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 
 sys.path.append(project_root)
 
-from agent.ppo.gated_transformer_decoder_policy import TransformerPolicy
+from agent.ppo.transformer_decoder_policy import TransformerPolicy
 from utils import CAV_dataset
 from utils.calculate_fov import calculate_fov_matrix_size
 
@@ -130,8 +130,8 @@ def create_activation_dataset(
 
     num_envs = 3
     sequence_length = 30
-    n_embd = 128
-    n_head = 6
+    n_embd = 196
+    n_head = 8
     n_layer = 2
     dropout = 0.2
     state_dim = num_states

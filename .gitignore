@@ -34,7 +34,11 @@ agent/dqn/models/*
 agent/ppo/wandb/*
 agent/ppo/gifs/*
 
-agent/ppo/models/*
+agent/ppo/models/feed-forward/*
+agent/ppo/models/transformers/expert-durian-1146
+agent/ppo/models/transformers/fiery-shadow-1144
+agent/ppo/models/transformers/icy-violet-1223
+
 agent/ppo/model/*
 agent/ppo_test_code/models/*
 agent/ppo_rnn/gifs/*

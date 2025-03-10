@@ -19,10 +19,7 @@ def save_to_csv(dataset: deque, file_name: str, path: str):
     # Convert from list of tensors to list of numpy arrays
     df = pd.DataFrame(dataset)
 
-    # only save to csv if enough observations are available
-    print("File ", file_name, "with dataset length: ", len(df))
-    if len(df) > 1:
-        df.to_csv(os.path.join(path, file_name + ".csv"), index=False)
+    df.to_csv(os.path.join(path, file_name + ".csv"), index=False)
 
 
 def shuffle_and_trim_datasets(dataset: deque, max_length: int):
@@ -59,10 +56,18 @@ def split_dataset_into_train_test(
         if file.__contains__("train") or file.__contains__("test"):
             continue
         dataset = pd.read_csv(file_path)
+
         # Split the dataset into a training and test set
         train_size = int(len(dataset) * ratio)
         train_dataset = dataset[:train_size]
-        print("Length of dataset for file ", file, " is ", int(len(dataset)), "train size is ", train_size)
+        print(
+            "Length of dataset for file ",
+            file,
+            " is ",
+            int(len(dataset)),
+            "train size is ",
+            train_size,
+        )
         test_dataset = dataset[train_size:]
 
         train = [
@@ -146,8 +151,8 @@ def get_positive_negative_data(concept: str, datapath: str):
         file_path = os.path.join(datapath, file)
         base_name, extension = os.path.splitext(file)
         print("Looking for concept", concept)
-        #print("Base name:", base_name)
-        #print("Extension:")
+        # print("Base name:", base_name)
+        # print("Extension:")
         if base_name.startswith(concept) and (
             base_name == concept or base_name[len(concept) : len(concept) + 1] == "_"
         ):
@@ -159,11 +164,11 @@ def get_positive_negative_data(concept: str, datapath: str):
 
     if positive_file is None:
         return None, None
-    
+
     print("Reading positive file", positive_file)
     positive_df = pd.read_csv(positive_file)
 
-    # Determine sample size: at least 1500 lines or the length of the positive file content, whichever is greater
+    # Determine sample size: at least 1500 lines or the length of the positive file content
     sample_size = min(1500, len(positive_df))
 
     # Aggregate negative file content and then sample
