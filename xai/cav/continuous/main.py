@@ -21,7 +21,7 @@ def main():
         "number_of_rays": 40,
     }
 
-    map_path= "map_circular_4_19"
+    map_path= "map_conditional_prob_11_10"
     model_name = "icy-violet-1223"
 
     config = {
@@ -44,7 +44,7 @@ def main():
         "train_mode": False,
         "map_path_train": None,
         "render": True,
-        "render_mode": None, #"human",
+        "render_mode": "human",
         # HYPERPARAMETERS
         "loss_function": "mse",
         "learning_rate": 3e-4,
@@ -153,7 +153,7 @@ def main():
         dataset_subfolder=dataset_subfolder,
         grid_size=grid_size,
     )
-
+"""
     # Train CAV for grid observations
     for i in range(grid_size):
         print("CAVing for grid observation", i)
@@ -188,7 +188,7 @@ def main():
                     episode_numbers=episode_numbers,
                     save_path=save_path,
                 )
-
+"""
 
 if __name__ == "__main__":
     main()

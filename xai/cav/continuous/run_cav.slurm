@@ -1,7 +1,7 @@
 #!/bin/sh
 #SBATCH --partition=CPUQ
 #SBATCH --job-name=train_rl-agent
-#SBATCH --account=ie-idi
+#SBATCH --account=share-ie-idi
 #SBATCH --time=0-12:00:00     # 0 days and 15 minutes limit
 #SBATCH --nodes=1             # 1 compute nodes
 #SBATCH --mem=40G              # 16 gigabytes memory

@@ -80,7 +80,7 @@ def build_csv_dataset(
     )
 
     # Evaluate policy
-    collected_observations = eval_policy(
+    for collected_observations in eval_policy(
         policy=policy,
         actor_model_paths=actor_model_paths,
         env=env,
@@ -88,17 +88,15 @@ def build_csv_dataset(
         device=device,
         render=True,
         max_steps=config["max_steps_per_episode"],
-    )
+    ):
     # print("Collected observations", len(collected_observations), collected_observations[0])
-
     # TODO: Update model
 
-    count = 0
-    for observation, position in collected_observations:
-        for observation_step, position_step in zip(observation, position):
-            # print(len(observation_sequence))
-            if rd.random() > 0.4:
-                con.in_grid_square(observation_step, position_step)
+        for observation, position in collected_observations:
+            for observation_step, position_step in zip(observation, position):
+                # print(len(observation_sequence))
+                if rd.random() > 0.4:
+                    con.in_grid_square(observation_step, position_step)
 
     path = os.path.join(dataset_path, dataset_subfolder)
 

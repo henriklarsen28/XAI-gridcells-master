@@ -6,20 +6,17 @@
 	relying on ppo.py.
 """
 
+import copy
 from collections import deque
 
 import gymnasium as gym
 import torch
 
+from agent.ppo.gated_transformer_decoder_policy import TransformerPolicy
 from env import SunburstMazeContinuous
 from utils.sequence_preprocessing import add_to_sequence
 
-import copy
-from agent.ppo.gated_transformer_decoder_policy import TransformerPolicy
-
-
-
-'''def random_maps(
+"""def random_maps(
     env: SunburstMazeContinuous,
     random_map: bool = False,
     map_path_random_files: list = None,
@@ -43,7 +40,7 @@ from agent.ppo.gated_transformer_decoder_policy import TransformerPolicy
             number_of_rays=env.get_wrapper_attr("number_of_rays"),
         )
 
-    return env'''
+    return env"""
 
 
 def _log_summary(ep_len, ep_ret, ep_num):
@@ -70,7 +67,13 @@ def _log_summary(ep_len, ep_ret, ep_num):
 
 
 def rollout(
-    policy, actor_model, env:SunburstMazeContinuous, render, sequence_length, device, max_steps=None
+    policy,
+    actor_model,
+    env: SunburstMazeContinuous,
+    render,
+    sequence_length,
+    device,
+    max_steps=None,
 ):
     """
     Returns a generator to roll out each episode given a trained policy and
@@ -93,13 +96,13 @@ def rollout(
     """
 
     # Rollout until user kills process
-    collected_observation_sequences = deque ()
+    collected_observation_sequences = deque()
     collected_positions = []
 
     print("Using model", actor_model)
 
     while True:
-        
+
         obs, _ = env.reset()
         done = False
 
@@ -127,8 +130,10 @@ def rollout(
             tensor_obs = tensor_obs.unsqueeze(0)
             if t > sequence_length:
                 observation_sequence = list(tensor_obs.squeeze(0))
-                collected_observation_sequences.append(copy.deepcopy(observation_sequence))
-                #print("Length of collected observation sequences", len(collected_observation_sequences))
+                collected_observation_sequences.append(
+                    copy.deepcopy(observation_sequence)
+                )
+                # print("Length of collected observation sequences", len(collected_observation_sequences))
             position = (int(env.position[0]), int(env.position[1]))
             collected_positions.append(copy.deepcopy(position))
 
@@ -158,7 +163,15 @@ def preprocess_ep_obs(ep_obs, sequence_length, device):
     return padded_obs
 
 
-def eval_policy(policy:TransformerPolicy, actor_model_paths, env, sequence_length, device, render=False, max_steps=None):
+def eval_policy(
+    policy: TransformerPolicy,
+    actor_model_paths,
+    env,
+    sequence_length,
+    device,
+    render=False,
+    max_steps=None,
+):
     """
     The main function to evaluate our policy with. It will iterate a generator object
     "rollout", which will simulate each episode and return the most recent episode's
@@ -176,24 +189,39 @@ def eval_policy(policy:TransformerPolicy, actor_model_paths, env, sequence_lengt
     NOTE: To learn more about generators, look at rollout's function description
     """
     # Rollout with the policy and environment, and log each episode's data
-    collected_observations = deque ()
+    # collected_observations = deque ()
 
     # Load in the actor model saved by the PPO algorithm
     actor_model = actor_model_paths[0]
     policy.load_state_dict(torch.load(actor_model, map_location=device))
 
-    max_episodes = 140
+    collected_observations = deque()
 
-    for ep_num, (ep_len, ep_ret, collected_observation_sequences, collected_positions) in enumerate(
-        rollout(policy, actor_model, env, render, sequence_length, device, max_steps=max_steps)
+    max_episodes = 140
+    for ep_num, (
+        ep_len,
+        ep_ret,
+        collected_observation_sequences,
+        collected_positions,
+    ) in enumerate(
+        rollout(
+            policy,
+            actor_model,
+            env,
+            render,
+            sequence_length,
+            device,
+            max_steps=max_steps,
+        )
     ):
         _log_summary(ep_len=ep_len, ep_ret=ep_ret, ep_num=ep_num)
         collected_observations.append(
-                    (
-                        copy.deepcopy(collected_observation_sequences),
-                        copy.deepcopy(collected_positions),
-                    )
-                )
+            (
+                copy.deepcopy(collected_observation_sequences),
+                copy.deepcopy(collected_positions),
+            )
+        )
+
         if ep_num == 60:
             actor_model = actor_model_paths[1]
             policy.load_state_dict(torch.load(actor_model, map_location=device))
@@ -205,5 +233,14 @@ def eval_policy(policy:TransformerPolicy, actor_model_paths, env, sequence_lengt
 
         if ep_num == max_episodes:
             break
-            
-    return copy.deepcopy(collected_observations)
+
+        ep_num += 1
+
+        if ep_num % 3 == 0:
+            print("Collected observations", len(collected_observations))
+
+            yield copy.deepcopy(collected_observations)
+            collected_observations.clear()
+            print("Cleared collected observations")
+
+    yield copy.deepcopy(collected_observations)
