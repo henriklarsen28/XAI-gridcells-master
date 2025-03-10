@@ -51,3 +51,4 @@ xai/cav/results/**/*.png
 xai/cav/results/**/*.pkl
 xai/cav/continuous/results/**/*.pkl
 xai/cav/**/*.pkl
+agent/ppo/models/transformers/*
