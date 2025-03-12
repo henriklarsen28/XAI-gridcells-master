@@ -17,8 +17,8 @@ from network import FeedForwardNN
 from network_policy import FeedForwardNNPolicy
 from torch import nn
 from torch.nn.utils.rnn import pad_sequence
-from transformer_decoder import Transformer
-from transformer_decoder_policy import TransformerPolicy
+from gated_transformer_decoder import Transformer
+from gated_transformer_decoder_policy import TransformerPolicy
 
 # from gated_transformer_decoder_combined import Transformer
 
