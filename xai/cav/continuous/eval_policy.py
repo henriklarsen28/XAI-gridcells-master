@@ -197,7 +197,7 @@ def eval_policy(
 
     collected_observations = deque()
 
-    max_episodes = 10
+    max_episodes = 140
     for ep_num, (
         ep_len,
         ep_ret,

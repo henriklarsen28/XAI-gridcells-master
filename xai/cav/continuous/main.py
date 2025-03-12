@@ -3,6 +3,7 @@ import os
 import sys
 
 import torch
+import wandb
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 sys.path.append(project_root)
@@ -13,8 +14,12 @@ from cav import CAV, Analysis
 from env import SunburstMazeContinuous
 from xai.cav.process_data import find_model_files
 
+wandb.login()
 
 def main():
+    
+    
+
     fov_config = {
         "fov": math.pi / 1.5,
         "ray_length": 15,
@@ -22,7 +27,7 @@ def main():
     }
 
     map_path = "map_two_rooms_18_19"
-    model_name = "icy-violet-1223"
+    model_name = "kind-water-1258"
 
     config = {
         # MODEL PATHS
@@ -91,14 +96,16 @@ def main():
         "number_of_rays": fov_config["number_of_rays"],
         "transformer": {
             "sequence_length": 30,
-            "n_embd": 128,
-            "n_head": 6,
+            "n_embd": 196,
+            "n_head": 8,
             "n_layer": 2,
             "dropout": 0.2,
             "decouple_positional_embedding": False,
         },
         "entropy": {"coefficient": 0.015, "min": 0.0001, "step": 1_000},
     }
+
+    wandb.init(project="CAV_PPO", config=config)
 
     device = torch.device("cpu")
 
@@ -187,6 +194,14 @@ def main():
                     concept=concept,
                     episode_numbers=episode_numbers,
                     save_path=save_path,
+                )
+
+                wandb.log(
+                    {
+                        f"CAV_{concept}": wandb.Image(
+                            os.path.join(save_path, f"plots/{concept}_action_{action}.png")
+                        )
+                    }
                 )
 
 if __name__ == "__main__":

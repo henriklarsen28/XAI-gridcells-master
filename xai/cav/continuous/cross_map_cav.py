@@ -112,7 +112,7 @@ def main():
     grid_length = 7
 
     block = 1
-    episode = 700
+    episode = 900
 
 
     config = {

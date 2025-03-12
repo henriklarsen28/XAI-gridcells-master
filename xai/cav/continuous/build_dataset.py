@@ -16,7 +16,7 @@ sys.path.append(project_root)
 
 import gymnasium as gym
 
-from agent.ppo.gated_transformer_decoder_policy import TransformerPolicy
+from agent.ppo.transformer_decoder_policy import TransformerPolicy
 from env import SunburstMazeContinuous
 from utils.calculate_fov import calculate_fov_matrix_size
 from utils.sequence_preprocessing import add_to_sequence, padding_sequence
