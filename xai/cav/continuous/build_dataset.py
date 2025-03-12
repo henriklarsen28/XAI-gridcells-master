@@ -16,7 +16,6 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..
 sys.path.append(project_root)
 
 import gymnasium as gym
-from agent.ppo.ppo import PPO_agent
 from agent.ppo.transformer_decoder_policy import TransformerPolicy
 from env import SunburstMazeContinuous
 

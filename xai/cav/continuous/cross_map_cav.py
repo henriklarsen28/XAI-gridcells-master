@@ -161,7 +161,7 @@ def main():
     grid_length = 7
 
     block = 1
-    episode = 600
+    episode = 900
 
     """config = {
         "source_map": source_map,
