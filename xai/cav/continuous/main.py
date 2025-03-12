@@ -21,8 +21,8 @@ def main():
         "number_of_rays": 40,
     }
 
-    map_path = "map_circular_4_19"
-    model_name = "kind-water-1258"
+    map_path = "map_two_rooms_18_19"
+    model_name = "icy-violet-1223"
 
     config = {
         # MODEL PATHS
@@ -38,7 +38,7 @@ def main():
         "grid_length": 7,  # 7 x 7 grid
         "cav": {
             "dataset_max_length": 1500,
-            "episode_numbers": ["100", "200", "300", "400", "500", "600"],
+            "episode_numbers": ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900", "1050"],
         },
         # RENDERING
         "train_mode": False,
@@ -91,8 +91,8 @@ def main():
         "number_of_rays": fov_config["number_of_rays"],
         "transformer": {
             "sequence_length": 30,
-            "n_embd": 196,
-            "n_head": 8,
+            "n_embd": 128,
+            "n_head": 6,
             "n_layer": 2,
             "dropout": 0.2,
             "decouple_positional_embedding": False,
@@ -144,7 +144,7 @@ def main():
     grid_size = env.num_cells
 
     # Build the dataset
-    '''build_csv_dataset(
+    build_csv_dataset(
         env=env,
         device=device,
         config=config,
@@ -153,7 +153,7 @@ def main():
         dataset_subfolder=dataset_subfolder,
         grid_size=grid_size,
     )
-'''
+
     # Train CAV for grid observations
     for i in range(grid_size):
         print("CAVing for grid observation", i)
