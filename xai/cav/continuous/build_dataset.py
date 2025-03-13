@@ -100,6 +100,7 @@ def build_csv_dataset(
 
         # Clear the collected observations
         collected_observations.clear()
+    
 
     path = os.path.join(dataset_path, dataset_subfolder)
 
@@ -127,13 +128,13 @@ def build_csv_dataset(
                     print("Not enough data to save to CSV for ", key)
 
     # Save the config as a file for reference
-    #save_config(dataset_path, config)
+    save_config(dataset_path, config)
 
     # Using the raw dataset, build a random dataset
-    #build_random_dataset(dataset_path, dataset_subfolder)
+    build_random_dataset(dataset_path, dataset_subfolder)
 
     # Split the dataset into a training and test set
-    #split_dataset_into_train_test(dataset_path, dataset_subfolder, ratio=0.8)
+    split_dataset_into_train_test(dataset_path, dataset_subfolder, ratio=0.8)
     
     # Build a dataset for grid observations
     grid_observation_dataset(

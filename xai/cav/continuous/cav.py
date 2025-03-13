@@ -20,6 +20,7 @@ import wandb
 
 # from logistic_regression import LogisticRegression
 from sklearn.linear_model import LogisticRegression
+from sklearn.utils import shuffle
 from torch.utils.data import DataLoader, random_split
 
 # get the path to the project root directory and add it to sys.path
@@ -28,7 +29,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.append(project_root)
 
 from agent.ppo.transformer_decoder_policy import TransformerPolicy
-from utils import CAV_dataset
+from utils import CAV_dataset, build_numpy_list_cav
 from utils.calculate_fov import calculate_fov_matrix_size
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
@@ -251,37 +252,30 @@ class CAV:
         negative_test_labels = np.zeros(len(negative_test))
         # Split the dataset
 
-        positive_train_clone = positive_train.clone().detach()
-        negative_train_clone = negative_train.clone().detach()
-        positive_test_clone = positive_test.clone().detach()
-        negative_test_clone = negative_test.clone().detach()
+ 
 
-        # TODO: Refactor this shit
-        positive_train_np = [
-            positive_train_clone[i].cpu().flatten().numpy()
-            for i in range(len(positive_train))
-        ]
-        negative_train_np = [
-            negative_train_clone[i].cpu().flatten().numpy()
-            for i in range(len(negative_train))
-        ]
+
+
+        positive_train_np = build_numpy_list_cav(positive_train)
+        negative_train_np = build_numpy_list_cav(negative_train)
+
+
         train_data = np.concatenate((positive_train_np, negative_train_np), axis=0)
         train_labels = np.concatenate(
             (positive_train_labels, negative_train_labels), axis=0
         )
 
-        positive_test_np = [
-            positive_test_clone[i].cpu().numpy().flatten()
-            for i in range(len(positive_test))
-        ]
-        negative_test_np = [
-            negative_test_clone[i].cpu().numpy().flatten()
-            for i in range(len(negative_test))
-        ]
+        positive_test_np = build_numpy_list_cav(positive_test)
+        negative_test_np = build_numpy_list_cav(negative_test)
+
         test_data = np.concatenate((positive_test_np, negative_test_np), axis=0)
         test_labels = np.concatenate(
             (positive_test_labels, negative_test_labels), axis=0
         )
+
+        # Shuffle the dataset
+        train_data, train_labels = shuffle(train_data, train_labels, random_state=42)
+        test_data, test_labels = shuffle(test_data, test_labels, random_state=42)
         # Train the model
         self.model = LogisticRegression(max_iter=300)
 

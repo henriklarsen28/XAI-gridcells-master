@@ -1,0 +1,82 @@
+{
+    "model_path": "../../../agent/ppo/models/transformers/kind-water-1258/actor",
+    "model_name": "kind-water-1258",
+    "model_episodes": [
+        400,
+        500,
+        600
+    ],
+    "policy_load_path": null,
+    "critic_load_path": null,
+    "env_name": "map_circular_4_19",
+    "env_path": "../../../env/random_generated_maps/goal/large/map_circular_4_19.csv",
+    "grid_length": 7,
+    "cav": {
+        "dataset_max_length": 1500,
+        "episode_numbers": [
+            "25",
+            "100",
+            "300",
+            "600"
+        ]
+    },
+    "train_mode": false,
+    "map_path_train": null,
+    "render": true,
+    "render_mode": "human",
+    "loss_function": "mse",
+    "learning_rate": 0.0003,
+    "batch_size": 3000,
+    "mini_batch_size": 64,
+    "n_mini_batches": 5,
+    "optimizer": "adam",
+    "PPO": {
+        "gamma": 0.99,
+        "gae_lambda": 0.95,
+        "n_updates_per_iteration": 10,
+        "clip": 0.2,
+        "clip_grad_normalization": 0.5,
+        "policy_kl_range": 0.0008,
+        "policy_params": 5,
+        "normalize_advantage": true
+    },
+    "map_path": null,
+    "max_steps_per_episode": 250,
+    "random_start_position": true,
+    "random_goal_position": false,
+    "rewards": {
+        "is_goal": 3,
+        "hit_wall": -0.001,
+        "has_not_moved": -0.005,
+        "new_square": 0.0,
+        "max_steps_reached": -0.025,
+        "penalty_per_step": -2e-05,
+        "number_of_squares_visible": 0,
+        "goal_in_sight": 0.001,
+        "is_false_goal": -0.01
+    },
+    "observation_space": {
+        "position": true,
+        "orientation": true,
+        "last_known_steps": 0,
+        "salt_and_pepper_noise": 0
+    },
+    "save_interval": 25,
+    "render_fps": 15,
+    "fov": 2.0943951023931953,
+    "ray_length": 15,
+    "number_of_rays": 40,
+    "transformer": {
+        "sequence_length": 30,
+        "n_embd": 196,
+        "n_head": 8,
+        "n_layer": 2,
+        "dropout": 0.2,
+        "decouple_positional_embedding": false
+    },
+    "entropy": {
+        "coefficient": 0.015,
+        "min": 0.0001,
+        "step": 1000
+    }
+}

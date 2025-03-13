@@ -43,7 +43,7 @@ def main():
         "grid_length": 7,  # 7 x 7 grid
         "cav": {
             "dataset_max_length": 1500,
-            "episode_numbers": ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900", "1050"],
+            "episode_numbers": ["25", "100", "300", "600"],
         },
         # RENDERING
         "train_mode": False,
@@ -151,7 +151,7 @@ def main():
     grid_size = env.num_cells
 
     # Build the dataset
-    build_csv_dataset(
+    """build_csv_dataset(
         env=env,
         device=device,
         config=config,
@@ -160,7 +160,7 @@ def main():
         dataset_subfolder=dataset_subfolder,
         grid_size=grid_size,
     )
-
+    """
     # Train CAV for grid observations
     for i in range(grid_size):
         print("CAVing for grid observation", i)
@@ -199,7 +199,7 @@ def main():
                 wandb.log(
                     {
                         f"CAV_{concept}": wandb.Image(
-                            os.path.join(save_path, f"plots/{concept}_action_{action}.png")
+                            os.path.join(save_path, f"plots/{concept}_{action}.png")
                         )
                     }
                 )
