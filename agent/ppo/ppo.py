@@ -17,8 +17,8 @@ from network import FeedForwardNN
 from network_policy import FeedForwardNNPolicy
 from torch import nn
 from torch.nn.utils.rnn import pad_sequence
-from gated_transformer_decoder import Transformer
-from gated_transformer_decoder_policy import TransformerPolicy
+from transformer_decoder import Transformer
+from transformer_decoder_policy import TransformerPolicy
 
 # from gated_transformer_decoder_combined import Transformer
 
@@ -29,7 +29,7 @@ torch.autograd.set_detect_anomaly(True)
 from env import SunburstMazeContinuous
 from utils import add_to_sequence, create_gif, padding_sequence
 
-map_path_random = os.path.join(project_root, "env/random_generated_maps/goal/large")
+map_path_random = os.path.join(project_root, "env/random_generated_maps/goal/stretched")
 map_path_random_files = [
     os.path.join(map_path_random, f)
     for f in os.listdir(map_path_random)
