@@ -16,7 +16,7 @@ import pygame
 from gymnasium import spaces
 
 from env.continuous.maze_game_continuous import Maze
-from env.file_manager import build_grid_layout, build_map
+from env.file_manager import build_grid_layout, build_map, extract_goal_coordinates
 from utils import calculate_fov_matrix_size, step_angle
 
 checkpoints = [
@@ -89,7 +89,7 @@ class SunburstMazeContinuous(gym.Env):
         self.velocity_x = 0
         self.velocity_y = 0
         self.position = None
-        self.goal = self.goal_position() if self.random_goal_position else self.extract_goal_coordinates()
+        self.goal = self.goal_position() if self.random_goal_position else extract_goal_coordinates(self.maze_file)
 
 
         # Episode step settings
@@ -203,21 +203,6 @@ class SunburstMazeContinuous(gym.Env):
         # Get the matrix of marked squares without rendering
         return output
 
-    def extract_goal_coordinates(self):
-        """
-        Extracts the goal coordinates from the maze filename.
-
-        Returns:
-            tuple: The goal coordinates extracted from the maze filename.
-        """
-        # Extract the goal coordinates from the maze filename
-        match = re.search(r"(\d+)_(\d+)\.csv$", self.maze_file)
-        if match:
-            self.goal = (int(match.group(1)), int(match.group(2)))
-        else:
-            self.goal = None
-        #print("Goal:", self.goal, "in maze file:", self.maze_file)
-        return self.goal
 
     def reset(self, seed=None, options=None) -> tuple:
 
