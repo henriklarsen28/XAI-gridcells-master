@@ -13,7 +13,7 @@ from PIL import Image
 
 from utils.calculate_fov import calculate_fov_matrix_size, step_angle
 
-from .file_manager import build_grid_layout, build_map
+from .file_manager import build_grid_layout, build_map, extract_goal_coordinates
 from .maze_game import Maze
 
 checkpoints = [
@@ -212,22 +212,6 @@ class SunburstMazeDiscrete(gym.Env):
         # Get the matrix of marked squares without rendering
         return np.array([*matrix, self.orientation])
 
-    def extract_goal_coordinates(self):
-        """
-        Extracts the goal coordinates from the maze filename.
-
-        Returns:
-            tuple: The goal coordinates extracted from the maze filename.
-        """
-         # Extract the goal coordinates from the maze filename
-        match = re.search(r'(\d+)_(\d+)\.csv$', self.maze_file)
-        if match:
-            self.goal = (int(match.group(1)), int(match.group(2)))
-        else:
-            self.goal = None
-        # print("Goal:", self.goal, "in maze file:", self.maze_file)
-        return self.goal
-
     def reset(self, seed=None, options=None) -> tuple:
 
         super().reset(seed=seed)
@@ -245,7 +229,7 @@ class SunburstMazeDiscrete(gym.Env):
         self.env_map = copy.deepcopy(self.initial_map)
 
         self.position = self.select_start_position()
-        self.goal = self.extract_goal_coordinates()
+        self.goal = extract_goal_coordinates()
 
         self.steps_current_episode = 0
 
