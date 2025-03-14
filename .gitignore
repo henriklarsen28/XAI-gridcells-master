@@ -51,3 +51,5 @@ xai/cav/continuous/dataset/
 xai/cav/discrete/dataset/*
 xai/cav/results/cav/*
 xai/cav/results/**/*.png
+xai/cav/continuous/results/*
+xai/cav/continuous/wandb/*
