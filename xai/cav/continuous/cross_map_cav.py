@@ -4,30 +4,31 @@ import sys
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 sys.path.append(project_root)
 
-import torch
 import pickle
-import numpy as np
 
-import seaborn as sns
 import matplotlib.pyplot as plt
-
+import numpy as np
+import seaborn as sns
+import torch
 from cav import create_activation_dataset
 from sklearn.linear_model import LogisticRegression
 from sklearn.utils import shuffle
-
+import multiprocessing
+from multiprocessing import Process, Queue
 
 from utils import build_numpy_list_cav
+
 
 class Cross_Map_CAV:
 
     def __init__(self, config):
         self.source_map = config["source_map"]
         self.target_map = config["target_map"]
+        self.model_name = config["model_name"]
 
         self.dataset_path = config["dataset_path"]
         self.model_path = config["model_path"]
         self.cav_model = config["cav_model"]
-
 
         self.embedding = False
         self.block = config["block"]
@@ -35,7 +36,6 @@ class Cross_Map_CAV:
             self.embedding = True
         self.episode = config["episode"]
         self.grid_length = config["grid_length"]
-        
 
         # TCAV stuff
         self.sensitivity = config["sensitivity"]
@@ -73,27 +73,26 @@ class Cross_Map_CAV:
         positive_test_labels = np.ones(len(positive_test))
         negative_test_labels = np.zeros(len(negative_test))
 
-        
         test_dataset = np.concatenate((positive_test, negative_test), axis=0)
-        test_labels = np.concatenate((positive_test_labels, negative_test_labels), axis=0)
+        test_labels = np.concatenate(
+            (positive_test_labels, negative_test_labels), axis=0
+        )
 
         test_dataset, test_labels = shuffle(test_dataset, test_labels, random_state=42)
 
         return test_dataset, test_labels
-    
+
     def test_cav(self, concept):
         test_dataset, test_labels = self.read_test_dataset(concept)
 
         cav_model = self.load_cav_model()
         accuracy = cav_model.score(test_dataset, test_labels)
-        return accuracy
+        return (accuracy - 0.5) * 2 # TODO: ReLU
 
     def test_grids(self):
-        # TODO: Create activation dataset on testing dataset
-        #TODO: Find number of grids
         num_grids = self.grid_length * self.grid_length
         accuracy_grid = {}
-        #for i in range(num_grids - 1):
+        # for i in range(num_grids - 1):
         for i in range(num_grids):
             concept = f"grid_observations_{i}"
             accuracy = self.test_cav(concept)
@@ -102,7 +101,7 @@ class Cross_Map_CAV:
 
         return accuracy_grid
 
-    def visualize_scores(self,accuracy_grid, grid_number):
+    def visualize_scores(self, accuracy_grid, grid_number):
 
         grid_length = self.grid_length
         scores = []
@@ -114,13 +113,42 @@ class Cross_Map_CAV:
 
         # Plot
         fig, ax = plt.subplots(figsize=(10, 10))
-        sns.heatmap(scores, annot=True, ax=ax)
-        ax.set_title(f"Accuracy of CAVs for each grid observation for grid {grid_number}")
-        save_path = f"results/remapping_src_{self.source_map}_target_{self.target_map}/grid_length_{grid_length}/models/grid_observations_{grid_number}"
+        sns.heatmap(scores, annot=True, ax=ax) # TODO: Color map is from 0 to 1
+        ax.set_title(
+            f"Accuracy of CAVs for each grid observation for grid {grid_number}"
+        )
+        save_path = f"results/{self.model_name}/remapping_src_{self.source_map}_target_{self.target_map}/grid_length_{grid_length}/"
         os.makedirs(save_path, exist_ok=True)
-        plt.savefig(f"{save_path}/grid_observations_{grid_number}_block_{self.block}_episode_{self.episode}.png")
-        plt.show()
+        plt.savefig(
+            f"{save_path}/grid_observations_{grid_number}_block_{self.block}_episode_{self.episode}.png"
+        )
+        #plt.show()
 
+
+def worker(
+    grid_number, source_map, target_map, model_name, grid_length, block, episode
+):
+
+    for i in grid_number:
+
+        config = {
+            "source_map": source_map,
+            "target_map": target_map,
+            "model_name": model_name,
+            "dataset_path": f"./dataset/{model_name}/{target_map}/grid_length_{grid_length}/test",  # TODO: Change which dataset grid to use
+            "model_path": f"../../../agent/ppo/models/transformers/{model_name}/actor/policy_network_{episode}.pth",
+            "cav_model": f"./results/{model_name}/{source_map}/grid_length_{grid_length}/models/grid_observations_{i}/grid_observations_{i}_block_{block}_episode_{episode}.pkl",
+            "grid_length": grid_length,
+            "block": block,
+            "episode": episode,
+            # TCAV stuff
+            "sensitivity": False,
+            "action_index": 0,
+        }
+        cav = Cross_Map_CAV(config)
+
+        accuracy_grid = cav.test_grids()
+        cav.visualize_scores(accuracy_grid, i)
 
 
 def main():
@@ -128,17 +156,17 @@ def main():
     source_map = "map_two_rooms_18_19"
     target_map = "map_conditional_prob_11_10"
     model_name = "kind-water-1258"
-    grid_number = 17
+    #grid_number = 17
 
     grid_length = 7
 
     block = 1
     episode = 600
 
-
-    config = {
+    """config = {
         "source_map": source_map,
         "target_map": target_map,
+        "model_name": model_name,
 
         "dataset_path": f"./dataset/{model_name}/{target_map}/grid_length_{grid_length}/test", # TODO: Change which dataset grid to use
         "model_path": f"../../../agent/ppo/models/transformers/{model_name}/actor/policy_network_{episode}.pth",
@@ -150,11 +178,34 @@ def main():
         # TCAV stuff
         "sensitivity": False,
         "action_index": 0,
-    }
+    }"""
 
-    cav = Cross_Map_CAV(config)
-    accuracy_grid = cav.test_grids()
-    cav.visualize_scores(accuracy_grid, grid_number)
+    grids = np.arange(grid_length * grid_length)
+    grids_per_worker = np.array_split(grids, multiprocessing.cpu_count()-2)
+
+    #print(grids_per_worker)
+
+    q = Queue()
+    processes = []
+    for i in range(multiprocessing.cpu_count()-2):
+        p = Process(
+            target=worker,
+            args=(
+                grids_per_worker[i],
+                source_map,
+                target_map,
+                model_name,
+                grid_length,
+                block,
+                episode,
+            ),
+        )
+        p.start()
+        processes.append(p)
+
+    #cav = Cross_Map_CAV(config)
+    #accuracy_grid = cav.test_grids()
+    #cav.visualize_scores(accuracy_grid, grid_number)
 
 
 if __name__ == "__main__":
