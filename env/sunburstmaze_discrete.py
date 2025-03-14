@@ -282,10 +282,6 @@ class SunburstMazeDiscrete(gym.Env):
                     self.wall_rays.add((x, y))
                     break
 
-                if self.env_map[x][y] == -1:  # Red wall
-                    marked_x, marked_y = self.find_relative_position_in_matrix(x, y)
-                    self.observed_red_wall.add((marked_x, marked_y))
-                    break
 
                 self.find_relative_position_in_matrix(x, y)
 
@@ -294,9 +290,6 @@ class SunburstMazeDiscrete(gym.Env):
 
         matrix = self.calculate_fov_matrix()
         return matrix
-
-    def find_relative_position_in_matrix(self, x2, y2):
-        x, y = self.position
 
     def find_relative_position_in_matrix(self, x2, y2):
         x, y = self.position
@@ -316,6 +309,8 @@ class SunburstMazeDiscrete(gym.Env):
         if self.orientation == 3:
             marked_x = self.matrix_middle_index + x2 - x
             marked_y = y - y2
+        else:
+            raise ValueError("Invalid orientation")
 
         # Add the goal square
         if (marked_x, marked_y) == self.goal:

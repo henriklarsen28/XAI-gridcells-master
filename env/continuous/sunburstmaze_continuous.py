@@ -444,8 +444,6 @@ class SunburstMazeContinuous(gym.Env):
             )
 
         self.steps_current_episode += 1
-        # Updated values
-        #observation = self._get_observation()
 
         if self.render_mode == "human":
             self.render()
@@ -501,17 +499,7 @@ class SunburstMazeContinuous(gym.Env):
         if self.is_false_goal():
             reward += self.rewards["is_false_goal"]
 
-        """if self.position not in self.visited_squares:
-            self.visited_squares.append(self.position)
-            reward += self.rewards["new_square"]"""
-
         reward += self.rewards["penalty_per_step"]
-
-        # Add reward for increasing the number of viewed squares
-        # viewed_squares_original = len(self.viewed_squares)
-        # self.viewed_squares.update(self.observed_squares_map)
-        # if viewed_squares_original < len(self.viewed_squares):
-        #    reward += len(self.viewed_squares) / self.map_observation_size
 
         return reward
 

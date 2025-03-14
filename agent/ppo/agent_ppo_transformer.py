@@ -19,10 +19,10 @@ import env.continuous.register_env as register_env
 
 # Define the CSV file path relative to the project root
 map_path_train = os.path.join(
-    project_root, "env/random_generated_maps/goal/large/map_circular_4_19.csv"
+    project_root, "env/random_generated_maps/goal/stretched/map_circular_4_19.csv"
 )
 
-map_path_random = os.path.join(project_root, "env/random_generated_maps/goal/large")
+map_path_random = os.path.join(project_root, "env/random_generated_maps/goal/stretched")
 map_path_random_files = [
     os.path.join(map_path_random, f)
     for f in os.listdir(map_path_random)
@@ -153,13 +153,14 @@ if __name__ == "__main__":
     config = {
         "train_mode": train_mode,
         "map_path_train": map_path_train,
+        "map_path_random_files": map_path_random_files,
         "render": render,
         "render_mode": render_mode,
         "policy_load_path": f"./model/transformers/ppo/model_fiery-shadow-1144/policy_network_200.pth",
         "critic_load_path": "/model/transformers/ppo/model_fiery-shadow-1144/critic_network_200.pth",
         # "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
-        "learning_rate": 3e-3,
+        "learning_rate": 3e-4,
         "batch_size": 4096,
         "n_mini_batches": 5,
         "optimizer": "adam",
