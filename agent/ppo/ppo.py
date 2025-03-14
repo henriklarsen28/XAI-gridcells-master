@@ -17,8 +17,8 @@ from network import FeedForwardNN
 from network_policy import FeedForwardNNPolicy
 from torch import nn
 from torch.nn.utils.rnn import pad_sequence
-from gated_transformer_decoder import Transformer
-from gated_transformer_decoder_policy import TransformerPolicy
+from transformer_decoder import Transformer
+from transformer_decoder_policy import TransformerPolicy
 import multiprocessing
 from multiprocessing import Process, Queue
 # from gated_transformer_decoder_combined import Transformer
@@ -454,7 +454,9 @@ class PPO_agent:
             q = Queue()
             processes = []
 
-            for i in range(multiprocessing.cpu_count()-6):
+            number_of_cores = min(multiprocessing.cpu_count(), (self.batch_size // self.max_steps) + 2)
+
+            for i in range(number_of_cores):
                 render = False
                 if i == 0:
                     render = True
