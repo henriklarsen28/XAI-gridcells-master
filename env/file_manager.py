@@ -52,6 +52,22 @@ def extract_goal_coordinates(map_path: str):
     #print("Goal:", self.goal, "in maze file:", self.maze_file)
     return goal
 
+def extract_goal_coordinates(map_path: str):
+    """
+    Extracts the goal coordinates from the maze filename.
+
+    Returns:
+        tuple: The goal coordinates extracted from the maze filename.
+    """
+    # Extract the goal coordinates from the maze filename
+    match = re.search(r"(\d+)_(\d+)\.csv$", map_path)
+    if match:
+        goal = (int(match.group(1)), int(match.group(2)))
+    else:
+        goal = None
+    #print("Goal:", self.goal, "in maze file:", self.maze_file)
+    return goal
+
 def get_map(map_path):
 
     map = map_path
