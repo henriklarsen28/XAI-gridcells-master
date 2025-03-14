@@ -175,7 +175,7 @@ if __name__ == "__main__":
             "env_loss_factor": 0.2,
             "normalize_advantage": True,
         },
-        "max_steps_per_episode": 30,
+        "max_steps_per_episode": 400,
         "random_start_position": True,
         "random_goal_position": False,
         "rewards": {
