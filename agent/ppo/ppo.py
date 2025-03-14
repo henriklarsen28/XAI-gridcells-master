@@ -17,9 +17,10 @@ from network import FeedForwardNN
 from network_policy import FeedForwardNNPolicy
 from torch import nn
 from torch.nn.utils.rnn import pad_sequence
-from gated_transformer_decoder import Transformer
-from gated_transformer_decoder_policy import TransformerPolicy
-
+from transformer_decoder import Transformer
+from transformer_decoder_policy import TransformerPolicy
+import multiprocessing
+from multiprocessing import Process, Queue
 # from gated_transformer_decoder_combined import Transformer
 
 torch.autograd.set_detect_anomaly(True)
@@ -132,8 +133,6 @@ class PPO_agent:
             device=self.rollout_device,
         )"""
 
-        """self.policy_attention_pooling = AttentionPooling(
-            hidden_dim=self.act_dim,"""
 
         self.policy_network.to(self.device)
         self.critic_network.to(self.device)
@@ -172,7 +171,6 @@ class PPO_agent:
                 rtgs,
                 batch_env_classes_target,
                 lens,
-                attention_masks,
                 frames,
             ) = self.rollout(iteration_counter)
 
@@ -202,9 +200,9 @@ class PPO_agent:
             value, _, _, _ = self.evaluate(
                 obs_batch,
                 actions_batch,
-                attention_masks,
             )
             # print(value, value.shape)
+            kl_div = self.kl_divergence(obs_batch, actions_batch)
 
             # advantages, returns = self.compute_gae(rewards_batch, value, dones_batch)
 
@@ -218,7 +216,7 @@ class PPO_agent:
 
             for _ in range(self.n_updates_per_iteration):
                 value_new, current_log_prob, entropy, batch_env_classes = self.evaluate(
-                    obs_batch, actions_batch, attention_masks
+                    obs_batch, actions_batch
                 )
                 # print("Current log prob: ", current_log_prob)
                 # print("Log probs batch: ", log_probs_batch)
@@ -286,7 +284,7 @@ class PPO_agent:
                     "Steps done": lens.mean(),
                     "Entropy": entropy.item(),
                     "Entropy coefficient": self.entorpy_coefficient,
-                    # "KL divergence": kl_div.item(),
+                    "KL divergence": kl_div.item(),
                     "Gif:": (wandb.Video(gif, fps=4, format="gif") if gif else None),
                 },
                 commit=True,
@@ -300,7 +298,6 @@ class PPO_agent:
             del rtgs
             del batch_env_classes_target
             del lens
-            del attention_masks
             del frames
             torch.cuda.empty_cache()
 
@@ -344,6 +341,87 @@ class PPO_agent:
         # Freeze the env class network
         for param in self.policy_network.env_class.parameters():
             param.requires_grad = False"""
+        
+
+    def worker(self, render, i_so_far, output_queue):
+        worker_obs = []
+        worker_acts = []
+        worker_log_probs = []
+        worker_rews = []
+        worker_env_classes_target = []
+        worker_dones = []
+        frames = []
+        ep_obs = deque(maxlen=self.sequence_length)
+        next_ep_obs = deque(maxlen=self.sequence_length)
+        ep_rews = []
+        ep_dones = []
+        # Reset environment
+        self.env = self.random_maps(env=self.env, random_map=True)
+        obs, _ = self.env.reset()
+        obs = torch.tensor(obs, dtype=torch.float, device=self.device)
+
+        done = False
+        for ep_t in range(self.max_steps):
+            print(ep_t)
+            ep_obs.append(obs)
+
+            tensor_obs = torch.stack(list(ep_obs)).to(self.device)
+            tensor_obs = self.preprocess_ep_obs(tensor_obs)
+
+            worker_obs.append(tensor_obs)
+
+            # Get action and log probability (transformer expects a full sequence, so we pass collected states)
+            action, log_prob = self.get_action(tensor_obs)  # Pass full sequence
+
+            obs, reward, terminated, truncated, _ = self.env.step(action)
+            obs = obs.flatten()
+            if self.render_mode == "rgb_array" and i_so_far % 30 == 0 and render:
+                frame = self.env.render()
+                if isinstance(frame, np.ndarray):
+                    frames.append(frame)
+
+            if self.render_mode == "human":
+                self.env.render()
+
+            done = terminated or truncated
+
+            obs = torch.tensor(obs, dtype=torch.float, device=self.device)
+            next_ep_obs.append(obs)
+
+            tensor_next_obs = torch.stack(list(next_ep_obs)).to(self.device)
+            tensor_next_obs = self.preprocess_ep_obs(tensor_next_obs)
+
+            ep_rews.append(reward)
+
+            ep_dones.append(done)
+
+            worker_acts.append(action)
+            worker_log_probs.append(log_prob)
+
+
+            env_id = torch.tensor(self.env_2_id[self.env.unwrapped.maze_file])
+            worker_env_classes_target.append(
+                torch.nn.functional.one_hot(
+                    env_id,
+                    num_classes=len(self.env_2_id)
+                )
+            )
+
+            # print("Env", self.env.unwrapped.maze_file, self.env_2_id[self.env.unwrapped.maze_file])
+
+            if done:
+                break
+
+        # Store full episode sequence
+
+        # batch_obs.append(torch.stack(ep_tensor_seq))
+        lens = ep_t + 1
+        worker_rews.append(torch.tensor(ep_rews, dtype=torch.float))
+        # batch_values.append(torch.tensor(ep_values, dtype=torch.float))
+        # batch_next_values.append(torch.tensor(ep_next_values, dtype=torch.float))
+        worker_dones.append(torch.tensor(ep_dones, dtype=torch.float))
+
+        output_queue.put((worker_obs, worker_acts, worker_log_probs, worker_rews, worker_dones, worker_env_classes_target, lens, frames))
 
     def rollout(self, i_so_far):
         """
@@ -355,7 +433,6 @@ class PPO_agent:
             batch_log_probs - Log probabilities of actions.
             batch_rtgs - Rewards-To-Go.
             batch_lens - Lengths of each episode.
-            attention_masks - Masking for padded sequences.
             frames - Rendered frames for visualization.
         """
 
@@ -367,91 +444,44 @@ class PPO_agent:
         batch_rtgs = []
         batch_lens = []
         batch_env_classes_target = []
-        batch_attention_masks = []
 
         frames = []
         t = 0  # Total timesteps in batch
 
         while t < self.batch_size:
-            ep_obs = deque(maxlen=self.sequence_length)
-            next_ep_obs = deque(maxlen=self.sequence_length)
-            ep_rews = []
-            ep_dones = []
-            ep_attention_mask = []
 
-            # Reset environment
-            self.env = self.random_maps(env=self.env, random_map=True)
-            obs, _ = self.env.reset()
-            obs = torch.tensor(obs, dtype=torch.float, device=self.device)
 
-            done = False
-            for ep_t in range(self.max_steps):
-                t += 1
+            q = Queue()
+            processes = []
 
-                ep_obs.append(obs)
+            number_of_cores = min(multiprocessing.cpu_count(), (self.batch_size // self.max_steps) + 2)
 
-                tensor_obs = torch.stack(list(ep_obs)).to(self.device)
-                tensor_obs = self.preprocess_ep_obs(tensor_obs)
+            for i in range(number_of_cores):
+                render = False
+                if i == 0:
+                    render = True
+                process = Process(target=self.worker, args=(render, i_so_far, q))
+                process.start()
+                processes.append(process)
+            print("Processes started")
+            results = [q.get() for p in processes]
+            print("Waiting for join")
+            for process in processes:
+                process.join()
+            print("Results:")
+            for res in results:
+                worker_obs, worker_acts, worker_log_probs, worker_rews, worker_dones, worker_env_classes_target, lens, frame = res
+                batch_obs.extend(worker_obs)
+                batch_acts.extend(worker_acts)
+                batch_log_probs.extend(worker_log_probs)
+                batch_rews.extend(worker_rews)
+                batch_dones.extend(worker_dones)
+                batch_lens.append(lens)
+                batch_env_classes_target.extend(worker_env_classes_target)
+                frames.extend(frame)
+                t += lens
 
-                batch_obs.append(tensor_obs)
 
-                # Get action and log probability (transformer expects a full sequence, so we pass collected states)
-                action, log_prob = self.get_action(tensor_obs)  # Pass full sequence
-
-                obs, reward, terminated, truncated, _ = self.env.step(action)
-                obs = obs.flatten()
-                if self.render_mode == "rgb_array" and i_so_far % 30 == 0:
-                    frame = self.env.render()
-                    if isinstance(frame, np.ndarray):
-                        frames.append(frame)
-
-                if self.render_mode == "human":
-                    self.env.render()
-
-                done = terminated or truncated
-
-                obs = torch.tensor(obs, dtype=torch.float, device=self.device)
-                next_ep_obs.append(obs)
-
-                tensor_next_obs = torch.stack(list(next_ep_obs)).to(self.device)
-                tensor_next_obs = self.preprocess_ep_obs(tensor_next_obs)
-
-                ep_rews.append(reward)
-
-                ep_dones.append(done)
-
-                batch_acts.append(action)
-                batch_log_probs.append(log_prob)
-
-                attention_masks = torch.zeros(self.sequence_length)
-                for length in range(len(ep_obs)):
-                    attention_masks[:length] = 1
-
-                ep_attention_mask.append(attention_masks)
-
-                env_id = torch.tensor(self.env_2_id[self.env.unwrapped.maze_file])
-                batch_env_classes_target.append(
-                    torch.nn.functional.one_hot(
-                        env_id,
-                        num_classes=len(self.env_2_id),
-                    )
-                )
-
-                # print("Env", self.env.unwrapped.maze_file, self.env_2_id[self.env.unwrapped.maze_file])
-
-                if done:
-                    break
-
-            # Store full episode sequence
-
-            # batch_obs.append(torch.stack(ep_tensor_seq))
-            batch_lens.append(ep_t + 1)
-            batch_rews.append(torch.tensor(ep_rews, dtype=torch.float))
-            # batch_values.append(torch.tensor(ep_values, dtype=torch.float))
-            # batch_next_values.append(torch.tensor(ep_next_values, dtype=torch.float))
-            batch_dones.append(torch.tensor(ep_dones, dtype=torch.float))
-
-            batch_attention_masks.append(torch.stack(ep_attention_mask))
 
         batch_obs = torch.stack(batch_obs)
         batch_acts = torch.tensor(batch_acts, dtype=torch.float, device=self.device)
@@ -463,19 +493,11 @@ class PPO_agent:
         # Compute RTGs
         batch_rtgs = self.compute_rtgs(batch_rews)
 
-        batch_env_classes_target = torch.stack(batch_env_classes_target)
+        batch_env_classes_target = torch.stack(batch_env_classes_target).to(self.device)
 
         # advantages, returns = self.compute_gae(batch_rews, batch_values, batch_next_values, batch_dones)
 
-        # FLatten the batch
-        # batch_obs = batch_obs.flatten(0,1)
-        # batch_acts = batch_acts.flatten(0,1)
-        # batch_log_probs = batch_log_probs.flatten(0,1)
-        # batch_dones = batch_dones.flatten(0, 1)
-        # batch_attention_masks = batch_attention_masks.flatten(0, 1)
-        # returns = returns.flatten(0,1)
-        # advantages = advantages.flatten(0,1)
-        # batch_lens = batch_lens.flatten(1,2)
+
         print(batch_lens)
         return (
             batch_obs,
@@ -485,7 +507,6 @@ class PPO_agent:
             batch_rtgs,
             batch_env_classes_target,
             batch_lens,
-            batch_attention_masks,
             frames,
         )
 
@@ -505,18 +526,17 @@ class PPO_agent:
         if len(obs.shape) == 2:
             obs = obs.unsqueeze(0)
 
-        attention_mask = (obs.sum(dim=-1) != 0).to(torch.float32)
         mean, std, _, _ = self.policy_network(obs)
         dist = torch.distributions.MultivariateNormal(mean, self.cov_mat)
 
         action = dist.sample()
         log_prob = dist.log_prob(action)
 
-        action = torch.tensor(action, dtype=torch.float32, device=self.device)
+        #action = torch.tensor(action, dtype=torch.float32, device=self.device)
         action = action.squeeze(0)
         return action.cpu().detach().numpy(), log_prob.detach()[0]
 
-    def evaluate(self, obs, actions, attention_mask):
+    def evaluate(self, obs, actions):
         # obs = self.preprocess_ep_obs(obs)
         V, _ = self.critic_network(obs)
         V = V.squeeze()
@@ -526,8 +546,8 @@ class PPO_agent:
         entropy = dist.entropy()
         return V, log_prob, entropy.mean(), env_class
 
-    def kl_divergence(self, obs, actions, attention_mask):
-        mean, _, _, _ = self.policy_network(obs, attention_mask)
+    def kl_divergence(self, obs, actions):
+        mean, _, _, _ = self.policy_network(obs)
         dist = torch.distributions.MultivariateNormal(mean, self.cov_mat)
         old_dist = torch.distributions.MultivariateNormal(actions, self.cov_mat)
 
