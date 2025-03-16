@@ -12,6 +12,7 @@ import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
+import torch.multiprocessing as mp
 import wandb
 from network import FeedForwardNN
 from network_policy import FeedForwardNNPolicy
@@ -154,7 +155,7 @@ class PPO_agent:
         self.cov_var = torch.full(size=(self.act_dim,), fill_value=0.5).to(self.device)
         self.cov_mat = torch.diag(self.cov_var).to(self.device)
 
-        multiprocessing.set_start_method("spawn", force=True)
+        mp.set_start_method("spawn", force=True)
 
 
     def learn(self, total_timesteps):
@@ -457,7 +458,8 @@ class PPO_agent:
             q = Queue()
             processes = []
 
-            number_of_cores = min(multiprocessing.cpu_count(), (self.batch_size // self.max_steps) + 2)
+            number_of_cores = int(os.getenv("SLURM_CPUS_PER_TASK", multiprocessing.cpu_count()))
+            number_of_cores = min(number_of_cores, (self.batch_size // self.max_steps) + 2)
 
             for i in range(number_of_cores):
                 render = False
