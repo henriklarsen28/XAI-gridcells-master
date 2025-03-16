@@ -347,7 +347,7 @@ class PPO_agent:
             param.requires_grad = False"""
         
 
-    def worker(self, render, i_so_far, output_queue):
+    def worker(self, env: SunburstMazeContinuous, render, i_so_far, output_queue):
         worker_obs = []
         worker_acts = []
         worker_log_probs = []
@@ -360,8 +360,8 @@ class PPO_agent:
         ep_rews = []
         ep_dones = []
         # Reset environment
-        self.env = self.random_maps(env=self.env, random_map=True)
-        obs, _ = self.env.reset()
+        #self.env = self.random_maps(env=self.env, random_map=True)
+        obs, _ = env.reset()
         obs = torch.tensor(obs, dtype=torch.float, device=self.device)
 
         done = False
@@ -377,15 +377,15 @@ class PPO_agent:
             # Get action and log probability (transformer expects a full sequence, so we pass collected states)
             action, log_prob = self.get_action(tensor_obs)  # Pass full sequence
 
-            obs, reward, terminated, truncated, _ = self.env.step(action)
+            obs, reward, terminated, truncated, _ = env.step(action)
             obs = obs.flatten()
             if self.render_mode == "rgb_array" and i_so_far % 30 == 0 and render:
-                frame = self.env.render()
+                frame = env.render()
                 if isinstance(frame, np.ndarray):
                     frames.append(frame)
 
             if self.render_mode == "human":
-                self.env.render()
+                env.render()
 
             done = terminated or truncated
 
@@ -464,7 +464,8 @@ class PPO_agent:
                 render = False
                 if i == 0:
                     render = True
-                process = mp.Process(target=self.worker, args=(render, i_so_far, q))
+                env = self.random_maps(env=self.env, random_map=True)
+                process = mp.Process(target=self.worker, args=(env, render, i_so_far, q))
                 process.start()
                 processes.append(process)
             print("Processes started")
