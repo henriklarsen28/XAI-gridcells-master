@@ -4,15 +4,19 @@ import sys
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.append(project_root)
 
+import multiprocessing
 import multiprocessing as mp
 import random as rd
+import time
+import queue
 from collections import deque
+from multiprocessing import Process, Queue
 
 import gymnasium as gym
 import numpy as np
 import torch
-import torch.nn.functional as F
 import torch.multiprocessing as mp
+import torch.nn.functional as F
 import wandb
 from network import FeedForwardNN
 from network_policy import FeedForwardNNPolicy
@@ -20,8 +24,7 @@ from torch import nn
 from torch.nn.utils.rnn import pad_sequence
 from transformer_decoder import Transformer
 from transformer_decoder_policy import TransformerPolicy
-import multiprocessing
-from multiprocessing import Process, Queue
+
 # from gated_transformer_decoder_combined import Transformer
 
 torch.autograd.set_detect_anomaly(True)
@@ -134,7 +137,6 @@ class PPO_agent:
             device=self.rollout_device,
         )"""
 
-
         self.policy_network.to(self.device)
         self.critic_network.to(self.device)
 
@@ -156,7 +158,6 @@ class PPO_agent:
         self.cov_mat = torch.diag(self.cov_var).to(self.device)
 
         mp.set_start_method("spawn", force=True)
-
 
     def learn(self, total_timesteps):
         self.__init_learn()
@@ -345,7 +346,6 @@ class PPO_agent:
         # Freeze the env class network
         for param in self.policy_network.env_class.parameters():
             param.requires_grad = False"""
-        
 
     def worker(self, env: SunburstMazeContinuous, render, i_so_far, output_queue):
         worker_obs = []
@@ -360,7 +360,7 @@ class PPO_agent:
         ep_rews = []
         ep_dones = []
         # Reset environment
-        #self.env = self.random_maps(env=self.env, random_map=True)
+        # self.env = self.random_maps(env=self.env, random_map=True)
         obs, _ = env.reset()
         obs = torch.tensor(obs, dtype=torch.float, device=self.device)
 
@@ -402,13 +402,9 @@ class PPO_agent:
             worker_acts.append(action)
             worker_log_probs.append(log_prob)
 
-
             env_id = torch.tensor(self.env_2_id[self.env.unwrapped.maze_file])
             worker_env_classes_target.append(
-                torch.nn.functional.one_hot(
-                    env_id,
-                    num_classes=len(self.env_2_id)
-                )
+                torch.nn.functional.one_hot(env_id, num_classes=len(self.env_2_id))
             )
 
             # print("Env", self.env.unwrapped.maze_file, self.env_2_id[self.env.unwrapped.maze_file])
@@ -425,7 +421,18 @@ class PPO_agent:
         # batch_next_values.append(torch.tensor(ep_next_values, dtype=torch.float))
         worker_dones.append(torch.tensor(ep_dones, dtype=torch.float))
 
-        output_queue.put((worker_obs, worker_acts, worker_log_probs, worker_rews, worker_dones, worker_env_classes_target, lens, frames))
+        output_queue.put(
+            (
+                worker_obs,
+                worker_acts,
+                worker_log_probs,
+                worker_rews,
+                worker_dones,
+                worker_env_classes_target,
+                lens,
+                frames,
+            )
+        )
 
     def rollout(self, i_so_far):
         """
@@ -453,13 +460,18 @@ class PPO_agent:
         t = 0  # Total timesteps in batch
 
         while t < self.batch_size:
-
+            print("T: ", t)
             q = mp.Queue()
             processes = []
 
-            number_of_cores = int(os.getenv("SLURM_CPUS_PER_TASK", multiprocessing.cpu_count()))
-            number_of_cores = min(number_of_cores, (self.batch_size // self.max_steps) + 2)
+            number_of_cores = int(
+                os.getenv("SLURM_CPUS_PER_TASK", multiprocessing.cpu_count())
+            )
+            number_of_cores = min(
+                number_of_cores, (self.batch_size // self.max_steps) + 2
+            )
 
+            
             for i in range(number_of_cores):
                 render = False
                 if i == 0:
@@ -468,23 +480,55 @@ class PPO_agent:
                 process = mp.Process(target=self.worker, args=(env, render, i_so_far, q))
                 process.start()
                 processes.append(process)
-            print("Processes started")
-            results = []
-            try:
-                for p in processes:
-                    results.append(q.get(timeout=240))
-            except Exception as e:
-                print("Timeout: A subprocess took too long.")
-                for p in processes:
-                    p.terminate()  # Force stop hanging processes
-                    
-            print("Waiting for join")
 
-            for process in processes:
-                process.join()
-            print("Results:")
+            print("Processes started")
+
+            results = []
+            timeout_duration = 1500  # Total timeout cap (e.g., 10 minutes)
+            start_time = time.time()
+
+            # Collect results with capped timeout
+            for i, p in enumerate(processes):
+                try:
+                    while True:
+                        # Check if the total timeout has passed
+                        if time.time() - start_time > timeout_duration:
+                            print("Global timeout reached!")
+                            p.terminate()
+                            break
+
+                        # Detect if process dies early
+                        if not p.is_alive() and q.empty():
+                            print(f"Process {i} died unexpectedly.")
+                            break
+
+                        # Try to get result with a short check interval
+                        try:
+                            result = q.get(timeout=5)
+                            results.append(result)
+                            break
+                        except queue.Empty:
+                            continue  # Keep checking
+
+                except Exception as e:
+                    print(f"Error collecting result from process {i}: {e}")
+                    p.terminate()
+
+            # Ensure all processes are joined properly
+            print("Waiting for join")
+            for p in processes:
+                p.join()
             for res in results:
-                worker_obs, worker_acts, worker_log_probs, worker_rews, worker_dones, worker_env_classes_target, lens, frame = res
+                (
+                    worker_obs,
+                    worker_acts,
+                    worker_log_probs,
+                    worker_rews,
+                    worker_dones,
+                    worker_env_classes_target,
+                    lens,
+                    frame,
+                ) = res
                 batch_obs.extend(worker_obs)
                 batch_acts.extend(worker_acts)
                 batch_log_probs.extend(worker_log_probs)
@@ -494,8 +538,6 @@ class PPO_agent:
                 batch_env_classes_target.extend(worker_env_classes_target)
                 frames.extend(frame)
                 t += lens
-
-
 
         batch_obs = torch.stack(batch_obs)
         batch_acts = torch.tensor(batch_acts, dtype=torch.float, device=self.device)
@@ -510,7 +552,6 @@ class PPO_agent:
         batch_env_classes_target = torch.stack(batch_env_classes_target).to(self.device)
 
         # advantages, returns = self.compute_gae(batch_rews, batch_values, batch_next_values, batch_dones)
-
 
         print(batch_lens)
         return (
@@ -546,7 +587,7 @@ class PPO_agent:
         action = dist.sample()
         log_prob = dist.log_prob(action)
 
-        #action = torch.tensor(action, dtype=torch.float32, device=self.device)
+        # action = torch.tensor(action, dtype=torch.float32, device=self.device)
         action = action.squeeze(0)
         return action.cpu().detach().numpy(), log_prob.detach()[0]
 
