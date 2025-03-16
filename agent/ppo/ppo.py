@@ -154,6 +154,9 @@ class PPO_agent:
         self.cov_var = torch.full(size=(self.act_dim,), fill_value=0.5).to(self.device)
         self.cov_mat = torch.diag(self.cov_var).to(self.device)
 
+        multiprocessing.set_start_method("spawn", force=True)
+
+
     def learn(self, total_timesteps):
         self.__init_learn()
         timestep_counter = 0
