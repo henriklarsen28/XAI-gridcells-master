@@ -423,12 +423,11 @@ class PPO_agent:
 
         # Move everything to the cpu
         worker_obs = [obs.cpu() for obs in worker_obs]
-        worker_acts = [act.cpu() for act in worker_acts]
         worker_log_probs = [log_prob.cpu() for log_prob in worker_log_probs]
         worker_rews = [rew.cpu() for rew in worker_rews]
         worker_dones = [done.cpu() for done in worker_dones]
         worker_env_classes_target = [env.cpu() for env in worker_env_classes_target]
-        
+
         output_queue.put(
             (
                 worker_obs,
@@ -547,13 +546,12 @@ class PPO_agent:
                 frames.extend(frame)
                 t += lens
 
-        batch_obs = torch.stack(batch_obs)
-        batch_acts = torch.tensor(batch_acts, dtype=torch.float, device=self.device)
+        batch_obs = torch.stack(batch_obs).to(self.device)
+        batch_acts = torch.tensor(batch_acts, dtype=torch.float, device=self.device).to(self.device)
         batch_log_probs = torch.tensor(
             batch_log_probs, dtype=torch.float, device=self.device
-        )
-        batch_lens = torch.tensor(batch_lens)
-
+        ).to(self.device)
+        batch_lens = torch.tensor(batch_lens).to(self.device)
         # Compute RTGs
         batch_rtgs = self.compute_rtgs(batch_rews)
 
