@@ -490,36 +490,21 @@ class PPO_agent:
 
             print("Processes started")
 
-            results = []
-            timeout_duration = 1500  # Total timeout cap (e.g., 10 minutes)
+             results = []
+            timeout_duration = 1500  # Increased timeout (e.g., 20 minutes)
             start_time = time.time()
 
-            # Collect results with capped timeout
+            # Collect results
             for i, p in enumerate(processes):
                 try:
-                    while True:
-                        # Check if the total timeout has passed
-                        if time.time() - start_time > timeout_duration:
-                            print("Global timeout reached!")
-                            p.terminate()
-                            break
-
-                        # Detect if process dies early
-                        if not p.is_alive() and q.empty():
-                            print(f"Process {i} died unexpectedly.")
-                            break
-
-                        # Try to get result with a short check interval
-                        try:
-                            result = q.get(timeout=5)
-                            results.append(result)
-                            break
-                        except queue.Empty:
-                            continue  # Keep checking
+                    # Wait for each process result with the full timeout
+                    result = q.get(timeout=timeout_duration)
+                    results.append(result)
 
                 except Exception as e:
-                    print(f"Error collecting result from process {i}: {e}")
+                    print(f"Process {i} timed out or failed: {e}")
                     p.terminate()
+                    #results.append(None)
 
             # Ensure all processes are joined properly
             print("Waiting for join")
