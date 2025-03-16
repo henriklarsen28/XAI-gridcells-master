@@ -421,6 +421,14 @@ class PPO_agent:
         # batch_next_values.append(torch.tensor(ep_next_values, dtype=torch.float))
         worker_dones.append(torch.tensor(ep_dones, dtype=torch.float))
 
+        # Move everything to the cpu
+        worker_obs = [obs.cpu() for obs in worker_obs]
+        worker_acts = [act.cpu() for act in worker_acts]
+        worker_log_probs = [log_prob.cpu() for log_prob in worker_log_probs]
+        worker_rews = [rew.cpu() for rew in worker_rews]
+        worker_dones = [done.cpu() for done in worker_dones]
+        worker_env_classes_target = [env.cpu() for env in worker_env_classes_target]
+        
         output_queue.put(
             (
                 worker_obs,
@@ -468,7 +476,7 @@ class PPO_agent:
                 os.getenv("SLURM_CPUS_PER_TASK", multiprocessing.cpu_count())
             )
             number_of_cores = min(
-                number_of_cores, (self.batch_size // self.max_steps) + 2
+                number_of_cores, (self.batch_size // self.max_steps) + 3
             )
 
             
