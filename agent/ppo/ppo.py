@@ -469,8 +469,17 @@ class PPO_agent:
                 process.start()
                 processes.append(process)
             print("Processes started")
-            results = [q.get() for p in processes]
+            results = []
+            try:
+                for p in processes:
+                    results.append(q.get(timeout=240))
+            except Exception as e:
+                print("Timeout: A subprocess took too long.")
+                for p in processes:
+                    p.terminate()  # Force stop hanging processes
+                    
             print("Waiting for join")
+
             for process in processes:
                 process.join()
             print("Results:")
