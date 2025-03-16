@@ -128,10 +128,10 @@ def stretch_map_vertically(map_path: str, stretch_factor=1):
 
 
 def main():
-    map_path = "goal/large/map_two_rooms_18_19.csv"
+    map_path = "goal/large/map_circular_4_19.csv"
     dst_file = map_path.split("/")[-1]
 
-    folder = "goal/streched/"
+    folder = "goal/stretched/"
     os.makedirs(folder, exist_ok=True)
     map_name = "map_two_rooms"
     
