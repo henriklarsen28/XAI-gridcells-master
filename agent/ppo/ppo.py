@@ -490,7 +490,7 @@ class PPO_agent:
 
             print("Processes started")
 
-             results = []
+            results = []
             timeout_duration = 1500  # Increased timeout (e.g., 20 minutes)
             start_time = time.time()
 
