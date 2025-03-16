@@ -454,8 +454,7 @@ class PPO_agent:
 
         while t < self.batch_size:
 
-
-            q = Queue()
+            q = mp.Queue()
             processes = []
 
             number_of_cores = int(os.getenv("SLURM_CPUS_PER_TASK", multiprocessing.cpu_count()))
@@ -465,7 +464,7 @@ class PPO_agent:
                 render = False
                 if i == 0:
                     render = True
-                process = Process(target=self.worker, args=(render, i_so_far, q))
+                process = mp.Process(target=self.worker, args=(render, i_so_far, q))
                 process.start()
                 processes.append(process)
             print("Processes started")
