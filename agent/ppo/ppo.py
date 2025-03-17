@@ -347,7 +347,7 @@ class PPO_agent:
         for param in self.policy_network.env_class.parameters():
             param.requires_grad = False"""
 
-    def worker(self, env: SunburstMazeContinuous, render, i_so_far, output_queue):
+    def worker(self, env: SunburstMazeContinuous, policy_network, render, i_so_far, output_queue):
         worker_obs = []
         worker_acts = []
         worker_log_probs = []
@@ -375,7 +375,7 @@ class PPO_agent:
             worker_obs.append(tensor_obs)
 
             # Get action and log probability (transformer expects a full sequence, so we pass collected states)
-            action, log_prob = self.get_action(tensor_obs)  # Pass full sequence
+            action, log_prob = self.get_action(tensor_obs, policy_network)  # Pass full sequence
 
             obs, reward, terminated, truncated, _ = env.step(action)
             obs = obs.flatten()
@@ -428,6 +428,7 @@ class PPO_agent:
         worker_dones = [done.cpu() for done in worker_dones]
         worker_env_classes_target = [env.cpu() for env in worker_env_classes_target]
 
+        del policy_network
         output_queue.put(
             (
                 worker_obs,
@@ -484,7 +485,7 @@ class PPO_agent:
                 if i == 0:
                     render = True
                 env = self.random_maps(env=self.env, random_map=True)
-                process = mp.Process(target=self.worker, args=(env, render, i_so_far, q))
+                process = mp.Process(target=self.worker, args=(env, self.policy_network, render, i_so_far, q))
                 process.start()
                 processes.append(process)
 
@@ -567,12 +568,12 @@ class PPO_agent:
 
         return padded_obs
 
-    def get_action(self, obs):
+    def get_action(self, obs, policy_network):
 
         if len(obs.shape) == 2:
             obs = obs.unsqueeze(0)
 
-        mean, std, _, _ = self.policy_network(obs)
+        mean, std, _, _ = policy_network(obs)
         dist = torch.distributions.MultivariateNormal(mean, self.cov_mat)
 
         action = dist.sample()
