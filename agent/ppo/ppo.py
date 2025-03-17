@@ -6,9 +6,9 @@ sys.path.append(project_root)
 
 import multiprocessing
 import multiprocessing as mp
+import queue
 import random as rd
 import time
-import queue
 from collections import deque
 from multiprocessing import Process, Queue
 
@@ -347,7 +347,9 @@ class PPO_agent:
         for param in self.policy_network.env_class.parameters():
             param.requires_grad = False"""
 
-    def worker(self, env: SunburstMazeContinuous, policy_network, render, i_so_far, output_queue):
+    def run_episode(
+        self, env: SunburstMazeContinuous, policy_network, render, i_so_far
+    ):
         worker_obs = []
         worker_acts = []
         worker_log_probs = []
@@ -375,7 +377,9 @@ class PPO_agent:
             worker_obs.append(tensor_obs)
 
             # Get action and log probability (transformer expects a full sequence, so we pass collected states)
-            action, log_prob = self.get_action(tensor_obs, policy_network)  # Pass full sequence
+            action, log_prob = self.get_action(
+                tensor_obs, policy_network
+            )  # Pass full sequence
 
             obs, reward, terminated, truncated, _ = env.step(action)
             obs = obs.flatten()
@@ -429,7 +433,28 @@ class PPO_agent:
         worker_env_classes_target = [env.cpu() for env in worker_env_classes_target]
 
         del policy_network
-        output_queue.put(
+
+        return (
+            worker_obs,
+            worker_acts,
+            worker_log_probs,
+            worker_rews,
+            worker_dones,
+            worker_env_classes_target,
+            lens,
+            frames,
+        )
+
+    def worker(
+        self,
+        env: SunburstMazeContinuous,
+        policy_network,
+        render,
+        i_so_far,
+        output_queue,
+    ):
+        try:
+            result = self.run(env, policy_network, render, i_so_far)
             (
                 worker_obs,
                 worker_acts,
@@ -439,8 +464,23 @@ class PPO_agent:
                 worker_env_classes_target,
                 lens,
                 frames,
+            ) = result
+
+            output_queue.put(
+                (
+                    worker_obs,
+                    worker_acts,
+                    worker_log_probs,
+                    worker_rews,
+                    worker_dones,
+                    worker_env_classes_target,
+                    lens,
+                    frames,
+                )
             )
-        )
+        except Exception as e:
+            print(f"Worker failed: {e}")
+            output_queue.put(None)
 
     def rollout(self, i_so_far):
         """
@@ -479,13 +519,15 @@ class PPO_agent:
                 number_of_cores, (self.batch_size // self.max_steps) + 3
             )
 
-            
             for i in range(number_of_cores):
                 render = False
                 if i == 0:
                     render = True
                 env = self.random_maps(env=self.env, random_map=True)
-                process = mp.Process(target=self.worker, args=(env, self.policy_network, render, i_so_far, q))
+                process = mp.Process(
+                    target=self.worker,
+                    args=(env, self.policy_network, render, i_so_far, q),
+                )
                 process.start()
                 processes.append(process)
 
@@ -493,7 +535,6 @@ class PPO_agent:
 
             results = []
             timeout_duration = 1500  # Increased timeout (e.g., 20 minutes)
-            start_time = time.time()
 
             # Collect results
             for i, p in enumerate(processes):
@@ -505,13 +546,16 @@ class PPO_agent:
                 except Exception as e:
                     print(f"Process {i} timed out or failed: {e}")
                     p.terminate()
-                    #results.append(None)
+                    # results.append(None)
 
             # Ensure all processes are joined properly
             print("Waiting for join")
             for p in processes:
                 p.join()
             for res in results:
+                if res is None:
+                    continue
+
                 (
                     worker_obs,
                     worker_acts,
@@ -533,7 +577,9 @@ class PPO_agent:
                 t += lens
 
         batch_obs = torch.stack(batch_obs).to(self.device)
-        batch_acts = torch.tensor(batch_acts, dtype=torch.float, device=self.device).to(self.device)
+        batch_acts = torch.tensor(batch_acts, dtype=torch.float, device=self.device).to(
+            self.device
+        )
         batch_log_probs = torch.tensor(
             batch_log_probs, dtype=torch.float, device=self.device
         ).to(self.device)
