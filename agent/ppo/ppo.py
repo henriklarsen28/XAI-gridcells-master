@@ -534,7 +534,7 @@ class PPO_agent:
             print("Processes started")
 
             results = []
-            timeout_duration = 1500  # Increased timeout (e.g., 20 minutes)
+            timeout_duration = 5  # Increased timeout (e.g., 20 minutes)
 
             # Collect results
             for i, p in enumerate(processes):
@@ -545,7 +545,7 @@ class PPO_agent:
 
                 except Exception as e:
                     print(f"Process {i} timed out or failed: {e}")
-                    p.terminate()
+                    #p.terminate()
                     # results.append(None)
 
             # Ensure all processes are joined properly
