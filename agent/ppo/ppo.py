@@ -454,7 +454,7 @@ class PPO_agent:
         output_queue,
     ):
         try:
-            result = self.run(env, policy_network, render, i_so_far)
+            result = self.run_episode(env, policy_network, render, i_so_far)
             (
                 worker_obs,
                 worker_acts,
