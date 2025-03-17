@@ -492,6 +492,7 @@ class PPO_agent:
             batch_log_probs - Log probabilities of actions.
             batch_rtgs - Rewards-To-Go.
             batch_lens - Lengths of each episode.
+            attention_masks - Masking for padded sequences.
             frames - Rendered frames for visualization.
         """
 
@@ -503,92 +504,103 @@ class PPO_agent:
         batch_rtgs = []
         batch_lens = []
         batch_env_classes_target = []
+        batch_attention_masks = []
 
         frames = []
         t = 0  # Total timesteps in batch
 
         while t < self.batch_size:
-            print("T: ", t)
-            q = mp.Queue()
-            processes = []
+            ep_obs = deque(maxlen=self.sequence_length)
+            next_ep_obs = deque(maxlen=self.sequence_length)
+            ep_rews = []
+            ep_dones = []
+            ep_attention_mask = []
 
-            number_of_cores = int(
-                os.getenv("SLURM_CPUS_PER_TASK", multiprocessing.cpu_count())
-            )
-            number_of_cores = min(
-                number_of_cores, (self.batch_size // self.max_steps) + 3
-            )
+            # Reset environment
+            self.env = self.random_maps(env=self.env, random_map=True)
+            obs, _ = self.env.reset()
+            obs = torch.tensor(obs, dtype=torch.float, device=self.device)
 
-            for i in range(number_of_cores):
-                render = False
-                if i == 0:
-                    render = True
-                env = self.random_maps(env=self.env, random_map=True)
-                process = mp.Process(
-                    target=self.worker,
-                    args=(env, self.policy_network, render, i_so_far, q),
+            done = False
+            for ep_t in range(self.max_steps):
+                t += 1
+
+                ep_obs.append(obs)
+
+                tensor_obs = torch.stack(list(ep_obs)).to(self.device)
+                tensor_obs = self.preprocess_ep_obs(tensor_obs)
+
+                batch_obs.append(tensor_obs)
+
+                # Get action and log probability (transformer expects a full sequence, so we pass collected states)
+                action, log_prob = self.get_action(tensor_obs)  # Pass full sequence
+
+                obs, reward, terminated, truncated, _ = self.env.step(action)
+                obs = obs.flatten()
+                if self.render_mode == "rgb_array" and i_so_far % 30 == 0:
+                    frame = self.env.render()
+                    if isinstance(frame, np.ndarray):
+                        frames.append(frame)
+
+                if self.render_mode == "human":
+                    self.env.render()
+
+                done = terminated or truncated
+
+                obs = torch.tensor(obs, dtype=torch.float, device=self.device)
+                next_ep_obs.append(obs)
+
+                tensor_next_obs = torch.stack(list(next_ep_obs)).to(self.device)
+                tensor_next_obs = self.preprocess_ep_obs(tensor_next_obs)
+
+                ep_rews.append(reward)
+
+                ep_dones.append(done)
+
+                batch_acts.append(action)
+                batch_log_probs.append(log_prob)
+
+                attention_masks = torch.zeros(self.sequence_length)
+                for length in range(len(ep_obs)):
+                    attention_masks[:length] = 1
+
+                ep_attention_mask.append(attention_masks)
+
+                env_id = torch.tensor(self.env_2_id[self.env.unwrapped.maze_file])
+                batch_env_classes_target.append(
+                    torch.nn.functional.one_hot(
+                        env_id,
+                        num_classes=len(self.env_2_id),
+                    )
                 )
-                process.start()
-                processes.append(process)
 
-            print("Processes started")
+                # print("Env", self.env.unwrapped.maze_file, self.env_2_id[self.env.unwrapped.maze_file])
 
-            results = []
-            timeout_duration = 1000  # Increased timeout (e.g., 20 minutes)
+                if done:
+                    break
 
-            # Collect results
-            for i, p in enumerate(processes):
-                try:
-                    # Wait for each process result with the full timeout
-                    result = q.get(timeout=timeout_duration)
-                    results.append(result)
+            # Store full episode sequence
 
-                except Exception as e:
-                    print(f"Process {i} timed out or failed: {e}")
-                    #p.terminate()
-                    # results.append(None)
+            # batch_obs.append(torch.stack(ep_tensor_seq))
+            batch_lens.append(ep_t + 1)
+            batch_rews.append(torch.tensor(ep_rews, dtype=torch.float))
+            # batch_values.append(torch.tensor(ep_values, dtype=torch.float))
+            # batch_next_values.append(torch.tensor(ep_next_values, dtype=torch.float))
+            batch_dones.append(torch.tensor(ep_dones, dtype=torch.float))
 
-            # Ensure all processes are joined properly
-            print("Waiting for join")
-            for p in processes:
-                p.join()
-            for res in results:
-                if res is None:
-                    continue
+            batch_attention_masks.append(torch.stack(ep_attention_mask))
 
-                (
-                    worker_obs,
-                    worker_acts,
-                    worker_log_probs,
-                    worker_rews,
-                    worker_dones,
-                    worker_env_classes_target,
-                    lens,
-                    frame,
-                ) = res
-                batch_obs.extend(worker_obs)
-                batch_acts.extend(worker_acts)
-                batch_log_probs.extend(worker_log_probs)
-                batch_rews.extend(worker_rews)
-                batch_dones.extend(worker_dones)
-                batch_lens.append(lens)
-                batch_env_classes_target.extend(worker_env_classes_target)
-                frames.extend(frame)
-                t += lens
-
-        batch_obs = torch.stack(batch_obs).to(self.device)
-        batch_acts = torch.tensor(batch_acts, dtype=torch.float, device=self.device).to(
-            self.device
-        )
+        batch_obs = torch.stack(batch_obs)
+        batch_acts = torch.tensor(batch_acts, dtype=torch.float, device=self.device)
         batch_log_probs = torch.tensor(
             batch_log_probs, dtype=torch.float, device=self.device
-        ).to(self.device)
-        batch_lens = torch.tensor(batch_lens).to(self.device)
+        )
+        batch_lens = torch.tensor(batch_lens)
+
         # Compute RTGs
         batch_rtgs = self.compute_rtgs(batch_rews)
 
-        batch_env_classes_target = torch.stack(batch_env_classes_target).to(self.device)
-
+        batch_env_classes_target = torch.stack(batch_env_classes_target)
         # advantages, returns = self.compute_gae(batch_rews, batch_values, batch_next_values, batch_dones)
 
         print(batch_lens)
