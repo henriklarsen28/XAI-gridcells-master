@@ -74,7 +74,7 @@ def play_with_keyboard():
     }
 
     env = SunburstMazeContinuous(
-        maze_file=f"{project_root}/env/random_generated_maps/goal/map_circular_4_19.csv",
+        maze_file=f"{project_root}/env/random_generated_maps/goal/stretched/map_two_rooms_horizontally_18_40.csv",
         render_mode="human",
         rewards=config["rewards"],
         random_start_position=config["random_start_position"],
