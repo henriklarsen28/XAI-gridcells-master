@@ -575,7 +575,7 @@ class PPO_agent:
         # Compute RTGs
         batch_rtgs = self.compute_rtgs(batch_rews)
 
-        batch_env_classes_target = torch.stack(batch_env_classes_target)
+        batch_env_classes_target = torch.stack(batch_env_classes_target).to(self.device)
         # advantages, returns = self.compute_gae(batch_rews, batch_values, batch_next_values, batch_dones)
 
         # print(batch_lens)
