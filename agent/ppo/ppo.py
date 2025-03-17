@@ -340,100 +340,21 @@ class PPO_agent:
     """ def run_episode(
         self, env: SunburstMazeContinuous, policy_network, render, i_so_far
     ):
-        worker_obs = []
-        worker_acts = []
-        worker_log_probs = []
-        worker_rews = []
-        worker_env_classes_target = []
-        worker_dones = []
-        frames = []
-        ep_obs = deque(maxlen=self.sequence_length)
-        next_ep_obs = deque(maxlen=self.sequence_length)
-        ep_rews = []
-        ep_dones = []
-        # Reset environment
-        # self.env = self.random_maps(env=self.env, random_map=True)
-        obs, _ = env.reset()
-        obs = torch.tensor(obs, dtype=torch.float, device=self.device)
+        self.policy_optimizer.zero_grad()
+        env_class_loss.backward(retain_graph=True)
+        self.policy_optimizer.step()
 
-        done = False
-        for ep_t in range(self.max_steps):
-            print(ep_t)
-            ep_obs.append(obs)
+        # Unfreeze the rest of the policy network
+        for param in self.policy_network.blocks.parameters():
+            param.requires_grad = True
+        for param in self.policy_network.ln_f.parameters():
+            param.requires_grad = True
+        for param in self.policy_network.output.parameters():
+            param.requires_grad = True
 
-            tensor_obs = torch.stack(list(ep_obs)).to(self.device)
-            tensor_obs = self.preprocess_ep_obs(tensor_obs)
-
-            worker_obs.append(tensor_obs)
-
-            # Get action and log probability (transformer expects a full sequence, so we pass collected states)
-            action, log_prob = self.get_action(
-                tensor_obs, policy_network
-            )  # Pass full sequence
-
-            obs, reward, terminated, truncated, _ = env.step(action)
-            obs = obs.flatten()
-            if self.render_mode == "rgb_array" and i_so_far % 30 == 0 and render:
-                frame = env.render()
-                if isinstance(frame, np.ndarray):
-                    frames.append(frame)
-
-            if self.render_mode == "human":
-                env.render()
-
-            done = terminated or truncated
-
-            obs = torch.tensor(obs, dtype=torch.float, device=self.device)
-            next_ep_obs.append(obs)
-
-            tensor_next_obs = torch.stack(list(next_ep_obs)).to(self.device)
-            tensor_next_obs = self.preprocess_ep_obs(tensor_next_obs)
-
-            ep_rews.append(reward)
-
-            ep_dones.append(done)
-
-            worker_acts.append(action)
-            worker_log_probs.append(log_prob)
-
-            env_id = torch.tensor(self.env_2_id[self.env.unwrapped.maze_file])
-            worker_env_classes_target.append(
-                torch.nn.functional.one_hot(env_id, num_classes=len(self.env_2_id))
-            )
-
-            # print("Env", self.env.unwrapped.maze_file, self.env_2_id[self.env.unwrapped.maze_file])
-
-            if done:
-                break
-
-        # Store full episode sequence
-
-        # batch_obs.append(torch.stack(ep_tensor_seq))
-        lens = ep_t + 1
-        worker_rews.append(torch.tensor(ep_rews, dtype=torch.float))
-        # batch_values.append(torch.tensor(ep_values, dtype=torch.float))
-        # batch_next_values.append(torch.tensor(ep_next_values, dtype=torch.float))
-        worker_dones.append(torch.tensor(ep_dones, dtype=torch.float))
-
-        # Move everything to the cpu
-        worker_obs = [obs.cpu() for obs in worker_obs]
-        worker_log_probs = [log_prob.cpu() for log_prob in worker_log_probs]
-        worker_rews = [rew.cpu() for rew in worker_rews]
-        worker_dones = [done.cpu() for done in worker_dones]
-        worker_env_classes_target = [env.cpu() for env in worker_env_classes_target]
-
-        del policy_network
-
-        return (
-            worker_obs,
-            worker_acts,
-            worker_log_probs,
-            worker_rews,
-            worker_dones,
-            worker_env_classes_target,
-            lens,
-            frames,
-        )
+        # Freeze the env class network
+        for param in self.policy_network.env_class.parameters():
+            param.requires_grad = False
 
     def worker(
         self,
