@@ -534,7 +534,7 @@ class PPO_agent:
             print("Processes started")
 
             results = []
-            timeout_duration = 5  # Increased timeout (e.g., 20 minutes)
+            timeout_duration = 1000  # Increased timeout (e.g., 20 minutes)
 
             # Collect results
             for i, p in enumerate(processes):
