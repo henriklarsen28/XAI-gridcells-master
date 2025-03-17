@@ -320,34 +320,8 @@ class PPO_agent:
                     f"./model/transformers/ppo/model_{self.run.name}/network_{iteration_counter}.pth",
                 )"""
 
-    def env_network_backprop(self, env_class_loss):
-        """# Freeze the rest of the policy network
-        for param in self.policy_network.blocks.parameters():
-            param.requires_grad = False
-        for param in self.policy_network.ln_f.parameters():
-            param.requires_grad = False
-        for param in self.policy_network.output.parameters():
-            param.requires_grad = False
-        for param in self.policy_network.env_class.parameters():
-                param.requires_grad = True
 
-        self.policy_optimizer.zero_grad()
-        env_class_loss.backward(retain_graph=True)
-        self.policy_optimizer.step()
-
-        # Unfreeze the rest of the policy network
-        for param in self.policy_network.blocks.parameters():
-            param.requires_grad = True
-        for param in self.policy_network.ln_f.parameters():
-            param.requires_grad = True
-        for param in self.policy_network.output.parameters():
-            param.requires_grad = True
-
-        # Freeze the env class network
-        for param in self.policy_network.env_class.parameters():
-            param.requires_grad = False"""
-
-    def run_episode(
+    """ def run_episode(
         self, env: SunburstMazeContinuous, policy_network, render, i_so_far
     ):
         worker_obs = []
@@ -481,6 +455,7 @@ class PPO_agent:
         except Exception as e:
             print(f"Worker failed: {e}")
             output_queue.put(None)
+    """
 
     def rollout(self, i_so_far):
         """
@@ -603,7 +578,7 @@ class PPO_agent:
         batch_env_classes_target = torch.stack(batch_env_classes_target)
         # advantages, returns = self.compute_gae(batch_rews, batch_values, batch_next_values, batch_dones)
 
-        print(batch_lens)
+        # print(batch_lens)
         return (
             batch_obs,
             batch_acts,
@@ -626,12 +601,12 @@ class PPO_agent:
 
         return padded_obs
 
-    def get_action(self, obs, policy_network):
+    def get_action(self, obs):
 
         if len(obs.shape) == 2:
             obs = obs.unsqueeze(0)
 
-        mean, std, _, _ = policy_network(obs)
+        mean, std, _, _ = self.policy_network(obs)
         dist = torch.distributions.MultivariateNormal(mean, self.cov_mat)
 
         action = dist.sample()
