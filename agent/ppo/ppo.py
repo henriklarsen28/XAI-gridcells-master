@@ -317,9 +317,29 @@ class PPO_agent:
                 )"""
 
 
+<<<<<<< HEAD
     """ def run_episode(
         self, env: SunburstMazeContinuous, policy_network, render, i_so_far
     ):
+=======
+        self.policy_optimizer.zero_grad()
+        env_class_loss.backward(retain_graph=True)
+        self.policy_optimizer.step()
+
+        # Unfreeze the rest of the policy network
+        for param in self.policy_network.blocks.parameters():
+            param.requires_grad = True
+        for param in self.policy_network.ln_f.parameters():
+            param.requires_grad = True
+        for param in self.policy_network.output.parameters():
+            param.requires_grad = True
+
+        # Freeze the env class network
+        for param in self.policy_network.env_class.parameters():
+            param.requires_grad = False"""
+
+    def worker(self, env: SunburstMazeContinuous, policy_network, render, i_so_far, output_queue):
+>>>>>>> b8678b2 (feat: new maps and deletes policy network)
         worker_obs = []
         worker_acts = []
         worker_log_probs = []
@@ -347,9 +367,13 @@ class PPO_agent:
             worker_obs.append(tensor_obs)
 
             # Get action and log probability (transformer expects a full sequence, so we pass collected states)
+<<<<<<< HEAD
             action, log_prob = self.get_action(
                 tensor_obs, policy_network
             )  # Pass full sequence
+=======
+            action, log_prob = self.get_action(tensor_obs, policy_network)  # Pass full sequence
+>>>>>>> b8678b2 (feat: new maps and deletes policy network)
 
             obs, reward, terminated, truncated, _ = env.step(action)
             obs = obs.flatten()
@@ -403,6 +427,7 @@ class PPO_agent:
         worker_env_classes_target = [env.cpu() for env in worker_env_classes_target]
 
         del policy_network
+<<<<<<< HEAD
 
         return (
             worker_obs,
@@ -425,6 +450,9 @@ class PPO_agent:
     ):
         try:
             result = self.run_episode(env, policy_network, render, i_so_far)
+=======
+        output_queue.put(
+>>>>>>> b8678b2 (feat: new maps and deletes policy network)
             (
                 worker_obs,
                 worker_acts,
@@ -492,9 +520,21 @@ class PPO_agent:
             obs, _ = self.env.reset()
             obs = torch.tensor(obs, dtype=torch.float, device=self.device)
 
+<<<<<<< HEAD
             done = False
             for ep_t in range(self.max_steps):
                 t += 1
+=======
+            
+            for i in range(number_of_cores):
+                render = False
+                if i == 0:
+                    render = True
+                env = self.random_maps(env=self.env, random_map=True)
+                process = mp.Process(target=self.worker, args=(env, self.policy_network, render, i_so_far, q))
+                process.start()
+                processes.append(process)
+>>>>>>> b8678b2 (feat: new maps and deletes policy network)
 
                 ep_obs.append(obs)
 
@@ -596,12 +636,12 @@ class PPO_agent:
 
         return padded_obs
 
-    def get_action(self, obs):
+    def get_action(self, obs, policy_network):
 
         if len(obs.shape) == 2:
             obs = obs.unsqueeze(0)
 
-        mean, std, _, _ = self.policy_network(obs)
+        mean, std, _, _ = policy_network(obs)
         dist = torch.distributions.MultivariateNormal(mean, self.cov_mat)
 
         action = dist.sample()

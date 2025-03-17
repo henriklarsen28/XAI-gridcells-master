@@ -128,12 +128,16 @@ def stretch_map_vertically(map_path: str, stretch_factor=1):
 
 
 def main():
-    map_path = "goal/large/map_circular_4_19.csv"
+    map_path = "goal/large/map_conditional_prob_11_10.csv"
     dst_file = map_path.split("/")[-1]
 
     folder = "goal/stretched/"
     os.makedirs(folder, exist_ok=True)
+<<<<<<< HEAD
     map_name = "map_circular"
+=======
+    map_name = "map_conditional_prob_11_10"
+>>>>>>> b8678b2 (feat: new maps and deletes policy network)
     
     dst_file = os.path.join(folder, dst_file)
     with open(map_path, "rb") as src, open(dst_file, "wb") as dst:
