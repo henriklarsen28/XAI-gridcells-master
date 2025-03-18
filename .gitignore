@@ -52,5 +52,6 @@ xai/cav/continuous/wandb/*
 
 wandb*
 
-xai/cav/continuous/run_cav.slurm
 load.sh
+xai/cav/continuous/output.txt
+xai/cav/continuous/run_cav.slurm
