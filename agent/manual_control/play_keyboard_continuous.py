@@ -82,6 +82,7 @@ def play_with_keyboard():
         fov=config["fov"],
         ray_length=config["ray_length"],
         number_of_rays=config["number_of_rays"],
+        grid_length=3
     )
 
     pygame.init()
