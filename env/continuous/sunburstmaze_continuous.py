@@ -1,5 +1,6 @@
 import os
 import sys
+
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.append(project_root)
 
@@ -14,11 +15,8 @@ import numpy as np
 import pygame
 from gymnasium import spaces
 
-
-from env.file_manager import build_map, extract_goal_coordinates, build_grid_layout
-
 from env.continuous.maze_game_continuous import Maze
-
+from env.file_manager import build_grid_layout, build_map, extract_goal_coordinates
 from utils import calculate_fov_matrix_size, step_angle
 
 checkpoints = [
@@ -52,7 +50,7 @@ class SunburstMazeContinuous(gym.Env):
         fov=math.pi / 2,
         ray_length=10,
         number_of_rays=100,
-        grid_length=None
+        grid_length=None,
     ):
         super().__init__()
         self.maze_file = maze_file
@@ -66,6 +64,10 @@ class SunburstMazeContinuous(gym.Env):
         self.render_mode = render_mode
 
         self.map_observation_size = 0
+
+        self.env_grid = None
+        self.color_map = {}
+
         for y in range(self.height):
             for x in range(self.width):
                 if self.env_map[y][x] == 0:
@@ -73,10 +75,14 @@ class SunburstMazeContinuous(gym.Env):
 
         if grid_length:
             self.env_grid = build_grid_layout(self.env_map, grid_length)
-        
-        self.color_map = {}
-        for value in set(self.env_grid.values()):
-            self.color_map[value] = (np.random.randint(0, 255), np.random.randint(0, 255), np.random.randint(0, 255), 100) # random colors with alpha
+
+            for value in set(self.env_grid.values()):
+                self.color_map[value] = (
+                    np.random.randint(0, 255),
+                    np.random.randint(0, 255),
+                    np.random.randint(0, 255),
+                    100,
+                )  # random colors with alpha
 
         """print(
             "height:",
@@ -91,8 +97,12 @@ class SunburstMazeContinuous(gym.Env):
         self.velocity_x = 0
         self.velocity_y = 0
         self.position = None
-        self.goal = self.goal_position() if self.random_goal_position else extract_goal_coordinates(self.maze_file)
-
+        self.agent_radius = 0.55
+        self.goal = (
+            self.goal_position()
+            if self.random_goal_position
+            else extract_goal_coordinates(self.maze_file)
+        )
 
         # Episode step settings
         self.max_steps_per_episode = max_steps_per_episode
@@ -139,7 +149,10 @@ class SunburstMazeContinuous(gym.Env):
         x = self.matrix_size[1]
         # Observation space, position y, x and velocity
         self.observation_space = gym.spaces.Box(
-            low=0, high=2, shape=(y*x+1,), dtype=np.float64  # Adjust shape and range as needed
+            low=0,
+            high=2,
+            shape=(y * x + 1,),
+            dtype=np.float64,  # Adjust shape and range as needed
         )
 
     def goal_position(self):
@@ -153,7 +166,7 @@ class SunburstMazeContinuous(gym.Env):
                         return position
                     return (y, x)
         return None
-    
+
     def select_start_position(self) -> tuple:
         """
         Selects the start position for the maze.
@@ -204,7 +217,6 @@ class SunburstMazeContinuous(gym.Env):
         output = np.array([*matrix, self.orientation / 360])
         # Get the matrix of marked squares without rendering
         return output
-
 
     def reset(self, seed=None, options=None) -> tuple:
 
@@ -306,9 +318,9 @@ class SunburstMazeContinuous(gym.Env):
             x, y = square
             matrix[y, x] = 2
 
-        #import pandas as pd
-        #df = pd.DataFrame(matrix)
-        #df.to_csv("matrix.csv")
+        # import pandas as pd
+        # df = pd.DataFrame(matrix)
+        # df.to_csv("matrix.csv")
 
         # if self.orientation == 2 or self.orientation == 3:
         #     matrix = np.rot90(matrix, 2)
@@ -321,8 +333,8 @@ class SunburstMazeContinuous(gym.Env):
 
     def is_collision(self, y, x):
         # Convert continuous coordinates to grid indices
-        grid_x = round(x)
-        grid_y = round(y)
+        grid_x = int(x)
+        grid_y = int(y)
         # Check if the agent is out of bounds or hits a wall
         if grid_x < 0 or grid_x >= self.width or grid_y < 0 or grid_y >= self.height:
             return True
@@ -334,8 +346,14 @@ class SunburstMazeContinuous(gym.Env):
         Returns:
             bool: True if the current position is a goal position, False otherwise.
         """
-        int_position = (int(self.position[0]), int(self.position[1]))
-        if int_position == self.goal:
+
+        # Calculate distance from agent center to goal
+        distance = (
+            (self.position[0] - self.goal[0]) ** 2
+            + (self.position[1] - self.goal[1]) ** 2
+        ) ** 0.5
+        # Check if the goal is within the hitbox radius
+        if distance <= self.agent_radius:
             return True
         return False
 
@@ -345,12 +363,15 @@ class SunburstMazeContinuous(gym.Env):
         Returns:
             bool: True if the current position is a goal position, False otherwise.
         """
-        int_position = (int(self.position[0]), int(self.position[1]))
 
-        if (
-            int(self.env_map[int_position[0]][int_position[1]]) == 2
-            and int_position != self.goal
-        ):
+        # Calculate distance from agent center to goal
+        distance = (
+            (self.position[0] - self.goal[0]) ** 2
+            + (self.position[1] - self.goal[1]) ** 2
+        ) ** 0.5
+
+        # Check if the goal is within the hitbox radius
+        if distance <= self.agent_radius and self.is_goal() is False:
             return True
         return False
 
@@ -455,7 +476,7 @@ class SunburstMazeContinuous(gym.Env):
         # print ("Length of viewed squares: ",  len(self.viewed_squares))
         # print("Proporition of viewed squares: ", len(self.viewed_squares) / self.map_observation_size)
 
-        return observation, reward, terminated, False, info
+        return observation, reward, False, False, info
 
     def get_grid_id(self):
         return self.env_grid.get(self.position, None)
@@ -491,12 +512,10 @@ class SunburstMazeContinuous(gym.Env):
 
         # Penalize for just rotating in place without moving
 
-
         reward = 0
 
         if self.is_collision(self.position[0], self.position[1]):
             reward += self.rewards["hit_wall"]
-
 
         if self.is_false_goal():
             reward += self.rewards["is_false_goal"]
@@ -521,7 +540,6 @@ class SunburstMazeContinuous(gym.Env):
                 self.observed_squares_map,
                 self.wall_rays,
                 [],
-                self.past_actions,
                 self.env_grid,
                 self.color_map,
             )
@@ -542,7 +560,6 @@ class SunburstMazeContinuous(gym.Env):
         )
         self.render_maze.render_mode = self.render_mode
         return frame
-    
 
     def close(self):  # TODO: Not tested
         if self.window is not None:
