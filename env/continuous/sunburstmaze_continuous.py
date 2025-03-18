@@ -15,7 +15,8 @@ import pygame
 from gymnasium import spaces
 
 
-from env.file_manager import build_map, build_grid_layout
+from env.file_manager import build_map, extract_goal_coordinates, build_grid_layout
+
 from env.continuous.maze_game_continuous import Maze
 
 from utils import calculate_fov_matrix_size, step_angle
@@ -90,7 +91,7 @@ class SunburstMazeContinuous(gym.Env):
         self.velocity_x = 0
         self.velocity_y = 0
         self.position = None
-        self.goal = self.goal_position() if self.random_goal_position else self.extract_goal_coordinates()
+        self.goal = self.goal_position() if self.random_goal_position else extract_goal_coordinates(self.maze_file)
 
 
         # Episode step settings
@@ -204,21 +205,6 @@ class SunburstMazeContinuous(gym.Env):
         # Get the matrix of marked squares without rendering
         return output
 
-    def extract_goal_coordinates(self):
-        """
-        Extracts the goal coordinates from the maze filename.
-
-        Returns:
-            tuple: The goal coordinates extracted from the maze filename.
-        """
-        # Extract the goal coordinates from the maze filename
-        match = re.search(r"(\d+)_(\d+)\.csv$", self.maze_file)
-        if match:
-            self.goal = (int(match.group(1)), int(match.group(2)))
-        else:
-            self.goal = None
-        #print("Goal:", self.goal, "in maze file:", self.maze_file)
-        return self.goal
 
     def reset(self, seed=None, options=None) -> tuple:
 
@@ -460,8 +446,6 @@ class SunburstMazeContinuous(gym.Env):
             )
 
         self.steps_current_episode += 1
-        # Updated values
-        #observation = self._get_observation()
 
         if self.render_mode == "human":
             self.render()
@@ -517,17 +501,7 @@ class SunburstMazeContinuous(gym.Env):
         if self.is_false_goal():
             reward += self.rewards["is_false_goal"]
 
-        """if self.position not in self.visited_squares:
-            self.visited_squares.append(self.position)
-            reward += self.rewards["new_square"]"""
-
         reward += self.rewards["penalty_per_step"]
-
-        # Add reward for increasing the number of viewed squares
-        # viewed_squares_original = len(self.viewed_squares)
-        # self.viewed_squares.update(self.observed_squares_map)
-        # if viewed_squares_original < len(self.viewed_squares):
-        #    reward += len(self.viewed_squares) / self.map_observation_size
 
         return reward
 

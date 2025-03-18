@@ -41,9 +41,8 @@ agent/dqn/models/*
 
 agent/ppo/wandb/*
 agent/ppo/gifs/*
-
 agent/ppo/models/*
-agent/ppo/model/*
+
 agent/ppo_test_code/models/*
 
 agent/ppo/model/*
@@ -52,3 +51,10 @@ agent/ppo_test_code/models/*
 agent/ppo_rnn/gifs/*
 agent/ppo_rnn/model/*
 agent/ppo_rnn/wandb/*
+agent/dqn/models/
+xai/cav/continuous/dataset/
+xai/cav/discrete/dataset/*
+xai/cav/results/cav/*
+xai/cav/results/**/*.png
+xai/cav/continuous/results/*
+xai/cav/continuous/wandb/*

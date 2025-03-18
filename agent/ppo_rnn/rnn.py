@@ -10,13 +10,11 @@ class RNN(nn.Module):
         self.fc = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
             nn.Linear(hidden_dim, output_dim)
         )
     def forward(self, x):
         h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_dim).to(self.device)
         out, _ = self.rnn(x, h0)
+        out = out[:, -1, :]
         out = self.fc(out)
-        out = out.mean(dim=1)
         return out
