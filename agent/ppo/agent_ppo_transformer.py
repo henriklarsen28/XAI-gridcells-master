@@ -162,7 +162,7 @@ if __name__ == "__main__":
         "loss_function": "mse",
         "learning_rate": 3e-5,
         "batch_size": 5500,
-        "n_mini_batches": 5,
+        "n_mini_batches": 10,
         "optimizer": "adam",
         "PPO": {
             "gamma": 0.99,
