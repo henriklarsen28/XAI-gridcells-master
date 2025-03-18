@@ -52,7 +52,7 @@ def stretch_map_horizontally(map_path: str, stretch_factor=1):
 
                     new_row.extend([2] * (stretch_factor - 1))
                     new_row.append(cell)
-                    goal_pos = i * stretch_factor
+                    #goal_pos = i * stretch_factor
                 else:
                     new_row.extend([0] * (stretch_factor - 1))
                     new_row.append(cell)
@@ -65,7 +65,7 @@ def stretch_map_horizontally(map_path: str, stretch_factor=1):
 
     # TODO: Update goal_position
     old_goal = extract_goal_coordinates(map_path)
-    new_goal = (old_goal[0], goal_pos)
+    new_goal = (old_goal[0], old_goal[1] * stretch_factor +2)
     print("New_goal:", new_goal)
 
     return stretched_map, new_goal
@@ -120,7 +120,7 @@ def stretch_map_vertically(map_path: str, stretch_factor=1):
 
     # Update goal position
     old_goal = extract_goal_coordinates(map_path)
-    new_goal = (old_goal[0] * stretch_factor-2, old_goal[1])
+    new_goal = (old_goal[0] * stretch_factor, old_goal[1])
     print("New goal:", new_goal)
 
     return stretched_map, new_goal
@@ -128,12 +128,12 @@ def stretch_map_vertically(map_path: str, stretch_factor=1):
 
 
 def main():
-    map_path = "goal/large/map_conditional_prob_11_10.csv"
+    map_path = "goal/large/map_circular_4_19.csv"
     dst_file = map_path.split("/")[-1]
 
     folder = "goal/stretched/"
     os.makedirs(folder, exist_ok=True)
-    map_name = "map_conditional_prob_11_10"
+    map_name = "map_circular"
     
     dst_file = os.path.join(folder, dst_file)
     with open(map_path, "rb") as src, open(dst_file, "wb") as dst:
