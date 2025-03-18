@@ -12,7 +12,7 @@ from collections import deque
 import gymnasium as gym
 import torch
 
-from agent.ppo.gated_transformer_decoder_policy import TransformerPolicy
+from agent.ppo.transformer_decoder_policy import TransformerPolicy
 from env import SunburstMazeContinuous
 from utils.sequence_preprocessing import add_to_sequence
 

@@ -180,6 +180,8 @@ class CAV:
         embedding: bool = False,
         sensitivity: bool = True,
         action_index: int = 0,
+        save_path: str = None,
+        episode_number: str = None,
     ):
 
         positive, output_positive = create_activation_dataset(
@@ -222,6 +224,10 @@ class CAV:
         )
         assert isinstance(negative, torch.Tensor), "Negative_test must be a tensor"
 
+        self.save_activations(
+            positive, positive_test, concept, save_path, block, episode_number
+        )
+
         return (
             positive,
             negative,
@@ -232,6 +238,31 @@ class CAV:
             output_positive_test,
             output_negative_test,
         )
+
+    def save_activations(
+        self, activations_train, activations_test, concept, save_path, block, episode
+    ):
+        save_path_activations_train = os.path.join(
+            save_path, f"activations/train/{concept}/{episode}"
+        )
+        save_path_activations_test = os.path.join(
+            save_path, f"activations/test/{concept}/episode_{episode}"
+        )
+        file_name = f"activation_{concept}_block_{block}.pt"
+
+        os.makedirs(save_path_activations_train, exist_ok=True)
+        os.makedirs(save_path_activations_test, exist_ok=True)
+
+        save_path_activations_train = os.path.join(
+            save_path_activations_train, file_name
+        )
+        save_path_activations_test = os.path.join(save_path_activations_test, file_name)
+
+        torch.save(activations_train, save_path_activations_train)
+        torch.save(activations_test, save_path_activations_test)
+
+        print(f"Activations train saved to {save_path_activations_train}")
+        print(f"Activations test saved to {save_path_activations_test}")
 
     def cav_model(
         self,
@@ -251,9 +282,6 @@ class CAV:
         positive_test_labels = np.ones(len(positive_test))
         negative_test_labels = np.zeros(len(negative_test))
         # Split the dataset
-
- 
-
 
 
         positive_train_np = build_numpy_list_cav(positive_train)
@@ -336,7 +364,7 @@ class CAV:
         save_path: str = None,
     ):
         model_list = os.listdir(model_dir)
-        save_path_activations = os.path.join(save_path, "activations")
+        save_path_activations = os.path.join(save_path, "plot_data")
         os.makedirs(save_path_activations, exist_ok=True)
 
         for model in model_list:
@@ -364,6 +392,8 @@ class CAV:
                 embedding=True,
                 sensitivity=sensitivity,
                 action_index=action_index,
+                save_path=save_path,
+                episode_number=episode_number,
             )
 
             cav = self.calculate_single_cav(
@@ -405,6 +435,8 @@ class CAV:
                     embedding=False,
                     sensitivity=sensitivity,
                     action_index=action_index,
+                    save_path=save_path,
+                    episode_number=episode_number,
                 )
 
                 # print("Block: ", block, model_path, episode_number)

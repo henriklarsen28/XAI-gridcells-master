@@ -49,7 +49,7 @@ def main():
         "train_mode": False,
         "map_path_train": None,
         "render": True,
-        "render_mode": "human",  # "human",
+        "render_mode": None,  # "human",
         # HYPERPARAMETERS
         "loss_function": "mse",
         "learning_rate": 3e-4,
