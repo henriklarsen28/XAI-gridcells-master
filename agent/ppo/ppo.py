@@ -183,86 +183,87 @@ class PPO_agent:
             # minibatches = self.batch_rollouts(rollouts)  # Create mini-batches
 
             # Minibatches
-            """minibatches = self.generate_minibatches(
+            minibatches = self.generate_minibatches(
                 obs_batch,
                 actions_batch,
                 log_probs_batch,
                 rtgs,
-            )"""
+                batch_env_classes_target,
+            )
 
             timestep_counter += sum(lens)
             iteration_counter += 1
 
-            """for (
+            for (
                 obs_batch,
                 actions_batch,
                 log_probs_batch,
                 rtgs,
-            ) in minibatches:"""
+                env_classes_target,
+            ) in minibatches:
 
-            # print("Obs: ", obs, obs.shape)
-            # Calculate the advantages
-            value, _, _, _ = self.evaluate(
-                obs_batch,
-                actions_batch,
-            )
-            # print(value, value.shape)
-            kl_div = self.kl_divergence(obs_batch, actions_batch)
-
-            # advantages, returns = self.compute_gae(rewards_batch, value, dones_batch)
-
-            advantages = rtgs - value.detach()
-
-            # Normalize the advantages
-            if self.normalize_advantage:
-                advantages = (advantages - advantages.mean()) / (
-                    advantages.std() + 1e-8
+                # print("Obs: ", obs, obs.shape)
+                # Calculate the advantages
+                value, _, _, _ = self.evaluate(
+                    obs_batch,
+                    actions_batch,
                 )
+                # print(value, value.shape)
+                kl_div = self.kl_divergence(obs_batch, actions_batch)
 
-            for _ in range(self.n_updates_per_iteration):
-                value_new, current_log_prob, entropy, batch_env_classes = self.evaluate(
-                    obs_batch, actions_batch
-                )
-                # print("Current log prob: ", current_log_prob)
-                # print("Log probs batch: ", log_probs_batch)
-                ratio = torch.exp(current_log_prob - log_probs_batch)
+                # advantages, returns = self.compute_gae(rewards_batch, value, dones_batch)
 
-                surrogate_loss1 = ratio * advantages
-                surrogate_loss2 = (
-                    torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * advantages
-                )
+                advantages = rtgs - value.detach()
 
-                policy_loss_ppo = (-torch.min(surrogate_loss1, surrogate_loss2)).mean()
-                env_class_loss = self.env_loss_factor * F.cross_entropy(
-                    batch_env_classes, batch_env_classes_target.float()
-                )
+                # Normalize the advantages
+                if self.normalize_advantage:
+                    advantages = (advantages - advantages.mean()) / (
+                        advantages.std() + 1e-8
+                    )
 
-                # print(env_class_loss)
+                for i in range(self.n_updates_per_iteration):
+                    print(f"Iteration: {iteration_counter}. Update: {i}")
+                    value_new, current_log_prob, entropy, env_classes = self.evaluate(
+                        obs_batch, actions_batch
+                    )
+                    # print("Current log prob: ", current_log_prob)
+                    # print("Log probs batch: ", log_probs_batch)
+                    ratio = torch.exp(current_log_prob - log_probs_batch)
 
-                policy_loss = (
-                    policy_loss_ppo + env_class_loss
-                )  # - self.entorpy_coefficient * entropy
-                # print("Kl",kl_div, "Entropy", entropy)
+                    surrogate_loss1 = ratio * advantages
+                    surrogate_loss2 = (
+                        torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * advantages
+                    )
 
-                critic_loss = nn.MSELoss()(value_new, rtgs)
+                    policy_loss_ppo = (-torch.min(surrogate_loss1, surrogate_loss2)).mean()
+                    env_class_loss = self.env_loss_factor * F.cross_entropy(
+                        env_classes, env_classes_target.float()
+                    )
 
-                # Normalize the gradients
-                print("Policy loss step")
-                self.policy_optimizer.zero_grad()
-                policy_loss.backward(retain_graph=True)
-                torch.nn.utils.clip_grad_norm_(
-                    self.policy_network.parameters(), self.clip_grad_normalization
-                )
-                self.policy_optimizer.step()
+                    # print(env_class_loss)
 
-                self.critic_optimizer.zero_grad()
-                critic_loss.backward(retain_graph=True)
-                torch.nn.utils.clip_grad_norm_(
-                    self.critic_network.parameters(), self.clip_grad_normalization
-                )
-                self.critic_optimizer.step()
-                print("After")
-                self.entorpy_coefficient_decay()
+                    policy_loss = (
+                        policy_loss_ppo + env_class_loss
+                    )  # - self.entorpy_coefficient * entropy
+                    # print("Kl",kl_div, "Entropy", entropy)
+
+                    critic_loss = nn.MSELoss()(value_new, rtgs)
+
+                    # Normalize the gradients
+                    self.policy_optimizer.zero_grad()
+                    policy_loss.backward(retain_graph=True)
+                    torch.nn.utils.clip_grad_norm_(
+                        self.policy_network.parameters(), self.clip_grad_normalization
+                    )
+                    self.policy_optimizer.step()
+
+                    self.critic_optimizer.zero_grad()
+                    critic_loss.backward(retain_graph=True)
+                    torch.nn.utils.clip_grad_norm_(
+                        self.critic_network.parameters(), self.clip_grad_normalization
+                    )
+                    self.critic_optimizer.step()
+                    self.entorpy_coefficient_decay()
 
             gif = None
             if frames:
@@ -787,7 +788,7 @@ class PPO_agent:
         self.entorpy_coefficient -= self.entropy_step
         self.entorpy_coefficient = max(self.entropy_min, self.entorpy_coefficient)
 
-    def generate_minibatches(self, obs, actions, log_probs, rtgs):
+    def generate_minibatches(self, obs, actions, log_probs, rtgs, env_class_target):
         minibatches = []
 
         indices = torch.randperm(self.batch_size)
@@ -802,52 +803,11 @@ class PPO_agent:
                         actions[mini_batch_indices],
                         log_probs[mini_batch_indices],
                         rtgs[mini_batch_indices],
+                        env_class_target[mini_batch_indices],
                     )
                 )
 
         return minibatches
-
-    def batch_rollouts(self, rollouts):
-        """
-        Create mini-batches from rollouts for training.
-        """
-        all_states = []
-        all_actions = []
-        all_rewards = []
-        all_next_states = []
-        all_masks = []
-
-        # Unzip all episodes into their components (states, actions, rewards)
-        for episode, mask in rollouts:
-            states, actions, rewards, next_states, _ = zip(*episode)
-            all_states.append(states)
-            all_actions.append(actions)
-            all_rewards.append(rewards)
-            all_next_states.append(next_states)
-            all_masks.append(mask)
-
-        # Stack the components into a tensor
-        all_states_tensor = torch.stack(all_states)
-        all_actions_tensor = torch.stack(all_actions)
-        all_rewards_tensor = torch.stack(all_rewards)
-        all_next_states_tensor = torch.stack(all_next_states)
-        all_masks_tensor = torch.stack(all_masks)
-
-        # Batch into mini-batches
-        num_batches = len(all_states_tensor) // self.batch_size
-        mini_batches = []
-
-        for i in range(num_batches):
-            mini_batch = (
-                all_states_tensor[i * self.batch_size : (i + 1) * self.batch_size],
-                all_actions_tensor[i * self.batch_size : (i + 1) * self.batch_size],
-                all_rewards_tensor[i * self.batch_size : (i + 1) * self.batch_size],
-                all_next_states_tensor[i * self.batch_size : (i + 1) * self.batch_size],
-                all_masks_tensor[i * self.batch_size : (i + 1) * self.batch_size],
-            )
-            mini_batches.append(mini_batch)
-
-            return mini_batches
 
     def random_maps(
         self,
