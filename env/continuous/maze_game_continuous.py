@@ -310,7 +310,6 @@ class Maze:
         orientation: int,
         observed_squares_map: set,
         wall_rays: set,
-        q_values: list = [],
         grid_pos_to_id: dict = {},
         grid_id_to_color: dict = {}
     ):

@@ -237,7 +237,7 @@ class PPO_agent:
 
                 policy_loss_ppo = (-torch.min(surrogate_loss1, surrogate_loss2)).mean()
                 env_class_loss = self.env_loss_factor * F.cross_entropy(
-                    env_classes, env_classes_target.float()
+                    env_classes, batch_env_classes_target.float()
                 )
 
                 # print(env_class_loss)
@@ -307,7 +307,7 @@ class PPO_agent:
             del frames
             torch.cuda.empty_cache()
 
-            if iteration_counter % self.save_interval == 0:
+            if iteration_counter % self.save_interval == 0 or iteration_counter == 1:
                 torch.save(
                     self.policy_network.state_dict(),
                     f"./models/transformers/ppo/model_{self.run.name}/policy_network_{iteration_counter}.pth",

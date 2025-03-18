@@ -539,7 +539,6 @@ class SunburstMazeContinuous(gym.Env):
                 self.orientation,
                 self.observed_squares_map,
                 self.wall_rays,
-                [],
                 self.env_grid,
                 self.color_map,
             )
@@ -554,8 +553,8 @@ class SunburstMazeContinuous(gym.Env):
                 self.orientation,
                 self.observed_squares_map,
                 self.wall_rays,
-                [],
-                [],
+                {},
+                {},
             )
         )
         self.render_maze.render_mode = self.render_mode
