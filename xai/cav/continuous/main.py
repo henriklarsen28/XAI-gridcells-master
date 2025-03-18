@@ -159,8 +159,8 @@ def main():
         dataset_path=dataset_path,
         dataset_subfolder=dataset_subfolder,
         grid_size=grid_size,
-    )
-    """
+    )"""
+    
     # Train CAV for grid observations
     for i in range(grid_size):
         print("CAVing for grid observation", i)

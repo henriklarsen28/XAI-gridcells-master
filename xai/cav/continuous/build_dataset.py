@@ -41,7 +41,8 @@ def build_csv_dataset(
         config: dict,
         actor_model_paths: list, 
         dataset_path: str,
-        dataset_subfolder: str = ''):
+        dataset_subfolder: str = '',
+        grid_size: int = None,):
  
     # If the actor model is not specified, then exit
     if actor_model_paths == '':
@@ -96,12 +97,11 @@ def build_csv_dataset(
     ):
     # print("Collected observations", len(collected_observations), collected_observations[0])
 
-    count = 0
-    for observation, position in collected_observations:
-        for observation_step, position_step in zip(observation, position):
-        # print(len(observation_sequence))
-            if rd.random() > 0.4:
-                con.in_grid_square(observation_step, position_step)
+        for observation, position in collected_observations:
+            for observation_step, position_step in zip(observation, position):
+            # print(len(observation_sequence))
+                if rd.random() > 0.4:
+                    con.in_grid_square(observation_step, position_step)
  
     path = os.path.join(dataset_path, dataset_subfolder)
 

@@ -20,8 +20,8 @@ import torch.nn.functional as F
 import wandb
 from torch import nn
 from torch.nn.utils.rnn import pad_sequence
-from transformer_decoder import Transformer
-from transformer_decoder_policy import TransformerPolicy
+from .transformer_decoder import Transformer
+from .transformer_decoder_policy import TransformerPolicy
 
 # from gated_transformer_decoder_combined import Transformer
 
