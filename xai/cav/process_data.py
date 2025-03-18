@@ -14,8 +14,12 @@ def save_to_csv(dataset: deque, file_name: str, path: str):
     if not os.path.exists(path):
         os.makedirs(path)
 
-    dataset = [[state.tolist() for state in sequence] for sequence in dataset]
+    print("dataset", type(dataset[0]))
+    # Convert the sequences 
+    #dataset = [state.tolist() for state in dataset]
 
+    dataset = [[state.tolist() for state in sequence] for sequence in dataset]
+    
     # Convert from list of tensors to list of numpy arrays
     df = pd.DataFrame(dataset)
 
@@ -91,7 +95,6 @@ def save_config(dataset_path: str, config: dict):
     with open(os.path.join(dataset_path, "config.json"), "w") as f:
         json.dump(config, f, indent=4)
 
-
 def find_model_files(base_path: str, ep_ids: list):
 
     # find the model file that ends with a specific number followed by '.pth'
@@ -147,6 +150,8 @@ def get_positive_negative_data(concept: str, datapath: str):
     negative_files = []
     positive_file = None
 
+    print('Concept:', concept)
+    print('Datapath:', datapath)
     for file in os.listdir(datapath):
         file_path = os.path.join(datapath, file)
         base_name, extension = os.path.splitext(file)
@@ -164,11 +169,10 @@ def get_positive_negative_data(concept: str, datapath: str):
 
     if positive_file is None:
         return None, None
-
-    print("Reading positive file", positive_file)
+    
     positive_df = pd.read_csv(positive_file)
-
-    # Determine sample size: at least 1500 lines or the length of the positive file content
+    
+    # Determine sample size: at least 1500 lines or the length of the positive file content, whichever is greater
     sample_size = min(1500, len(positive_df))
 
     # Aggregate negative file content and then sample

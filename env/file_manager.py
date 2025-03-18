@@ -1,6 +1,7 @@
 import numpy as np
 from PIL import Image
 import random as rd
+import re
 
 def build_grid_layout(env_map: np.array, num_cells: int):
     """
@@ -35,6 +36,22 @@ def build_grid_layout(env_map: np.array, num_cells: int):
 
     return grid_layout, num_cells
 
+def extract_goal_coordinates(map_path: str):
+    """
+    Extracts the goal coordinates from the maze filename.
+
+    Returns:
+        tuple: The goal coordinates extracted from the maze filename.
+    """
+    # Extract the goal coordinates from the maze filename
+    match = re.search(r"(\d+)_(\d+)\.csv$", map_path)
+    if match:
+        goal = (int(match.group(1)), int(match.group(2)))
+    else:
+        goal = None
+    #print("Goal:", self.goal, "in maze file:", self.maze_file)
+    return goal
+
 def get_map(map_path):
 
     map = map_path
@@ -46,12 +63,13 @@ def get_map(map_path):
     return map
 
 def read_map(map_file):
+    
     with open(map_file, "r", encoding="utf-8-sig") as f:
         lines = f.readlines()
     return lines
 
 
-def build_map(map_file):
+def build_map(map_file: str) -> np.array:
     assert map_file is not None, "Map file is not defined"
     lines = read_map(map_file)
     env_map = []

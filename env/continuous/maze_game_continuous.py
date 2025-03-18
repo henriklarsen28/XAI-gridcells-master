@@ -310,8 +310,6 @@ class Maze:
         orientation: int,
         observed_squares_map: set,
         wall_rays: set,
-        q_values: list = [],
-        last_ten_actions = deque(maxlen=10),
         grid_pos_to_id: dict = {},
         grid_id_to_color: dict = {}
     ):
@@ -329,7 +327,8 @@ class Maze:
         self.marked_squares = set()
         self.marked_2 = set()
         self.win.fill(grey)  # fill screen before drawing
-        self.render_grid_overlay(grid_pos_to_id, grid_id_to_color)
+        if grid_pos_to_id is not None:
+            self.render_grid_overlay(grid_pos_to_id, grid_id_to_color)
 
         self.draw_maze(env_map)
         #self.draw_action_tail(last_ten_actions)

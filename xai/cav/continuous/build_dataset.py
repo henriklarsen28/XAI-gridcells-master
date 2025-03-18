@@ -8,6 +8,7 @@ import sys
 from collections import deque
 
 import pandas as pd
+import torch
 
 # get the path to the project root directory and add it to sys.path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
@@ -15,9 +16,9 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..
 sys.path.append(project_root)
 
 import gymnasium as gym
-
 from agent.ppo.transformer_decoder_policy import TransformerPolicy
 from env import SunburstMazeContinuous
+
 from utils.calculate_fov import calculate_fov_matrix_size
 from utils.sequence_preprocessing import add_to_sequence, padding_sequence
 from utils.state_preprocess import state_preprocess
@@ -32,17 +33,21 @@ from xai.cav.process_data import (
     shuffle_and_trim_datasets,
     split_dataset_into_train_test,
 )
-
-
+ 
+ 
 def build_csv_dataset(
-    env: SunburstMazeContinuous,
-    device,
-    config: dict,
-    actor_model_paths: list,
-    dataset_path: str,
-    dataset_subfolder: str = "",
-    grid_size: int = 16,
-):
+        env:SunburstMazeContinuous, 
+        device,
+        config: dict,
+        actor_model_paths: list, 
+        dataset_path: str,
+        dataset_subfolder: str = '',
+        grid_size: int = None,):
+ 
+    # If the actor model is not specified, then exit
+    if actor_model_paths == '':
+        print(f"Didn't specify model file. Exiting.", flush=True)
+        sys.exit(0)
 
     # If the actor model is not specified, then exit
     if actor_model_paths == "":
@@ -61,10 +66,10 @@ def build_csv_dataset(
 
     # Build our policy the same way we build our actor model in PPO
     """model = torch.load(actor_model, map_location=device)
- 
+
     for name, param in model.items():
         print(name, len(param))
- 
+
     sys.exit()"""
 
     policy = TransformerPolicy(
@@ -76,9 +81,10 @@ def build_csv_dataset(
         n_head=config["transformer"]["n_head"],
         n_layer=config["transformer"]["n_layer"],
         dropout=config["transformer"]["dropout"],
-        device=device,
+            device=device
     )
-    
+ 
+ 
     # Evaluate policy
     for collected_observations in eval_policy(
         policy=policy,
@@ -89,23 +95,18 @@ def build_csv_dataset(
         render=True,
         max_steps=config["max_steps_per_episode"],
     ):
-        # print("Collected observations", len(collected_observations), collected_observations[0])
-        # TODO: Update model
+    # print("Collected observations", len(collected_observations), collected_observations[0])
 
         for observation, position in collected_observations:
             for observation_step, position_step in zip(observation, position):
-                # print(len(observation_sequence))
+            # print(len(observation_sequence))
                 if rd.random() > 0.4:
                     con.in_grid_square(observation_step, position_step)
-
-        # Clear the collected observations
-        collected_observations.clear()
-    
-
+ 
     path = os.path.join(dataset_path, dataset_subfolder)
 
     max_length = config["cav"]["dataset_max_length"]
-
+ 
     if os.path.exists(path) == False:
         os.makedirs(path)
     for key, val in con.datasets.items():
@@ -113,7 +114,7 @@ def build_csv_dataset(
         if isinstance(val, dict):
             for sub_key, sub_val in val.items():
                 if sub_val:
-                    filename = str(key) + "_" + str(sub_key)
+                    filename = str(key) + '_' + str(sub_key)
                     data_preprocessed = shuffle_and_trim_datasets(sub_val, max_length)
                     if len(data_preprocessed) > 1:
                         save_to_csv(data_preprocessed, filename, path)
@@ -129,16 +130,14 @@ def build_csv_dataset(
 
     # Save the config as a file for reference
     save_config(dataset_path, config)
-
+    
     # Using the raw dataset, build a random dataset
     build_random_dataset(dataset_path, dataset_subfolder)
 
     # Split the dataset into a training and test set
-    split_dataset_into_train_test(dataset_path, dataset_subfolder, ratio=0.8)
-    
-    # Build a dataset for grid observations
-    grid_observation_dataset(
-        dataset_path, grid_size=grid_size
-    )  # specifically for grid layout concept
+    split_dataset_into_train_test(dataset_path, dataset_subfolder, ratio = 0.8)
 
+    # Build a dataset for grid observations
+    grid_observation_dataset(dataset_path, dataset_subfolder, model_name=config["model_name"], map_name=config["env_name"]) # specifically for grid layout concept
+    
     print("Finished building dataset!")
