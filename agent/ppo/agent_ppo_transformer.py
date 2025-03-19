@@ -162,7 +162,7 @@ if __name__ == "__main__":
         # "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 3e-5,
-        "batch_size": 6000,
+        "batch_size": 5500,
         "n_mini_batches": 10,
         "optimizer": "adam",
         "PPO": {
@@ -207,7 +207,7 @@ if __name__ == "__main__":
             "sequence_length": 30,
             "n_embd": 196,
             "n_head": 8,
-            "n_layer": 2,
+            "n_layer": 3,
             "dropout": 0.2,
             "decouple_positional_embedding": False,
         },
