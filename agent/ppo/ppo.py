@@ -179,87 +179,87 @@ class PPO_agent:
             # minibatches = self.batch_rollouts(rollouts)  # Create mini-batches
 
             # Minibatches
-            minibatches = self.generate_minibatches(
+            """minibatches = self.generate_minibatches(
                 obs_batch,
                 actions_batch,
                 log_probs_batch,
                 rtgs,
                 batch_env_classes_target,
-            )
+            )"""
 
             timestep_counter += sum(lens)
             iteration_counter += 1
 
-            for (
+            """for (
                 obs_batch,
                 actions_batch,
                 log_probs_batch,
                 rtgs,
                 batch_env_classes_target,
-            ) in minibatches:
+            ) in minibatches:"""
 
-                # print("Obs: ", obs, obs.shape)
-                # Calculate the advantages
-                value, _, _, _ = self.evaluate(
-                    obs_batch,
-                    actions_batch,
+            # print("Obs: ", obs, obs.shape)
+            # Calculate the advantages
+            value, _, _, _ = self.evaluate(
+                obs_batch,
+                actions_batch,
+            )
+            # print(value, value.shape)
+            kl_div = self.kl_divergence(obs_batch, actions_batch)
+
+            # advantages, returns = self.compute_gae(rewards_batch, value, dones_batch)
+
+            advantages = rtgs - value.detach()
+
+            # Normalize the advantages
+            if self.normalize_advantage:
+                advantages = (advantages - advantages.mean()) / (
+                    advantages.std() + 1e-8
                 )
-                # print(value, value.shape)
-                kl_div = self.kl_divergence(obs_batch, actions_batch)
 
-                # advantages, returns = self.compute_gae(rewards_batch, value, dones_batch)
+            for i in range(self.n_updates_per_iteration):
+                print(f"Iteration: {iteration_counter}. Update: {i}")
+                value_new, current_log_prob, entropy, env_classes = self.evaluate(
+                    obs_batch, actions_batch
+                )
+                # print("Current log prob: ", current_log_prob)
+                # print("Log probs batch: ", log_probs_batch)
+                ratio = torch.exp(current_log_prob - log_probs_batch)
 
-                advantages = rtgs - value.detach()
+                surrogate_loss1 = ratio * advantages
+                surrogate_loss2 = (
+                    torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * advantages
+                )
 
-                # Normalize the advantages
-                if self.normalize_advantage:
-                    advantages = (advantages - advantages.mean()) / (
-                        advantages.std() + 1e-8
-                    )
+                policy_loss_ppo = (-torch.min(surrogate_loss1, surrogate_loss2)).mean()
+                env_class_loss = self.env_loss_factor * F.cross_entropy(
+                    env_classes, batch_env_classes_target.float()
+                )
 
-                for i in range(self.n_updates_per_iteration):
-                    print(f"Iteration: {iteration_counter}. Update: {i}")
-                    value_new, current_log_prob, entropy, env_classes = self.evaluate(
-                        obs_batch, actions_batch
-                    )
-                    # print("Current log prob: ", current_log_prob)
-                    # print("Log probs batch: ", log_probs_batch)
-                    ratio = torch.exp(current_log_prob - log_probs_batch)
+                # print(env_class_loss)
 
-                    surrogate_loss1 = ratio * advantages
-                    surrogate_loss2 = (
-                        torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * advantages
-                    )
+                policy_loss = (
+                    policy_loss_ppo + env_class_loss
+                )  # - self.entorpy_coefficient * entropy
+                # print("Kl",kl_div, "Entropy", entropy)
 
-                    policy_loss_ppo = (-torch.min(surrogate_loss1, surrogate_loss2)).mean()
-                    env_class_loss = self.env_loss_factor * F.cross_entropy(
-                        env_classes, batch_env_classes_target.float()
-                    )
+                critic_loss = nn.MSELoss()(value_new, rtgs)
 
-                    # print(env_class_loss)
+                # Normalize the gradients
+                self.policy_optimizer.zero_grad()
+                policy_loss.backward(retain_graph=True)
+                torch.nn.utils.clip_grad_norm_(
+                    self.policy_network.parameters(), self.clip_grad_normalization
+                )
+                self.policy_optimizer.step()
 
-                    policy_loss = (
-                        policy_loss_ppo + env_class_loss
-                    )  # - self.entorpy_coefficient * entropy
-                    # print("Kl",kl_div, "Entropy", entropy)
-
-                    critic_loss = nn.MSELoss()(value_new, rtgs)
-
-                    # Normalize the gradients
-                    self.policy_optimizer.zero_grad()
-                    policy_loss.backward(retain_graph=True)
-                    torch.nn.utils.clip_grad_norm_(
-                        self.policy_network.parameters(), self.clip_grad_normalization
-                    )
-                    self.policy_optimizer.step()
-
-                    self.critic_optimizer.zero_grad()
-                    critic_loss.backward(retain_graph=True)
-                    torch.nn.utils.clip_grad_norm_(
-                        self.critic_network.parameters(), self.clip_grad_normalization
-                    )
-                    self.critic_optimizer.step()
-                    self.entorpy_coefficient_decay()
+                self.critic_optimizer.zero_grad()
+                critic_loss.backward(retain_graph=True)
+                torch.nn.utils.clip_grad_norm_(
+                    self.critic_network.parameters(), self.clip_grad_normalization
+                )
+                self.critic_optimizer.step()
+                self.entorpy_coefficient_decay()
 
             gif = None
             if frames:
