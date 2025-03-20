@@ -259,7 +259,7 @@ class PPO_agent:
                 self.policy_optimizer.step()
 
                 self.critic_optimizer.zero_grad(set_to_none=True)
-                critic_loss.backward(retain_graph=True)
+                critic_loss.backward()
                 torch.nn.utils.clip_grad_norm_(
                     self.critic_network.parameters(), self.clip_grad_normalization
                 )
@@ -306,6 +306,23 @@ class PPO_agent:
             del batch_env_classes_target
             del lens
             del frames
+            del policy_loss
+            del critic_loss
+            del policy_loss_ppo
+            del env_class_loss
+            del value
+            del value_new
+            del current_log_prob
+            del entropy
+            del env_classes
+            del kl_div
+            del ratio
+            del surrogate_loss1
+            del surrogate_loss2
+            del advantages
+
+
+
             gc.collect()
             torch.cuda.empty_cache()
 
@@ -550,7 +567,7 @@ class PPO_agent:
             batch_rews.append(torch.tensor(ep_rews, dtype=torch.float))
             # batch_values.append(torch.tensor(ep_values, dtype=torch.float))
             # batch_next_values.append(torch.tensor(ep_next_values, dtype=torch.float))
-            batch_dones.append(torch.tensor(ep_dones, dtype=torch.float))
+            #batch_dones.append(torch.tensor(ep_dones, dtype=torch.float))
 
         batch_obs = torch.stack(batch_obs)
         batch_acts = torch.tensor(batch_acts, dtype=torch.float, device=self.device)
