@@ -17,6 +17,7 @@ import numpy as np
 import torch
 import torch.multiprocessing as mp
 import torch.nn.functional as F
+import gc
 import wandb
 from network import FeedForwardNN
 from network_policy import FeedForwardNNPolicy
@@ -250,14 +251,14 @@ class PPO_agent:
                 critic_loss = nn.MSELoss()(value_new, rtgs)
 
                 # Normalize the gradients
-                self.policy_optimizer.zero_grad()
+                self.policy_optimizer.zero_grad(set_to_none=True)
                 policy_loss.backward(retain_graph=True)
                 torch.nn.utils.clip_grad_norm_(
                     self.policy_network.parameters(), self.clip_grad_normalization
                 )
                 self.policy_optimizer.step()
 
-                self.critic_optimizer.zero_grad()
+                self.critic_optimizer.zero_grad(set_to_none=True)
                 critic_loss.backward(retain_graph=True)
                 torch.nn.utils.clip_grad_norm_(
                     self.critic_network.parameters(), self.clip_grad_normalization
@@ -305,6 +306,7 @@ class PPO_agent:
             del batch_env_classes_target
             del lens
             del frames
+            gc.collect()
             torch.cuda.empty_cache()
 
             if iteration_counter % self.save_interval == 0 or iteration_counter == 1:
@@ -480,8 +482,6 @@ class PPO_agent:
         batch_rtgs = []
         batch_lens = []
         batch_env_classes_target = []
-        batch_attention_masks = []
-
         frames = []
         t = 0  # Total timesteps in batch
 
@@ -490,17 +490,15 @@ class PPO_agent:
             next_ep_obs = deque(maxlen=self.sequence_length)
             ep_rews = []
             ep_dones = []
-            ep_attention_mask = []
 
             # Reset environment
             self.env = self.random_maps(env=self.env, random_map=True)
             obs, _ = self.env.reset()
-            obs = torch.tensor(obs, dtype=torch.float, device=self.device)
-
             done = False
             for ep_t in range(self.max_steps):
                 t += 1
 
+                obs = torch.tensor(obs, dtype=torch.float, device=self.device)
                 ep_obs.append(obs)
 
                 tensor_obs = torch.stack(list(ep_obs)).to(self.device)
@@ -512,7 +510,7 @@ class PPO_agent:
                 action, log_prob = self.get_action(tensor_obs)  # Pass full sequence
 
                 obs, reward, terminated, truncated, _ = self.env.step(action)
-                obs = obs.flatten()
+                #obs = obs.flatten()
                 if self.render_mode == "rgb_array" and i_so_far % 30 == 0:
                     frame = self.env.render()
                     if isinstance(frame, np.ndarray):
@@ -523,11 +521,7 @@ class PPO_agent:
 
                 done = terminated or truncated
 
-                obs = torch.tensor(obs, dtype=torch.float, device=self.device)
-                next_ep_obs.append(obs)
 
-                tensor_next_obs = torch.stack(list(next_ep_obs)).to(self.device)
-                tensor_next_obs = self.preprocess_ep_obs(tensor_next_obs)
 
                 ep_rews.append(reward)
 
@@ -535,12 +529,6 @@ class PPO_agent:
 
                 batch_acts.append(action)
                 batch_log_probs.append(log_prob)
-
-                attention_masks = torch.zeros(self.sequence_length)
-                for length in range(len(ep_obs)):
-                    attention_masks[:length] = 1
-
-                ep_attention_mask.append(attention_masks)
 
                 env_id = torch.tensor(self.env_2_id[self.env.unwrapped.maze_file])
                 batch_env_classes_target.append(
@@ -563,8 +551,6 @@ class PPO_agent:
             # batch_values.append(torch.tensor(ep_values, dtype=torch.float))
             # batch_next_values.append(torch.tensor(ep_next_values, dtype=torch.float))
             batch_dones.append(torch.tensor(ep_dones, dtype=torch.float))
-
-            batch_attention_masks.append(torch.stack(ep_attention_mask))
 
         batch_obs = torch.stack(batch_obs)
         batch_acts = torch.tensor(batch_acts, dtype=torch.float, device=self.device)
