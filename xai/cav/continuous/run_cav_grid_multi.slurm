@@ -21,4 +21,4 @@ conda activate rl_env
 
 
 
-python ./grid_cav_idun.py start_grid end_grid
+python ./grid_cav_idun.py "$start_grid" "$end_grid"
