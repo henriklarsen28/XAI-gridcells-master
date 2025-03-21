@@ -1,22 +1,22 @@
-import math
 import os
 import sys
 
-import torch
-import wandb
-
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
+
 sys.path.append(project_root)
 
-from build_dataset import build_csv_dataset
-from cav import CAV, Analysis
+from cav import CAV
+import wandb
+import math
 
-from env import SunburstMazeContinuous
+from env.continuous.sunburstmaze_continuous import SunburstMazeContinuous
+from xai.cav.continuous.cav import Analysis
 from xai.cav.process_data import find_model_files
+import torch
 
 wandb.login()
 
-def main():
+def main(grid_start, grid_end):
     
     
 
@@ -151,7 +151,7 @@ def main():
     grid_size = env.num_cells
 
     # Build the dataset
-    build_csv_dataset(
+    """build_csv_dataset(
         env=env,
         device=device,
         config=config,
@@ -159,10 +159,10 @@ def main():
         dataset_path=dataset_path,
         dataset_subfolder=dataset_subfolder,
         grid_size=grid_size,
-    )
-    """
+    )"""
+    
     # Train CAV for grid observations
-    for i in range(grid_size):
+    for i in range(grid_start, grid_end):
         print("CAVing for grid observation", i)
         concept = f"grid_observations_{i}"
         # grid_observation_dataset(model_name, concept)
@@ -202,7 +202,13 @@ def main():
                             os.path.join(save_path, f"plots/{concept}_{action}.png")
                         )
                     }
-                )"""
+                )
 
 if __name__ == "__main__":
-    main()
+
+    grid_start = sys.argv[1] if len(sys.argv) > 1 else 0
+    grid_end = sys.argv[2] if len(sys.argv) > 2 else grid_start + 1
+
+    
+    
+    main(grid_start, grid_end)
