@@ -39,7 +39,7 @@ def main(grid_start, grid_end):
         "critic_load_path": None,
         # ENVIRONMENT
         "env_name": f"{map_path}",
-        "env_path": f"../../../env/random_generated_maps/goal/stretched{map_path}.csv",
+        "env_path": f"../../../env/random_generated_maps/goal/stretched/{map_path}.csv",
         "grid_length": 7,  # 7 x 7 grid
         "cav": {
             "dataset_max_length": 1500,
