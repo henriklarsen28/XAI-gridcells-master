@@ -331,12 +331,13 @@ class Maze:
             self.render_grid_overlay(grid_pos_to_id, grid_id_to_color)
 
         self.draw_maze(env_map)
+
+        pygame.image.save(self.win, "maze.png")
         #self.draw_action_tail(last_ten_actions)
         #self.draw_rays(position, orientation, wall_rays)
         self.draw_marked_blocks(observed_squares_map)
 
         if self.render_mode == "human":
-            self.draw_q_values(q_values)
             self.draw_sprite(position, orientation)
             pygame.display.flip()
         self.clock.tick(self.framerate)

@@ -17,6 +17,8 @@ agent/attention_plot/*
 xai/cav/**/*.pt
 xai/cav/**/*.csv
 xai/cav/**/*.png
+xai/cav/**/*.json
+
 
 
 agent/ppo_test_code/gifs/*

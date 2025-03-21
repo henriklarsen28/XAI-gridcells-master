@@ -77,8 +77,9 @@ class SunburstMazeContinuous(gym.Env):
             self.env_grid, self.num_cells = build_grid_layout(self.env_map, grid_length)
         
         self.color_map = {}
-        for value in set(self.env_grid.values()):
-            self.color_map[value] = (np.random.randint(0, 255), np.random.randint(0, 255), np.random.randint(0, 255), 100) # random colors with alpha
+        if grid_length:
+            for value in set(self.env_grid.values()):
+                self.color_map[value] = (np.random.randint(0, 255), np.random.randint(0, 255), np.random.randint(0, 255), 100) # random colors with alpha
 
         """print(
             "height:",
