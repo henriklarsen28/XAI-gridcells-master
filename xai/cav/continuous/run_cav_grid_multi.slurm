@@ -3,7 +3,7 @@
 start_grid = $1
 end_grid = $2
 
-output_file = "output_${start_grid}.txt"
+output_file = 'output_${start_grid}.txt'
 #SBATCH --partition=CPUQ
 #SBATCH --job-name=train_rl-agent
 #SBATCH --account=share-ie-idi
@@ -11,7 +11,7 @@ output_file = "output_${start_grid}.txt"
 #SBATCH --nodes=1             # 1 compute nodes
 #SBATCH --mem=16G              # 16 gigabytes memory
 #SBATCH --cpus-per-task=4     # 2 CPU cores
-#SBATCH --output=$output_file    # Log file
+#SBATCH --output='$output_file'    # Log file
 #SBATCH --mail-user=henrihl@stud.ntnu.no
 #SBATCH --mail-type=ALL
 

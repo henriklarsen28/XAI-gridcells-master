@@ -162,6 +162,7 @@ def main(grid_start, grid_end):
         dataset_subfolder=dataset_subfolder,
         grid_size=grid_size,
     )"""
+    print(grid_start, grid_end)
     
     # Train CAV for grid observations
     for i in range(int(grid_start), int(grid_end)):
