@@ -103,6 +103,8 @@ def main(grid_start, grid_end):
             "decouple_positional_embedding": False,
         },
         "entropy": {"coefficient": 0.015, "min": 0.0001, "step": 1_000},
+        "grid_start": grid_start,
+        "grid_end": grid_end,
     }
 
     wandb.init(project="CAV_PPO", config=config)
@@ -162,7 +164,7 @@ def main(grid_start, grid_end):
     )"""
     
     # Train CAV for grid observations
-    for i in range(grid_start, grid_end):
+    for i in range(int(grid_start), int(grid_end)):
         print("CAVing for grid observation", i)
         concept = f"grid_observations_{i}"
         # grid_observation_dataset(model_name, concept)
