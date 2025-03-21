@@ -43,7 +43,7 @@ def main(grid_start, grid_end):
         "grid_length": 7,  # 7 x 7 grid
         "cav": {
             "dataset_max_length": 1500,
-            "episode_numbers": ["25", "100", "300", "600"],
+            "episode_numbers": ["25", "100", "450", "900"],
         },
         # RENDERING
         "train_mode": False,

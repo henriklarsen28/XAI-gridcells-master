@@ -26,20 +26,20 @@ def main():
         "number_of_rays": 40,
     }
 
-    map_path = "map_two_rooms_18_19"
+    map_path = "map_two_rooms_horizontally_18_40"
     model_name = "butterscotch-cake-1265"
 
     config = {
         # MODEL PATHS
         "model_path": f"../../../agent/ppo/models/transformers/{model_name}/actor",
         "model_name": f"{model_name}",  # NOTE: make sure to update
-        "model_episodes": [400, 500, 600],  # NOTE: for eval_policy
+        "model_episodes": [300, 500, 900],  # NOTE: for eval_policy
         # PPO
         "policy_load_path": None,
         "critic_load_path": None,
         # ENVIRONMENT
         "env_name": f"{map_path}",
-        "env_path": f"../../../env/random_generated_maps/goal/large/{map_path}.csv",
+        "env_path": f"../../../env/random_generated_maps/goal/stretched/{map_path}.csv",
         "grid_length": 7,  # 7 x 7 grid
         "cav": {
             "dataset_max_length": 1500,
