@@ -39,7 +39,7 @@ def main(grid_start, grid_end):
         "critic_load_path": None,
         # ENVIRONMENT
         "env_name": f"{map_path}",
-        "env_path": f"../../../env/random_generated_maps/goal/large/{map_path}.csv",
+        "env_path": f"../../../env/random_generated_maps/goal/stretched{map_path}.csv",
         "grid_length": 7,  # 7 x 7 grid
         "cav": {
             "dataset_max_length": 1500,
@@ -128,7 +128,6 @@ def main(grid_start, grid_end):
 
     # BUILD DATASET
     model_name = config["model_name"]
-    model_files = find_model_files(config["model_path"], config["model_episodes"])
     grid_length = "grid_length_" + str(config["grid_length"])
     dataset_path = os.path.join(
         "./dataset/", model_name, config["env_name"], grid_length
