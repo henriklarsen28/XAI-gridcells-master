@@ -1,11 +1,12 @@
-#!/bin/sh
+#!/bin/bash
 
-start_grid = $1
-end_grid = $2
+start_grid=$1
+end_grid=$2
 
-output_file = 'output_${start_grid}.txt'
+echo "Running with $start_grid"
+output_file='output_${start_grid}.txt'
 #SBATCH --partition=CPUQ
-#SBATCH --job-name=train_rl-agent
+#SBATCH --job-name=grid_cav
 #SBATCH --account=share-ie-idi
 #SBATCH --time=0-01:30:00     # 0 days and 15 minutes limit
 #SBATCH --nodes=1             # 1 compute nodes
