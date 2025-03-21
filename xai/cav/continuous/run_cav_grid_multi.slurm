@@ -3,9 +3,7 @@
 start_grid = $1
 end_grid = $2
 
-mkdir outputs
-
-output_file = "outputs/output_${start_grid}.txt"
+output_file = "output_${start_grid}.txt"
 #SBATCH --partition=CPUQ
 #SBATCH --job-name=train_rl-agent
 #SBATCH --account=share-ie-idi
