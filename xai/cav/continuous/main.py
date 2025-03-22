@@ -26,7 +26,7 @@ def main():
         "number_of_rays": 40,
     }
 
-    map_path = "map_two_rooms_horizontally_18_40"
+    map_path = "map_two_rooms_18_19"
     model_name = "butterscotch-cake-1265"
 
     config = {
@@ -151,7 +151,7 @@ def main():
     grid_size = env.num_cells
 
     # Build the dataset
-    build_csv_dataset(
+    """build_csv_dataset(
         env=env,
         device=device,
         config=config,
@@ -159,8 +159,8 @@ def main():
         dataset_path=dataset_path,
         dataset_subfolder=dataset_subfolder,
         grid_size=grid_size,
-    )
-    """
+    )"""
+    
     # Train CAV for grid observations
     for i in range(grid_size):
         print("CAVing for grid observation", i)
@@ -202,7 +202,7 @@ def main():
                             os.path.join(save_path, f"plots/{concept}_{action}.png")
                         )
                     }
-                )"""
+                )
 
 if __name__ == "__main__":
     main()
