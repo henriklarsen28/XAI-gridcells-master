@@ -522,12 +522,12 @@ class PPO_agent:
 
         return padded_obs
 
-    def get_action(self, obs, policy_network):
+    def get_action(self, obs):
 
         if len(obs.shape) == 2:
             obs = obs.unsqueeze(0)
 
-        mean, std, _, _ = policy_network(obs)
+        mean, std, _, _ = self.policy_network(obs)
         dist = torch.distributions.MultivariateNormal(mean, self.cov_mat)
 
         action = dist.sample()

@@ -332,7 +332,7 @@ class Maze:
 
         self.draw_maze(env_map)
 
-        pygame.image.save(self.win, "maze.png")
+        #pygame.image.save(self.win, "maze.png")
         #self.draw_action_tail(last_ten_actions)
         #self.draw_rays(position, orientation, wall_rays)
         self.draw_marked_blocks(observed_squares_map)
