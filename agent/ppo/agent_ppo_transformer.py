@@ -142,7 +142,7 @@ class Model_TrainTest:
 if __name__ == "__main__":
     # Parameters:
 
-    train_mode = False
+    train_mode = True
     render = True
     render_mode = "human"
 
