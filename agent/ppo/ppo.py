@@ -702,7 +702,7 @@ class PPO_agent:
         if not os.path.exists(self.gif_path):
             os.makedirs(self.gif_path)
 
-        model_path = f"./models/transformers/ppo/model_{self.run.name}"
+        model_path = f"./models/transformers/ppo/{self.run.name}"
         if not os.path.exists(model_path):
             os.makedirs(model_path)
 
