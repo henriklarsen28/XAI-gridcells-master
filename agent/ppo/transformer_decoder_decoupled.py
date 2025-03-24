@@ -142,7 +142,7 @@ class TransformerDecoupled(nn.Module):
         # x = self.blocks(x)
         x = self.ln_f(tok_emb)  # Use tok_emb instead of x
 
-        x = self.output(x.to(torch.float32))
+        x = self.output(x[:,-1,:].to(torch.float32))
 
         return x, att_weights_list
 
