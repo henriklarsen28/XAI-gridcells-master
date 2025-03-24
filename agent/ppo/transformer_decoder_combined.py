@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
+import numpy as np
 
 torch.manual_seed(1337)
 
@@ -14,18 +15,17 @@ class Head(nn.Module):
         self.register_buffer("tril", torch.tril(torch.ones(block_size, block_size)))
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, x, pos_emb):
-        B, T, C = x.shape  # B = batch size, T = seq length, C = emb size
-        k = self.key(x + pos_emb)  # Add positional embedding to keys and queries
-        q = self.query(x + pos_emb)
-
-        v = self.value(x)  # No positional embedding for values
+    def forward(self, x):
+        B, T, C = x.shape
+        k = self.key(x)
+        q = self.query(x)
 
         wei = q @ k.transpose(-2, -1) * k.shape[-1] ** -0.5
         wei = wei.masked_fill(self.tril[:T, :T] == 0, float("-inf"))
         wei = F.softmax(wei, dim=-1)
         wei = self.dropout(wei)
 
+        v = self.value(x)
         out = wei @ v
 
         return out, wei
@@ -40,12 +40,12 @@ class MultiHeadAttention(nn.Module):
         self.proj = nn.Linear(head_size * n_heads, n_embd)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, x, pos_emb):
+    def forward(self, x):
         head_output = []
         att_weights = []
 
         for h in self.heads:
-            out, wei = h(x, pos_emb)  # Add positional embedding to input
+            out, wei = h(x)
             head_output.append(out)
             att_weights.append(wei)
 
@@ -70,7 +70,6 @@ class FeedFoward(nn.Module):
     def forward(self, x):
         return self.net(x)
 
-
 class Block(nn.Module):
     def __init__(self, n_embd, n_head, block_size, dropout):
         super().__init__()
@@ -80,13 +79,29 @@ class Block(nn.Module):
         self.ln1 = nn.LayerNorm(n_embd)
         self.ln2 = nn.LayerNorm(n_embd)
 
-    def forward(self, x, pos_emb):
-        sa_out, att_weights = self.sa(
-            self.ln1(x), pos_emb
-        )  # Add positional embedding to input
+
+
+    def forward(self, x):
+        sa_out, att_weights = self.sa(self.ln1(x))
         x = x + sa_out
         x = x + self.ffwd(self.ln2(x))
         return x, att_weights
+    
+
+class FeedForward_Final(nn.Module):
+    def __init__(self, n_embd, dropout, action_dim):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(n_embd, 2 * n_embd),
+            nn.GELU(),
+            nn.Linear(2 * n_embd, 2 * n_embd),
+            nn.GELU(),
+            nn.Linear(2 * n_embd, action_dim),
+            nn.Dropout(dropout),
+        )
+
+    def forward(self, x):
+        return self.net(x)
 
 
 class Transformer(nn.Module):
@@ -94,6 +109,7 @@ class Transformer(nn.Module):
         self,
         input_dim,
         output_dim,
+        num_envs,
         block_size,
         n_embd,
         n_head,
@@ -110,9 +126,18 @@ class Transformer(nn.Module):
             *[Block(n_embd, n_head, block_size, dropout) for _ in range(n_layer)]
         )
         self.ln_f = nn.LayerNorm(n_embd)
-        self.output = nn.Linear(
+        """self.output_policy = nn.Linear(
             n_embd, output_dim
-        )  # Optional: add hidden layers after the final decoder layer
+        )  # Optional: add hidden layers after the final decoder layer"""
+
+        self.output_policy = nn.Linear(n_embd, np.prod(output_dim))
+        self.output_critic = nn.Linear(n_embd, 1)
+
+
+        self.env_class = nn.Linear(n_embd, num_envs)
+
+        #self.log_std = nn.Parameter(torch.zeros(np.prod(output_dim)))
+
         self.apply(self.init_weights)
 
     def init_weights(self, module):
@@ -130,30 +155,41 @@ class Transformer(nn.Module):
         pos_emb = self.position_embedding(
             torch.arange(sequence_length, device=self.device)
         )
-        # x = tok_emb + pos_emb
-        # x = self.dropout(x)
+        x = tok_emb + pos_emb
+        x = self.dropout(x)
 
         att_weights_list = []
 
         for block in self.blocks:
-            tok_emb, att_weights = block(tok_emb, pos_emb)  # use tok_emb instead of x
+            x, att_weights = block(x)
             att_weights_list.append(att_weights)
 
         # x = self.blocks(x)
-        x = self.ln_f(tok_emb)  # Use tok_emb instead of x
+        x = self.ln_f(x)
 
-        x = self.output(x.to(torch.float32))
 
-        return x  # , att_weights_list
+        policy = self.output_policy(x[:, -1, :].to(torch.float32))
+        
+        value = self.output_critic(x[:, -1, :].to(torch.float32))
+
+        #std = torch.exp(self.log_std)
+
+
+        #output = self.output(x[:, -1, :].to(torch.float32))
+        env_class_out = self.env_class(x[:, -1, :])
+        env_class_out = F.gumbel_softmax(env_class_out, tau=1, hard=True)
+        
+
+        return policy, value, None, env_class_out, att_weights_list
 
 
 # device = torch.device("mps" if torch.backends.mps.is_available() else "cpu") # Was faster with cpu??? Loading between cpu and mps is slow maybe
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # device = torch.device(
 #    "mps" if torch.backends.mps.is_available() else "cpu"
 # )  # Was faster with cpu??? Loading between cpu and mps is slow maybe
-print(f"Using device {device}")
+
 
 # ## Suggestion for hyperparameter values
 # n_embd = 128  # Embedding dimension

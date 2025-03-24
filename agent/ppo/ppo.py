@@ -23,6 +23,8 @@ from torch import nn
 from torch.nn.utils.rnn import pad_sequence
 from transformer_decoder import Transformer
 from transformer_decoder_policy import TransformerPolicy
+from transformer_decoder_decoupled import TransformerDecoupled
+from transformer_decoder_decoupled_policy import TransformerPolicyDecoupled
 
 # from gated_transformer_decoder_combined import Transformer
 
@@ -101,28 +103,53 @@ class PPO_agent:
             "device": self.device,
         }
 
-        self.policy_network = TransformerPolicy(
-            input_dim=self.obs_dim,
-            output_dim=self.act_dim,
-            block_size=self.sequence_length,
-            num_envs=len(self.env_2_id),
-            n_embd=n_embd,
-            n_head=n_head,
-            n_layer=n_layer,
-            dropout=dropout,
-            device=self.device,
-        )
 
-        self.critic_network = Transformer(
-            input_dim=self.obs_dim,
-            output_dim=1,
-            block_size=self.sequence_length,
-            n_embd=n_embd,
-            n_head=n_head,
-            n_layer=n_layer,
-            dropout=dropout,
-            device=self.device,
-        )
+        if self.decouple_pos:
+            
+            self.policy_network = TransformerPolicyDecoupled(
+                input_dim=self.obs_dim,
+                output_dim=self.act_dim,
+                block_size=self.sequence_length,
+                num_envs=len(self.env_2_id),
+                n_embd=n_embd,
+                n_head=n_head,
+                n_layer=n_layer,
+                dropout=dropout,
+                device=self.device,
+            )
+            self. critic_network = TransformerDecoupled(
+                input_dim=self.obs_dim,
+                output_dim=1,
+                block_size=self.sequence_length,
+                n_embd=n_embd,
+                n_head=n_head,
+                n_layer=n_layer,
+                dropout=dropout,
+                device=self.device,
+            )
+        else:
+            self.policy_network = TransformerPolicy(
+                input_dim=self.obs_dim,
+                output_dim=self.act_dim,
+                block_size=self.sequence_length,
+                num_envs=len(self.env_2_id),
+                n_embd=n_embd,
+                n_head=n_head,
+                n_layer=n_layer,
+                dropout=dropout,
+                device=self.device,
+            )
+
+            self.critic_network = Transformer(
+                input_dim=self.obs_dim,
+                output_dim=1,
+                block_size=self.sequence_length,
+                n_embd=n_embd,
+                n_head=n_head,
+                n_layer=n_layer,
+                dropout=dropout,
+                device=self.device,
+            )
 
         """self.network = Transformer(
             input_dim=self.obs_dim,
@@ -660,6 +687,8 @@ class PPO_agent:
         ]["step"]
         self.normalize_advantage = config["PPO"]["normalize_advantage"]
         self.env_loss_factor = config["PPO"]["env_loss_factor"]
+
+        self.decouple_pos = config["transformer"]["decouple_positional_embedding"]
 
     def __init_learn(self):
         wandb.login()

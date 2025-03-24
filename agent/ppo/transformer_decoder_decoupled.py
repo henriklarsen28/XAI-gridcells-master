@@ -89,7 +89,7 @@ class Block(nn.Module):
         return x, att_weights
 
 
-class Transformer(nn.Module):
+class TransformerDecoupled(nn.Module):
     def __init__(
         self,
         input_dim,
@@ -101,7 +101,7 @@ class Transformer(nn.Module):
         dropout,
         device,
     ):
-        super(Transformer, self).__init__()
+        super(TransformerDecoupled, self).__init__()
         self.device = device
         self.token_embedding = nn.Linear(input_dim, n_embd)  # nn.Embedding (long, int)
         self.position_embedding = nn.Embedding(block_size, n_embd)

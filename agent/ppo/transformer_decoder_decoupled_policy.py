@@ -89,11 +89,12 @@ class Block(nn.Module):
         return x, att_weights
 
 
-class Transformer(nn.Module):
+class TransformerPolicyDecoupled(nn.Module):
     def __init__(
         self,
         input_dim,
         output_dim,
+        num_envs,
         block_size,
         n_embd,
         n_head,
@@ -101,7 +102,7 @@ class Transformer(nn.Module):
         dropout,
         device,
     ):
-        super(Transformer, self).__init__()
+        super(TransformerPolicyDecoupled, self).__init__()
         self.device = device
         self.token_embedding = nn.Linear(input_dim, n_embd)  # nn.Embedding (long, int)
         self.position_embedding = nn.Embedding(block_size, n_embd)
@@ -114,6 +115,9 @@ class Transformer(nn.Module):
             n_embd, output_dim
         )  # Optional: add hidden layers after the final decoder layer
         self.apply(self.init_weights)
+
+        self.env_class = nn.Linear(n_embd, num_envs)
+
 
     def init_weights(self, module):
         if isinstance(module, nn.Linear):
@@ -142,9 +146,12 @@ class Transformer(nn.Module):
         # x = self.blocks(x)
         x = self.ln_f(tok_emb)  # Use tok_emb instead of x
 
-        x = self.output(x.to(torch.float32))
+        output = self.output(x[:, -1, :].to(torch.float32))
+        env_class_out = self.env_class(x[:, -1, :])
+        env_class_out = F.gumbel_softmax(env_class_out, tau=1, hard=True)
 
-        return x  # , att_weights_list
+        return output, None, env_class_out, att_weights_list
+
 
 
 # device = torch.device("mps" if torch.backends.mps.is_available() else "cpu") # Was faster with cpu??? Loading between cpu and mps is slow maybe
