@@ -6,7 +6,10 @@ import torch
 import wandb
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
+ppo_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../agent/ppo"))
+
 sys.path.append(project_root)
+sys.path.append(ppo_path)
 
 from build_dataset import build_csv_dataset
 from cav import CAV, Analysis

@@ -323,6 +323,12 @@ class CAV:
         score = self.model.score(test_data, test_labels)
 
         cav_coef = self.model.coef_
+
+        score = (score - 0.5) * 2
+
+        # Perform relu on the score
+        score = max(0, score)
+        
         return score, cav_coef
 
     def calculate_single_cav(

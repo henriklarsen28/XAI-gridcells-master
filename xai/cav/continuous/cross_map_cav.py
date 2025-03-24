@@ -2,7 +2,9 @@ import os
 import sys
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
+ppo_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../agent/ppo"))
 sys.path.append(project_root)
+sys.path.append(ppo_path)
 
 import pickle
 
@@ -87,7 +89,7 @@ class Cross_Map_CAV:
 
         cav_model = self.load_cav_model()
         accuracy = cav_model.score(test_dataset, test_labels)
-        return (accuracy - 0.5) * 2 # TODO: ReLU
+        return max(0,(accuracy - 0.5) * 2)
 
     def test_grids(self):
         num_grids = self.grid_length * self.grid_length
@@ -113,7 +115,7 @@ class Cross_Map_CAV:
 
         # Plot
         fig, ax = plt.subplots(figsize=(10, 10))
-        sns.heatmap(scores, annot=True, ax=ax) # TODO: Color map is from 0 to 1
+        sns.heatmap(scores, annot=True, ax=ax, vmin=0, vmax=1) # TODO: Color map is from 0 to 1
         ax.set_title(
             f"Accuracy of CAVs for each grid observation for grid {grid_number}"
         )
@@ -154,14 +156,14 @@ def worker(
 def main():
 
     source_map = "map_two_rooms_18_19"
-    target_map = "map_conditional_prob_11_10"
-    model_name = "kind-water-1258"
+    target_map = "map_two_rooms_horizontally_18_40"
+    model_name = "butterscotch-cake-1265"
     #grid_number = 17
 
     grid_length = 7
 
     block = 1
-    episode = 900
+    episode = 600
 
     """config = {
         "source_map": source_map,
