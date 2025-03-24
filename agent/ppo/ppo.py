@@ -25,6 +25,7 @@ from transformer_decoder import Transformer
 from transformer_decoder_policy import TransformerPolicy
 from transformer_decoder_decoupled import TransformerDecoupled
 from transformer_decoder_decoupled_policy import TransformerPolicyDecoupled
+from transformer_decoder_combined import Transformer
 
 # from gated_transformer_decoder_combined import Transformer
 
@@ -104,7 +105,7 @@ class PPO_agent:
         }
 
 
-        if self.decouple_pos:
+        """if self.decouple_pos:
             
             self.policy_network = TransformerPolicyDecoupled(
                 input_dim=self.obs_dim,
@@ -149,7 +150,20 @@ class PPO_agent:
                 n_layer=n_layer,
                 dropout=dropout,
                 device=self.device,
-            )
+            )"""
+
+        self.policy_network = Transformer(
+            input_dim=self.obs_dim,
+            output_dim=self.act_dim,
+            block_size=self.sequence_length,
+            num_envs=len(self.env_2_id),
+            n_embd=n_embd,
+            n_head=n_head,
+            n_layer=n_layer,
+            dropout=dropout,
+            device=self.device,
+        )
+        
 
         """self.network = Transformer(
             input_dim=self.obs_dim,
@@ -164,7 +178,7 @@ class PPO_agent:
         )"""
 
         self.policy_network.to(self.device)
-        self.critic_network.to(self.device)
+        #self.critic_network.to(self.device)
 
         """self.policy_optimizer = torch.optim.Adam(
             self.network.parameters(),
@@ -175,10 +189,10 @@ class PPO_agent:
             self.policy_network.parameters(),
             lr=self.learning_rate,
         )
-        self.critic_optimizer = torch.optim.Adam(
+        """self.critic_optimizer = torch.optim.Adam(
             self.critic_network.parameters(),
             lr=self.learning_rate,
-        )
+        )"""
 
         self.cov_var = torch.full(size=(self.act_dim,), fill_value=0.5).to(self.device)
         self.cov_mat = torch.diag(self.cov_var).to(self.device)
@@ -282,12 +296,12 @@ class PPO_agent:
                 )
                 self.policy_optimizer.step()
 
-                self.critic_optimizer.zero_grad(set_to_none=True)
+                """self.critic_optimizer.zero_grad(set_to_none=True)
                 critic_loss.backward()
                 torch.nn.utils.clip_grad_norm_(
                     self.critic_network.parameters(), self.clip_grad_normalization
                 )
-                self.critic_optimizer.step()
+                self.critic_optimizer.step()"""
                 self.entorpy_coefficient_decay()
 
             gif = None
@@ -352,12 +366,12 @@ class PPO_agent:
             if iteration_counter % self.save_interval == 0 or iteration_counter == 1:
                 torch.save(
                     self.policy_network.state_dict(),
-                    f"./models/transformers/ppo/model_{self.run.name}/policy_network_{iteration_counter}.pth",
+                    f"./models/transformers/ppo/{self.run.name}/policy_network_{iteration_counter}.pth",
                 )
-                torch.save(
+                """torch.save(
                     self.critic_network.state_dict(),
                     f"./models/transformers/ppo/model_{self.run.name}/critic_network_{iteration_counter}.pth",
-                )
+                )"""
                 """torch.save(
                     self.network.state_dict(),
                     f"./model/transformers/ppo/model_{self.run.name}/network_{iteration_counter}.pth",
@@ -554,7 +568,9 @@ class PPO_agent:
         if len(obs.shape) == 2:
             obs = obs.unsqueeze(0)
 
-        mean, std, _, _ = self.policy_network(obs)
+        #mean, _, _, _ = self.policy_network(obs)
+
+        mean, _, std, _, _ = self.policy_network(obs)
         dist = torch.distributions.MultivariateNormal(mean, self.cov_mat)
 
         action = dist.sample()
@@ -566,9 +582,10 @@ class PPO_agent:
 
     def evaluate(self, obs, actions):
         # obs = self.preprocess_ep_obs(obs)
-        V, _ = self.critic_network(obs)
+        #V, _ = self.critic_network(obs)
+        mean, V, _, env_class, _ = self.policy_network(obs)
         V = V.squeeze()
-        mean, _, env_class, _ = self.policy_network(obs)
+        #mean, _, env_class, _ = self.policy_network(obs)
         dist = torch.distributions.MultivariateNormal(mean, self.cov_mat)
         log_prob = dist.log_prob(actions)
         entropy = dist.entropy()
