@@ -217,7 +217,7 @@ if __name__ == "__main__":
             "n_head": 8,
             "n_layer": 2,
             "dropout": 0.2,
-            "decouple_positional_embedding": True,
+            "decouple_positional_embedding": False,
         },
         "entropy": {"coefficient": 0.015, "min": 0.0001, "step": 1_000},
     }
