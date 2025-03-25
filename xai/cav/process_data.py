@@ -155,6 +155,8 @@ def get_positive_negative_data(concept: str, datapath: str):
     for file in os.listdir(datapath):
         file_path = os.path.join(datapath, file)
         base_name, extension = os.path.splitext(file)
+        if base_name.__contains__("negative") or base_name.__contains__("positive"):
+            continue
         print("Looking for concept", concept)
         # print("Base name:", base_name)
         # print("Extension:")
