@@ -16,7 +16,7 @@ import pygame
 from gymnasium import spaces
 
 from env.continuous.maze_game_continuous import Maze
-from env.file_manager import build_grid_layout, build_map, extract_goal_coordinates
+from env.file_manager import build_grid_layout, build_grid_layout_horizontal_stretch, build_grid_layout_vertical_stretch, build_map, extract_goal_coordinates
 from utils import calculate_fov_matrix_size, step_angle
 
 checkpoints = [
@@ -41,7 +41,7 @@ class SunburstMazeContinuous(gym.Env):
 
     def __init__(
         self,
-        maze_file=None,
+        maze_file:str =None,
         render_mode=None,
         max_steps_per_episode=200,
         random_start_position=None,
@@ -74,7 +74,12 @@ class SunburstMazeContinuous(gym.Env):
                     self.map_observation_size += 1
 
         if grid_length:
-            self.env_grid, self.num_cells = build_grid_layout(self.env_map, grid_length)
+            if maze_file.__contains__("horizontally"):
+                self.env_grid, self.num_cells = build_grid_layout_horizontal_stretch(self.env_map, grid_length)
+            elif maze_file.__contains__("vertically"):
+                self.env_grid, self.num_cells = build_grid_layout_vertical_stretch(self.env_map, grid_length)
+            else:
+                self.env_grid, self.num_cells = build_grid_layout(self.env_map, grid_length)
         
         self.color_map = {}
         if grid_length:

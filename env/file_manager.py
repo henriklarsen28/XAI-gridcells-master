@@ -36,6 +36,56 @@ def build_grid_layout(env_map: np.array, num_cells: int):
 
     return grid_layout, num_cells
 
+def build_grid_layout_horizontal_stretch(env_map: np.array, num_cells_vertical: int):
+    total_rows, total_cols = env_map.shape
+    #Remove the borders of the map
+    # Calculate heights and widths accounting for remainder
+    subgrid_height = (total_rows + num_cells_vertical - 1) // num_cells_vertical
+    subgrid_width = subgrid_height
+    #subgrid_width = (total_cols + num_cells - 1) // num_cells
+    
+    grid_layout = {}
+    grid_id = 0
+    # Create indices for subgrids
+    for row_start in range(0, total_rows, subgrid_height):
+        for col_start in range(0, total_cols, subgrid_width):
+            row_end = min(row_start + subgrid_height, total_rows)
+            col_end = min(col_start + subgrid_width, total_cols)
+            # Assign grid index to each cell within the subgrid
+            for row in range(row_start, row_end):
+                for col in range(col_start, col_end):
+                    grid_layout[(row, col)] = grid_id
+            grid_id += 1
+    
+    num_cells = grid_id + 1
+
+    return grid_layout, num_cells
+
+def build_grid_layout_vertical_stretch(env_map: np.array, num_cells_horizontal: int):
+    total_rows, total_cols = env_map.shape
+    #Remove the borders of the map
+    # Calculate heights and widths accounting for remainder
+    subgrid_width = (total_cols + num_cells_horizontal - 1) // num_cells_horizontal
+    subgrid_height = subgrid_width
+    #subgrid_width = (total_cols + num_cells - 1) // num_cells
+    
+    grid_layout = {}
+    grid_id = 0
+    # Create indices for subgrids
+    for row_start in range(0, total_rows, subgrid_height):
+        for col_start in range(0, total_cols, subgrid_width):
+            row_end = min(row_start + subgrid_height, total_rows)
+            col_end = min(col_start + subgrid_width, total_cols)
+            # Assign grid index to each cell within the subgrid
+            for row in range(row_start, row_end):
+                for col in range(col_start, col_end):
+                    grid_layout[(row, col)] = grid_id
+            grid_id += 1
+    
+    num_cells = grid_id + 1
+
+    return grid_layout, num_cells
+
 def extract_goal_coordinates(map_path: str):
     """
     Extracts the goal coordinates from the maze filename.

@@ -15,6 +15,9 @@ import torch
 from cav import create_activation_dataset
 from sklearn.linear_model import LogisticRegression
 from sklearn.utils import shuffle
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.decomposition import PCA
+import umap
 import multiprocessing
 from multiprocessing import Process, Queue
 
@@ -31,6 +34,8 @@ class Cross_Map_CAV:
         self.dataset_path = config["dataset_path"]
         self.model_path = config["model_path"]
         self.cav_model = config["cav_model"]
+        self.target_cav_model = config["target_cav_model"]
+        self.cos_sim = config["cos_sim"]
 
         self.embedding = False
         self.block = config["block"]
@@ -43,8 +48,8 @@ class Cross_Map_CAV:
         self.sensitivity = config["sensitivity"]
         self.action_index = config["action_index"]
 
-    def load_cav_model(self) -> LogisticRegression:
-        model = pickle.load(open(self.cav_model, "rb"))
+    def load_cav_model(self, model_path) -> LogisticRegression:
+        model = pickle.load(open(model_path, "rb"))
         return model
 
     def read_test_dataset(self, concept):
@@ -87,23 +92,78 @@ class Cross_Map_CAV:
     def test_cav(self, concept):
         test_dataset, test_labels = self.read_test_dataset(concept)
 
-        cav_model = self.load_cav_model()
+        cav_model = self.load_cav_model(self.cav_model)
         accuracy = cav_model.score(test_dataset, test_labels)
         return max(0,(accuracy - 0.5) * 2)
 
+    def cosine_similarity(self, concept, pca):
+        # Calculate cosine similarity between the CAVs
+        
+
+        # Load the cav_models for each grid 
+        souce_cav_model = self.load_cav_model(self.cav_model)
+
+        target_cav_path = os.path.join(self.target_cav_model, f"{concept}/{concept}_block_{self.block}_episode_{self.episode}.pkl")
+        target_cav_model = self.load_cav_model(target_cav_path)
+
+        # Calculate cosine similarity
+        cav_coef = souce_cav_model.coef_
+        target_cav_coef = target_cav_model.coef_
+        #print(f"CAV coef shape: {cav_coef}")
+        
+        # PCA and UMAP
+        cav_coef = pca.transform(cav_coef)
+        target_cav_coef = pca.transform(target_cav_coef)
+    
+
+        #reducer = umap.UMAP(n_neighbors=15, min_dist=0.1, n_components=2, random_state=42)
+        #cav_coef = reducer.fit_transform(cav_coef)
+        #target_cav_coef = reducer.fit_transform(target_cav_coef)
+
+        cos_sim = cosine_similarity(cav_coef, target_cav_coef)
+        return cos_sim[0][0]
+    
+    def train_reductin(self):
+        
+        cav_model = self.load_cav_model(self.cav_model)
+        cav_coef = cav_model.coef_
+        target_cavs = []
+        target_cavs.append(cav_coef[0])
+        for i in range(self.grid_length * self.grid_length):
+            concept = f"grid_observations_{i}"
+            target_cav_path = os.path.join(self.target_cav_model, f"{concept}/{concept}_block_{self.block}_episode_{self.episode}.pkl")
+            target_cav_model = self.load_cav_model(target_cav_path)
+
+            target_cavs.append(target_cav_model.coef_[0])
+
+        target_cavs = np.array(target_cavs)
+        pca = PCA(n_components=16) # TODO: Some statistical analysis to determine the number of components coherence score??
+        pca.fit(target_cavs)
+
+        return pca
+
+
+
     def test_grids(self):
         num_grids = self.grid_length * self.grid_length
+        
         accuracy_grid = {}
+        
+        pca = self.train_reductin()
         # for i in range(num_grids - 1):
         for i in range(num_grids):
             concept = f"grid_observations_{i}"
-            accuracy = self.test_cav(concept)
+            if self.cos_sim:
+                accuracy = self.cosine_similarity(concept,pca)
+
+            else:
+                accuracy = self.test_cav(concept)
             print(f"Grid {i}: {accuracy}")
             accuracy_grid[f"grid_{i}"] = accuracy
 
         return accuracy_grid
 
-    def visualize_scores(self, accuracy_grid, grid_number):
+    def visualize_scores(self, accuracy_grid, grid_number, coordinate=""):
 
         grid_length = self.grid_length
         scores = []
@@ -116,10 +176,18 @@ class Cross_Map_CAV:
         # Plot
         fig, ax = plt.subplots(figsize=(10, 10))
         sns.heatmap(scores, annot=True, ax=ax, vmin=0, vmax=1) # TODO: Color map is from 0 to 1
-        ax.set_title(
-            f"Accuracy of CAVs for each grid observation for grid {grid_number}"
-        )
-        save_path = f"results/{self.model_name}/remapping_src_{self.source_map}_target_{self.target_map}/grid_length_{grid_length}/"
+        
+        if self.cos_sim:
+            ax.set_title(
+                f"Cosine similarity of CAVs for each grid observation for grid {grid_number}, {coordinate}"
+            )
+            save_path = f"results/{self.model_name}/remapping_src_{self.source_map}_target_{self.target_map}/grid_length_{grid_length}/cosine_similarity/"
+        else:
+            ax.set_title(
+            f"Accuracy of CAVs for each grid observation for grid {grid_number}, {coordinate}"
+            )
+            save_path = f"results/{self.model_name}/remapping_src_{self.source_map}_target_{self.target_map}/grid_length_{grid_length}/"
+
         os.makedirs(save_path, exist_ok=True)
         plt.savefig(
             f"{save_path}/grid_observations_{grid_number}_block_{self.block}_episode_{self.episode}.png"
@@ -140,6 +208,8 @@ def worker(
             "dataset_path": f"./dataset/{model_name}/{target_map}/grid_length_{grid_length}/test",  # TODO: Change which dataset grid to use
             "model_path": f"../../../agent/ppo/models/transformers/{model_name}/actor/policy_network_{episode}.pth",
             "cav_model": f"./results/{model_name}/{source_map}/grid_length_{grid_length}/models/grid_observations_{i}/grid_observations_{i}_block_{block}_episode_{episode}.pkl",
+            "target_cav_model": f"./results/{model_name}/{target_map}/grid_length_{grid_length}/models/", # used for cosine similarity
+            "cos_sim": True,
             "grid_length": grid_length,
             "block": block,
             "episode": episode,
@@ -150,20 +220,21 @@ def worker(
         cav = Cross_Map_CAV(config)
 
         accuracy_grid = cav.test_grids()
-        cav.visualize_scores(accuracy_grid, i)
+        grid_coordinate = (i // grid_length, i % grid_length)
+        cav.visualize_scores(accuracy_grid, i, grid_coordinate)
 
 
 def main():
 
     source_map = "map_two_rooms_18_19"
     target_map = "map_two_rooms_horizontally_18_40"
-    model_name = "butterscotch-cake-1265"
+    model_name = "azure-sun-1341"
     #grid_number = 17
 
     grid_length = 7
 
     block = 1
-    episode = 600
+    episode = 325
 
     """config = {
         "source_map": source_map,

@@ -101,7 +101,7 @@ def build_csv_dataset(
         for observation, position in collected_observations:
             for observation_step, position_step in zip(observation, position):
             # print(len(observation_sequence))
-                if rd.random() > 0.4:
+                if rd.random() > 0.5:
                     con.in_grid_square(observation_step, position_step)
  
     path = os.path.join(dataset_path, dataset_subfolder)

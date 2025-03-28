@@ -30,13 +30,13 @@ def main():
     }
 
     map_path = "map_two_rooms_18_19"
-    model_name = "butterscotch-cake-1265"
+    model_name = "azure-sun-1341"
 
     config = {
         # MODEL PATHS
         "model_path": f"../../../agent/ppo/models/transformers/{model_name}/actor",
         "model_name": f"{model_name}",  # NOTE: make sure to update
-        "model_episodes": [300, 500, 900],  # NOTE: for eval_policy
+        "model_episodes": [1, 100, 300],  # NOTE: for eval_policy
         # PPO
         "policy_load_path": None,
         "critic_load_path": None,
@@ -46,7 +46,7 @@ def main():
         "grid_length": 7,  # 7 x 7 grid
         "cav": {
             "dataset_max_length": 1500,
-            "episode_numbers": ["25", "100", "300", "600"],
+            "episode_numbers": ["1", "50", "200", "500"],
         },
         # RENDERING
         "train_mode": False,
@@ -154,7 +154,7 @@ def main():
     grid_size = env.num_cells
 
     # Build the dataset
-    """build_csv_dataset(
+    build_csv_dataset(
         env=env,
         device=device,
         config=config,
@@ -162,7 +162,7 @@ def main():
         dataset_path=dataset_path,
         dataset_subfolder=dataset_subfolder,
         grid_size=grid_size,
-    )"""
+    )
     
     # Train CAV for grid observations
     for i in range(grid_size):

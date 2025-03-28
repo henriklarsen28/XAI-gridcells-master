@@ -197,7 +197,7 @@ def eval_policy(
 
     collected_observations = deque()
 
-    max_episodes = 150
+    max_episodes = 130
     
     for ep_num, (
         ep_len,
@@ -223,11 +223,11 @@ def eval_policy(
             )
         )
 
-        if ep_num == 60:
+        if ep_num == 40:
             actor_model = actor_model_paths[1]
             policy.load_state_dict(torch.load(actor_model, map_location=device))
             print("Using model: ", actor_model)
-        if ep_num == 90:
+        if ep_num == 75:
             actor_model = actor_model_paths[2]
             policy.load_state_dict(torch.load(actor_model, map_location=device))
             print("Using model: ", actor_model)
