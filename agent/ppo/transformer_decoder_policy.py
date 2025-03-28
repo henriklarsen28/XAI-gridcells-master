@@ -82,8 +82,8 @@ class Block(nn.Module):
 
     def forward(self, x):
         sa_out, att_weights = self.sa(self.ln1(x))
-        x = x + sa_out
-        x = x + self.ffwd(self.ln2(x))
+        x = x + nn.ReLU()(sa_out)
+        x = x + nn.ReLU()(self.ffwd(self.ln2(x)))
         return x, att_weights
     
 

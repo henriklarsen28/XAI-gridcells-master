@@ -22,7 +22,7 @@ map_path_train = os.path.join(
     project_root, "env/random_generated_maps/goal/stretched/map_two_rooms_18_19.csv"
 )
 
-map_path_random = os.path.join(project_root, "env/random_generated_maps/goal/stretched")
+map_path_random = os.path.join(project_root, "env/random_generated_maps/goal/stretched4")
 map_path_random_files = [
     os.path.join(map_path_random, f)
     for f in os.listdir(map_path_random)
@@ -180,7 +180,7 @@ if __name__ == "__main__":
         "random_start_position": True,
         "random_goal_position": False,
         "rewards": {
-            "is_goal": 30/10,
+            "is_goal": 60/10,
             "hit_wall": -0.001/10,
             "has_not_moved": -0.005/10,
             "new_square": 0.0,
