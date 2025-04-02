@@ -64,6 +64,14 @@ def _log_summary(ep_len, ep_ret, ep_num):
     print(flush=True)
 
 
+def make_toril_blind(obs):
+    """
+    Make Toril blind by setting the last 4 observations to 0.
+    """
+
+    obs[:-1] = 0
+    return obs
+
 def rollout(
     policy, env: SunburstMazeContinuous, render, sequence_length, device,random_map_path, max_steps=None
 ):
@@ -90,11 +98,11 @@ def rollout(
     while True:
         
 		# Select and load a new random map
-        env = random_maps(
+        """env = random_maps(
             env=env,
 			random_map=True,
 			map_path_random_files=random_map_path,
-		)
+		)"""
 
         obs, _ = env.reset()
         done = False
@@ -115,7 +123,8 @@ def rollout(
             # Render environment if specified, off by default
             if render:
                 env.render()
-
+            obs = make_toril_blind(obs)
+            print("obs", obs)
             ep_obs.append(obs)
 
             tensor_obs = torch.stack(list(ep_obs)).to(device)

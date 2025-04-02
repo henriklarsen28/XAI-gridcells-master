@@ -125,21 +125,49 @@ def stretch_map_vertically(map_path: str, stretch_factor=1):
 
     return stretched_map, new_goal
 
+def rotate_map(map_path: str, angle: int):
+    """
+    Rotates the given map by the specified angle.
+
+    Parameters:
+    - map_path (str): The path to the map file.
+    - angle (int): The angle to rotate the map. Default is 90"
+    """
+    # Read the map
+    map_array = build_map(map_path)
+    
+    goal = extract_goal_coordinates(map_path)
+    map_array[goal[0]][goal[1]] = 3
+
+    # Rotate the map
+    if angle == 90:
+        rotated_map = np.rot90(map_array, k=3)
+    elif angle == 180:
+        rotated_map = np.rot90(map_array, k=2)
+    elif angle == 270:
+        rotated_map = np.rot90(map_array, k=1)
+    else:
+        raise ValueError("Angle must be one of: 90, 180, 270")
+
+    # Update goal position
+    new_goal = np.where(rotated_map == 3)
+    new_goal = (new_goal[0][0], new_goal[1][0])
+    print("New goal:", new_goal)
+
+    rotated_map[new_goal[0]][new_goal[1]] = 2
+
+    return rotated_map, new_goal
 
 
 def main():
-    map_path = "goal/large/map_conditional_prob_11_10.csv"
+    map_path = "goal/stretched/map_two_rooms_18_19.csv"
     dst_file = map_path.split("/")[-1]
 
     folder = "goal/stretched/"
     os.makedirs(folder, exist_ok=True)
-<<<<<<< HEAD
-    map_name = "map_circular"
-=======
-    map_name = "map_conditional_prob_11_10"
->>>>>>> b8678b2 (feat: new maps and deletes policy network)
+    map_name = "map_two_rooms"
     
-    dst_file = os.path.join(folder, dst_file)
+    """ dst_file = os.path.join(folder, dst_file)
     with open(map_path, "rb") as src, open(dst_file, "wb") as dst:
         dst.write(src.read())
 
@@ -149,7 +177,10 @@ def main():
     save_map(stretched_map, goal, map_name+"_horizontally", folder)
 
     stretched_map, goal = stretch_map_vertically(map_path, stretch_factor=2)
-    save_map(stretched_map, goal, map_name+"_vertically", folder)
+    save_map(stretched_map, goal, map_name+"_vertically", folder)"""
+
+    rotated_map, goal = rotate_map(map_path, angle=90)
+    save_map(rotated_map, goal, map_name+"_rot90_", folder)
 
 if __name__ == "__main__":
     main()
