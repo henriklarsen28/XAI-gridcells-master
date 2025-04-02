@@ -125,7 +125,7 @@ class Model_TrainTest:
     def learn_from_agent(self):
 
         self.agent.load_models()
-        self.agent.learn(500_000, iteration_counter=1000)
+        self.agent.learn(5_000_000, iteration_counter=1000)
 
     def test(self):
         """
