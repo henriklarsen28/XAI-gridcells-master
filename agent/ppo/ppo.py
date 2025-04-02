@@ -826,8 +826,8 @@ class PPO_agent:
 
         return env"""
     def load_models(self):
-        policy_network_path = self.config["policy_network_path"]
-        critic_network_path = self.config["critic_network_path"]
+        policy_network_path = self.config["policy_load_path"]
+        critic_network_path = self.config["critic_load_path"]
         self.policy_network.load_state_dict(
             torch.load(
                 f"./models/transformers/ppo/{self.run.name}/policy_network_0.pth"
