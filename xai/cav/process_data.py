@@ -174,7 +174,7 @@ def get_positive_negative_data(concept: str, datapath: str):
     
     positive_df = pd.read_csv(positive_file)
     
-    # Determine sample size: at least 1500 lines or the length of the positive file content, whichever is greater
+    # Determine sample size: at least 3000 lines or the length of the positive file content, whichever is greater
     sample_size = min(1500, len(positive_df))
 
     # Aggregate negative file content and then sample

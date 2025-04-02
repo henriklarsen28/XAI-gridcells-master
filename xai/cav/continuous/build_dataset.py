@@ -75,7 +75,7 @@ def build_csv_dataset(
     policy = TransformerPolicy(
         input_dim=obs_dim,
         output_dim=act_dim,
-        num_envs=3,
+        num_envs=6,
         block_size=config["transformer"]["sequence_length"],
         n_embd=config["transformer"]["n_embd"],
         n_head=config["transformer"]["n_head"],
@@ -101,7 +101,7 @@ def build_csv_dataset(
         for observation, position in collected_observations:
             for observation_step, position_step in zip(observation, position):
             # print(len(observation_sequence))
-                if rd.random() > 0.5:
+                if rd.random() > 0.4:
                     con.in_grid_square(observation_step, position_step)
  
     path = os.path.join(dataset_path, dataset_subfolder)
@@ -128,7 +128,8 @@ def build_csv_dataset(
                     save_to_csv(data_preprocessed, filename, path)
                 else:
                     print("Not enough data to save to CSV for ", key)
-
+    del con.datasets
+    del con
     # Save the config as a file for reference
     save_config(dataset_path, config)
     

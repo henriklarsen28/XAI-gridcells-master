@@ -12,7 +12,7 @@ from collections import deque
 import gymnasium as gym
 import torch
 
-from agent.ppo.transformer_decoder_policy import TransformerPolicy
+from agent.ppo.transformer_decoder_decoupled_policy import TransformerPolicyDecoupled
 from env import SunburstMazeContinuous
 from utils.sequence_preprocessing import add_to_sequence
 
@@ -164,7 +164,7 @@ def preprocess_ep_obs(ep_obs, sequence_length, device):
 
 
 def eval_policy(
-    policy: TransformerPolicy,
+    policy: TransformerPolicyDecoupled,
     actor_model_paths,
     env,
     sequence_length,
@@ -223,7 +223,7 @@ def eval_policy(
             )
         )
 
-        if ep_num == 40:
+        if ep_num == 25:
             actor_model = actor_model_paths[1]
             policy.load_state_dict(torch.load(actor_model, map_location=device))
             print("Using model: ", actor_model)

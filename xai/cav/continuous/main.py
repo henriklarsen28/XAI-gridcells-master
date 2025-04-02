@@ -29,14 +29,14 @@ def main():
         "number_of_rays": 40,
     }
 
-    map_path = "map_two_rooms_18_19"
-    model_name = "azure-sun-1341"
+    map_path = "map_circular_rot90__19_16"
+    model_name = "feasible-lake-1351"
 
     config = {
         # MODEL PATHS
         "model_path": f"../../../agent/ppo/models/transformers/{model_name}/actor",
         "model_name": f"{model_name}",  # NOTE: make sure to update
-        "model_episodes": [1, 100, 300],  # NOTE: for eval_policy
+        "model_episodes": [1, 500, 1000],  # NOTE: for eval_policy
         # PPO
         "policy_load_path": None,
         "critic_load_path": None,

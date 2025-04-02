@@ -293,6 +293,8 @@ class Maze:
                 color_map[grid_id] = (np.random.randint(0, 255), np.random.randint(0, 255), np.random.randint(0, 255), 128)
 
         # Render each cell using the color associated with its grid ID
+
+        grids = {}
         for position, grid_id in grid.items():
             color = color_map[grid_id]  # Retrieve the RGBA color
             
@@ -302,6 +304,27 @@ class Maze:
             
             # Blit the transparent surface onto the main window
             self.win.blit(cell_surface, (position[1] * self.cell_size, position[0] * self.cell_size))
+
+
+            if grid_id not in grids:
+                grids[grid_id] = []
+            grids[grid_id].append(position)
+
+        for grid_id, positions in grids.items():
+
+            y_vals = [pos[0] for pos in positions]
+            x_vals = [pos[1] for pos in positions]
+
+            center_x = sorted(x_vals)[len(x_vals) // 2]  # Median x
+            center_y = sorted(y_vals)[len(y_vals) // 2]
+
+
+
+            # Draw a number in the center of the cell
+            font = pygame.font.Font(None, 40)
+            text_surface = font.render(str(grid_id), True, (0,0,0))
+            text_rect = text_surface.get_rect(center=(center_x * self.cell_size + self.cell_size // 2, center_y * self.cell_size + self.cell_size // 2))
+            self.win.blit(text_surface, text_rect)
             
     def draw_frame(
         self,
@@ -332,7 +355,7 @@ class Maze:
 
         self.draw_maze(env_map)
 
-        #pygame.image.save(self.win, "maze.png")
+        pygame.image.save(self.win, "maze.png")
         #self.draw_action_tail(last_ten_actions)
         #self.draw_rays(position, orientation, wall_rays)
         self.draw_marked_blocks(observed_squares_map)

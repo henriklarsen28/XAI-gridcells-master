@@ -28,7 +28,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 
 sys.path.append(project_root)
 
-from agent.ppo.transformer_decoder_policy import TransformerPolicy
+from agent.ppo.transformer_decoder_decoupled_policy import TransformerPolicyDecoupled # TODO: This should be decoupled transformer
 from utils import CAV_dataset, build_numpy_list_cav
 from utils.calculate_fov import calculate_fov_matrix_size
 
@@ -48,7 +48,7 @@ def get_activation(name):
 
 
 def get_activations(
-    model: TransformerPolicy, input, block_name: str = None, embedding: bool = True
+    model: TransformerPolicyDecoupled, input, block_name: str = None, embedding: bool = True
 ):
     """
     Get the activations of the model for the training data.
@@ -69,7 +69,7 @@ def get_activations(
     return output
 
 
-def get_embedding_activations(model: TransformerPolicy, input):
+def get_embedding_activations(model: TransformerPolicyDecoupled, input):
 
     embedding = model.token_embedding
     embedding.register_forward_hook(get_activation("embedding"))
@@ -98,7 +98,7 @@ def create_activation_dataset(
     num_states = matrix_size[0] * matrix_size[1]
     num_states += 1
 
-    num_envs = 3
+    num_envs = 6
     sequence_length = 30
     n_embd = 196
     n_head = 8
@@ -109,7 +109,7 @@ def create_activation_dataset(
     action_space = 2
 
     # Initiate the network models
-    model = TransformerPolicy(
+    model = TransformerPolicyDecoupled(
         input_dim=state_dim,
         output_dim=action_space,
         num_envs=num_envs,
@@ -135,7 +135,7 @@ def create_activation_dataset(
     # print(dataset.head(10))
     sequences = [
         [torch.tensor(ast.literal_eval(state)) for state in states]
-        for _, states in dataset.iterrows()
+        for _, states in dataset.head(1500).iterrows()
     ]
 
     state_tensors = torch.stack(
@@ -145,13 +145,15 @@ def create_activation_dataset(
     if embedding:
         output = get_activations(model, state_tensors, embedding=embedding)
         activation = activations["embedding"]["output"]
-        # print("Activation embedding:", activation)
+        # print("Activation embedding:", activation.shape, activation)
 
     else:
         block_name = f"block_{block}"
         output = get_activations(model, state_tensors, block_name, embedding=embedding)
         activation = activations[block_name]["output"][0]
-        # print("Activations:", activation)
+        # TODO: Look inside the block
+        # TODO: After attention, after feed forward
+        #print("Activations:", activation)
 
     assert isinstance(activation, torch.Tensor), "Activation must be a tensor"
 
@@ -223,6 +225,12 @@ class CAV:
             action_index=action_index,
         )
         assert isinstance(negative, torch.Tensor), "Negative_test must be a tensor"
+
+        # Make sure the activations are saved the same way as the concept plots
+        if embedding:
+            block = 0
+        else:
+            block += 1
 
         self.save_activations(
             positive, positive_test, concept, save_path, block, episode_number
@@ -305,7 +313,7 @@ class CAV:
         train_data, train_labels = shuffle(train_data, train_labels, random_state=42)
         test_data, test_labels = shuffle(test_data, test_labels, random_state=42)
         # Train the model
-        self.model = LogisticRegression(max_iter=300)
+        self.model = LogisticRegression(penalty="l2", C=0.01, solver="lbfgs", max_iter=1000, random_state=42)
 
         self.model.fit(train_data, train_labels)
 
@@ -320,9 +328,11 @@ class CAV:
         pickle.dump(self.model, open(save_path_models, "wb"))
 
         # Test the model
-        score = self.model.score(test_data, test_labels)
+        #score = self.model.score(test_data, test_labels)
 
         cav_coef = self.model.coef_
+
+        score = np.mean(test_data @ cav_coef.T > 0)
 
         score = (score - 0.5) * 2
 
@@ -412,7 +422,6 @@ class CAV:
                 save_path,
                 concept,
             )
-            # print("HEllo")
             # Calculate the tcav
             if sensitivity:
                 self.calculate_tcav(
@@ -421,7 +430,7 @@ class CAV:
 
             for block in range(
                 1, 3
-            ):  # NOTE: This must be changed depending on the num blocks (3 blocks here)
+            ):  # NOTE: This must be changed depending on the num blocks (2 blocks here)
                 # load dataset
                 (
                     positive,
@@ -557,7 +566,7 @@ class CAV:
         accuracies = np.array([t[2] for t in cav_list])
 
         # Create a grid for interpolation
-        block_lin = np.linspace(blocks.min(), blocks.max(), 4)
+        block_lin = np.linspace(blocks.min(), blocks.max(), 3)
         episode_lin = np.linspace(episode_numbers.min(), episode_numbers.max(), 550)
         block_grid, episode_grid = np.meshgrid(block_lin, episode_lin)
 
