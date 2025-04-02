@@ -182,10 +182,10 @@ class PPO_agent:
         self.cov_var = torch.full(size=(self.act_dim,), fill_value=0.5).to(self.device)
         self.cov_mat = torch.diag(self.cov_var).to(self.device)
 
-    def learn(self, total_timesteps):
+
+    def learn(self, total_timesteps, iteration_counter = 0):
         self.__init_learn()
         timestep_counter = 0
-        iteration_counter = 0
 
         while timestep_counter < total_timesteps:
 
@@ -348,7 +348,7 @@ class PPO_agent:
             gc.collect()
             torch.cuda.empty_cache()
 
-            if iteration_counter % self.save_interval == 0 or iteration_counter == 1:
+            if iteration_counter % self.save_interval == 0 or iteration_counter == 0:
                 torch.save(
                     self.policy_network.state_dict(),
                     f"./models/transformers/ppo/{self.run.name}/policy_network_{iteration_counter}.pth",
@@ -717,6 +717,15 @@ class PPO_agent:
         with open(f"{config_path}/critic_params.json", "w") as f:
             f.write(str(self.critic_params))
 
+        torch.save(
+            self.policy_network.state_dict(),
+            f"./models/transformers/ppo/{self.run.name}/policy_network_0.pth",
+        )
+        torch.save(
+            self.critic_network.state_dict(),
+            f"./models/transformers/ppo/{self.run.name}/critic_network_0.pth",
+        )
+
     def entorpy_coefficient_decay(self):
         self.entorpy_coefficient -= self.entropy_step
         self.entorpy_coefficient = max(self.entropy_min, self.entorpy_coefficient)
@@ -816,6 +825,19 @@ class PPO_agent:
             )
 
         return env"""
+    def load_models(self):
+        policy_network_path = self.config["policy_network_path"]
+        critic_network_path = self.config["critic_network_path"]
+        self.policy_network.load_state_dict(
+            torch.load(
+                f"./models/transformers/ppo/{self.run.name}/policy_network_0.pth"
+            )
+        )
+        self.critic_network.load_state_dict(
+            torch.load(
+                f"./models/transformers/ppo/{self.run.name}/critic_network_0.pth"
+            )
+        )
 
     def load_model(self, policy_path, critic_path):
         self.policy_network.load_state_dict(torch.load(policy_path))
