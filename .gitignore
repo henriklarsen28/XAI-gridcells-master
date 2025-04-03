@@ -57,3 +57,6 @@ wandb*
 load.sh
 xai/cav/continuous/output.txt
 xai/cav/continuous/run_cav.slurm
+xai/cav/continuous/results/azure-sun-1341/remapping_src_map_two_rooms_18_19_target_map_two_rooms_horizontally_18_40.zip
+xai/cav/continuous/results/feasible-lake-1351/map_circular_4_19_without decouple.zip
+xai/cav/continuous/results/feasible-lake-1351/map_circular_horizontally_4_40 without decouple.zip

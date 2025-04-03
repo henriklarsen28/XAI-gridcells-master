@@ -29,7 +29,7 @@ def main():
         "number_of_rays": 40,
     }
 
-    map_path = "map_circular_rot90__19_16"
+    map_path = "map_circular_horizontally_4_40"
     model_name = "feasible-lake-1351"
 
     config = {
