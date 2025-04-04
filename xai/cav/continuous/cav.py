@@ -87,6 +87,8 @@ def create_activation_dataset(
     requires_grad: bool = False,
     action_index: int = 0,
 ):
+    if not os.path.exists(dataset_path):
+        return torch.tensor([]), torch.tensor([])
     print("Creating activation dataset for ", model_path)
     fov_config = {
         "fov": math.pi / 1.5,

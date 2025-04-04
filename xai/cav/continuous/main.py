@@ -29,14 +29,14 @@ def main():
         "number_of_rays": 40,
     }
 
-    map_path = "map_circular_horizontally_4_40"
-    model_name = "feasible-lake-1351"
+    map_path = "map_circular_rot90_19_16"
+    model_name = "helpful-bush-1369"
 
     config = {
         # MODEL PATHS
         "model_path": f"../../../agent/ppo/models/transformers/{model_name}/actor",
         "model_name": f"{model_name}",  # NOTE: make sure to update
-        "model_episodes": [1, 500, 1000],  # NOTE: for eval_policy
+        "model_episodes": [800, 1025, 1200],  # NOTE: for eval_policy
         # PPO
         "policy_load_path": None,
         "critic_load_path": None,
@@ -46,7 +46,7 @@ def main():
         "grid_length": 7,  # 7 x 7 grid
         "cav": {
             "dataset_max_length": 1500,
-            "episode_numbers": ["1", "50", "200", "500"],
+            "episode_numbers": ["1200"],
         },
         # RENDERING
         "train_mode": False,
@@ -163,7 +163,7 @@ def main():
         dataset_subfolder=dataset_subfolder,
         grid_size=grid_size,
     )
-    
+    """
     # Train CAV for grid observations
     for i in range(grid_size):
         print("CAVing for grid observation", i)
@@ -206,6 +206,6 @@ def main():
                         )
                     }
                 )
-
+        """
 if __name__ == "__main__":
     main()

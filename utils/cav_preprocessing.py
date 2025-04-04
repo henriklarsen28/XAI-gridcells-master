@@ -10,6 +10,6 @@ def build_numpy_list_cav(data:torch.Tensor) -> list:
             for i in range(len(data))
         ]
     
-    print("data_np", data_np[0].shape) 
+    #print("data_np", data_np[0].shape) 
     
     return data_np

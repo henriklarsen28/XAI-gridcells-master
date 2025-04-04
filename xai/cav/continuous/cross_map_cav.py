@@ -37,6 +37,7 @@ class Cross_Map_CAV:
 
         self.dataset_path = config["dataset_path"]
         self.results_path = config["results_path"]
+        self.target_path = config["target_path"]
         self.model_path = config["model_path"]
         self.cav_model = config["cav_model"]
         self.target_cav_model = config["target_cav_model"]
@@ -62,46 +63,33 @@ class Cross_Map_CAV:
 
     def read_test_dataset(self, concept):
         # See if activation dataset exists
-        # If not, create it
         if os.path.exists(
-            f"{self.results_path}/activations//{concept}_positive_test.csv"
+            f"{self.target_path}/activations/test/{concept}/episode_{self.episode}/activation_{concept}_block_{self.block}.pt"
         ):
-            positive_test
-        positive_test, _ = create_activation_dataset(
-            dataset_path=f"{self.dataset_path}/{concept}_positive_test.csv",
-            model_path=self.model_path,
-            block=self.block - 1,
-            embedding=self.embedding,
-            requires_grad=self.sensitivity,
-            action_index=self.action_index,
-        )
+            positive_test = torch.load(
+                f"{self.target_path}/activations/test/{concept}/episode_{self.episode}/activation_{concept}_block_{self.block}.pt"
+            )
+        else:
+            print("Did not find actication dataset: ", f"{self.target_path}/activations/test/{concept}/episode_{self.episode}/activation_{concept}_block_{self.block}.pt")
+            positive_test, _ = create_activation_dataset(
+                dataset_path=f"{self.dataset_path}/{concept}_positive_test.csv",
+                model_path=self.model_path,
+                block=self.block - 1,
+                embedding=self.embedding,
+                requires_grad=self.sensitivity,
+                action_index=self.action_index,
+            )
         assert isinstance(positive_test, torch.Tensor), "Positive_test must be a tensor"
 
-        negative_test, _ = create_activation_dataset(
-            dataset_path=f"{self.dataset_path}/{concept}_negative_test.csv",
-            model_path=self.model_path,
-            block=self.block - 1,
-            embedding=self.embedding,
-            requires_grad=self.sensitivity,
-            action_index=self.action_index,
-        )
-        assert isinstance(negative_test, torch.Tensor), "Negative_test must be a tensor"
+    
         print(f"Positive test shape: {positive_test.shape}")
 
         positive_test = build_numpy_list_cav(positive_test)
-        negative_test = build_numpy_list_cav(negative_test)
 
-        positive_test_labels = np.ones(len(positive_test))
-        negative_test_labels = np.zeros(len(negative_test))
 
-        test_dataset = np.concatenate((positive_test, negative_test), axis=0)
-        test_labels = np.concatenate(
-            (positive_test_labels, negative_test_labels), axis=0
-        )
+        test_dataset= shuffle(positive_test, random_state=42)
 
-        test_dataset, test_labels = shuffle(test_dataset, test_labels, random_state=42)
-
-        return test_dataset, test_labels
+        return test_dataset
     
 
     def build_cav_list(self):
@@ -140,10 +128,15 @@ class Cross_Map_CAV:
 
 
     def test_cav(self, concept):
-        test_dataset, test_labels = self.read_test_dataset(concept)
-
+        test_data = self.read_test_dataset(concept)
+        if len(test_data) == 0:
+            print(f"No test dataset for {concept}")
+            return 0
         cav_model = self.load_cav_model(self.cav_model)
-        accuracy = cav_model.score(test_dataset, test_labels)
+        if cav_model is None:
+            return 0
+        cav_coef = cav_model.coef_
+        accuracy = np.mean(test_data @ cav_coef.T > 0)
         return max(0, (accuracy - 0.5) * 2)
 
     def train_reduction(self):
@@ -303,6 +296,10 @@ class Cross_Map_CAV:
             fig, ax = plt.subplots(figsize=(10, 20))
             # Transform the square to map to the vertical map
             coordinate = (coordinate[1]*2, coordinate[0])
+        elif self.target_map.__contains__("rot90") and self.model_name == "helpful-bush-1369":
+            fig, ax = plt.subplots(figsize=(10, 10))
+            # Transform the square to map to the rotated map
+            coordinate = (coordinate[1], -coordinate[0] + grid_length-1)
 
         else:
             fig, ax = plt.subplots(figsize=(10, 10))
@@ -353,7 +350,8 @@ def worker(
             "target_map": target_map,
             "model_name": model_name,
             "dataset_path": f"./dataset/{model_name}/{target_map}/grid_length_{grid_length}/test",  # TODO: Change which dataset grid to use
-            "results_path": f"./results/{model_name}/{source_map}/grid_length_{grid_length}/",
+            "results_path": f"./results/{model_name}/{source_map}/grid_length_{grid_length}",
+            "target_path": f"./results/{model_name}/{target_map}/grid_length_{grid_length}",
             "model_path": f"../../../agent/ppo/models/transformers/{model_name}/actor/policy_network_{episode}.pth",
             "cav_model": f"./results/{model_name}/{source_map}/grid_length_{grid_length}/models/grid_observations_{i}/grid_observations_{i}_block_{block}_episode_{episode}.pkl",
             "target_cav_model": f"./results/{model_name}/{target_map}/grid_length_{grid_length}/models/",  # used for cosine similarity
@@ -382,13 +380,12 @@ def main():
 
     source_map = "map_circular_4_19"
     target_map = "map_circular_horizontally_4_40"
-    model_name = "feasible-lake-1351"
-    # grid_number = 17
+    model_name = "helpful-bush-1369"
 
     grid_length = 7
 
-    block = 1
-    episode = 1000
+    block = 2
+    episode = 1100
 
     embedding = False
     if block == 0:

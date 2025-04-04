@@ -28,14 +28,14 @@ def main(grid_start, grid_end):
         "number_of_rays": 40,
     }
 
-    map_path = "map_circular_horizontally_4_40"
-    model_name = "feasible-lake-1351"
+    map_path = "map_circular_4_19"
+    model_name = "helpful-bush-1369"
 
     config = {
         # MODEL PATHS
         "model_path": f"../../../agent/ppo/models/transformers/{model_name}/actor",
         "model_name": f"{model_name}",  # NOTE: make sure to update
-        "model_episodes": [400, 500, 1000],  # NOTE: for eval_policy
+        "model_episodes": [400, 500, 1200],  # NOTE: for eval_policy
         # PPO
         "policy_load_path": None,
         "critic_load_path": None,
@@ -44,8 +44,8 @@ def main(grid_start, grid_end):
         "env_path": f"../../../env/random_generated_maps/goal/stretched/{map_path}.csv",
         "grid_length": 7,  # 7 x 7 grid
         "cav": {
-            "dataset_max_length": 3000,
-            "episode_numbers": ["1", "200", "600", "1000"],
+            "dataset_max_length": 1500,
+            "episode_numbers": ["1200"],
         },
         # RENDERING
         "train_mode": False,
@@ -195,19 +195,19 @@ def main(grid_start, grid_end):
                     episode_numbers=episode_numbers,
                     save_path=save_path,
                 )
-                cav.plot_cav(
+                """cav.plot_cav(
                     concept=concept,
                     episode_numbers=episode_numbers,
                     save_path=save_path,
-                )
+                )"""
 
-                wandb.log(
+                """wandb.log(
                     {
                         f"CAV_{concept}": wandb.Image(
                             os.path.join(save_path, f"plots/{concept}_{action}.png")
                         )
                     }
-                )
+                )"""
 
 if __name__ == "__main__":
 
