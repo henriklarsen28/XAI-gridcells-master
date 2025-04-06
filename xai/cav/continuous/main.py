@@ -29,21 +29,21 @@ def main():
         "number_of_rays": 40,
     }
 
-    map_path = "map_circular_rot90_19_16"
+    map_path = "map_circular_4_19"
     model_name = "helpful-bush-1369"
 
     config = {
         # MODEL PATHS
         "model_path": f"../../../agent/ppo/models/transformers/{model_name}/actor",
         "model_name": f"{model_name}",  # NOTE: make sure to update
-        "model_episodes": [800, 1025, 1200],  # NOTE: for eval_policy
+        "model_episodes": [200, 700, 1200],  # NOTE: for eval_policy
         # PPO
         "policy_load_path": None,
         "critic_load_path": None,
         # ENVIRONMENT
         "env_name": f"{map_path}",
         "env_path": f"../../../env/random_generated_maps/goal/stretched/{map_path}.csv",
-        "grid_length": 7,  # 7 x 7 grid
+        "grid_length": 6,  # 7 x 7 grid
         "cav": {
             "dataset_max_length": 1500,
             "episode_numbers": ["1200"],

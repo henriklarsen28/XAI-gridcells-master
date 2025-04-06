@@ -1,3 +1,6 @@
+# TODO: CAR
+
+
 import ast
 import copy
 import math
@@ -19,7 +22,8 @@ from scipy.interpolate import griddata
 import wandb
 
 # from logistic_regression import LogisticRegression
-from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score
 from sklearn.utils import shuffle
 from torch.utils.data import DataLoader, random_split
 
@@ -162,18 +166,18 @@ def create_activation_dataset(
     return activation, output
 
 
-class CAV:
+class CAR:
 
     # Get the activations of the model
     # activations = get_activations(model, _, model.blocks[0])
     # print(activations)
 
-    def __init__(self, activation_path: str = None):
+    def __init__(self, kernel = "rbf", kernel_width=None):
         self.model = None
         self.cav_coef = None
+        self.kernel = kernel
+        self.kernel_width = kernel_width
         self.cav_list = []
-        self.tcav_list = []
-        self.activation_path = activation_path
 
     def read_dataset(
         self,
@@ -274,6 +278,30 @@ class CAV:
 
         print(f"Activations train saved to {save_path_activations_train}")
         print(f"Activations test saved to {save_path_activations_test}")
+    
+    def get_kernel_function(self) -> callable:
+        """
+        Get the kernel funtion underlying the CAR
+        Returns: kernel function as a callable with arguments (h1, h2)
+        """
+        if self.kernel == "rbf":
+            if self.kernel_width is not None:
+                kernel_width = self.kernel_width
+            else:
+                kernel_width = 1.0
+            latent_dim = self.concept_reps.shape[-1]
+            # We unstack the tensors to return a kernel matrix of shape len(h1) x len(h2)!
+            return lambda h1, h2: torch.exp(
+                -torch.sum(
+                    ((h1.unsqueeze(1) - h2.unsqueeze(0)) / (latent_dim * kernel_width))
+                    ** 2,
+                    dim=-1,
+                )
+            )
+        elif self.kernel == "linear":
+            return lambda h1, h2: torch.einsum(
+                "abi, abi -> ab", h1.unsqueeze(1), h2.unsqueeze(0)
+            )
 
     def cav_model(
         self,
@@ -316,12 +344,12 @@ class CAV:
         train_data, train_labels = shuffle(train_data, train_labels, random_state=42)
         test_data, test_labels = shuffle(test_data, test_labels, random_state=42)
         # Train the model
-        self.model = LogisticRegression(penalty="l2", C=0.01, solver="lbfgs", max_iter=1000, random_state=42)
+        self.model = SVC(kernel=self.kernel, C=0.01, gamma=0.01)
 
         self.model.fit(train_data, train_labels)
 
         # save the model as pickle file
-        save_path_models = os.path.join(save_path, "models")
+        save_path_models = os.path.join(save_path, "models_car")
         os.makedirs(save_path_models, exist_ok=True)
 
         concept_model_path = os.path.join(save_path_models, concept)
@@ -330,19 +358,17 @@ class CAV:
         save_path_models = os.path.join(concept_model_path, f"{concept}_block_{block}_episode_{episode}.pkl")
         pickle.dump(self.model, open(save_path_models, "wb"))
 
-        # Test the model
-        #score = self.model.score(test_data, test_labels)
 
-        cav_coef = self.model.coef_
 
-        score = np.mean(test_data @ cav_coef.T > 0)
-
+        #score = np.mean(test_data @ cav_coef.T > 0)
+        y_pred = self.model.predict(test_data)
+        score = accuracy_score(test_labels, y_pred)
+        print("Accuracy: ", score)
         score = (score - 0.5) * 2
-
         # Perform relu on the score
         score = max(0, score)
         
-        return score, cav_coef
+        return score
 
     def calculate_single_cav(
         self,
@@ -358,7 +384,7 @@ class CAV:
 
         # positive_file = f"dataset/activations/positive_{concept}_activations_{block}.pt"
         # negative_file = f"dataset/activations/negative_{concept}_activations_{block}.pt"
-        accuracy, cav = self.cav_model(
+        accuracy = self.cav_model(
             positive_train,
             negative_train,
             positive_test,
@@ -369,7 +395,6 @@ class CAV:
             str(block),
         )
         self.cav_list.append((block, episode_number, accuracy))
-        return cav
 
     def calculate_cav(
         self,
@@ -415,7 +440,7 @@ class CAV:
                 episode_number=episode_number,
             )
 
-            cav = self.calculate_single_cav(
+            self.calculate_single_cav(
                 0,
                 episode_number,
                 positive,
@@ -425,11 +450,6 @@ class CAV:
                 save_path,
                 concept,
             )
-            # Calculate the tcav
-            if sensitivity:
-                self.calculate_tcav(
-                    cav, positive_test, q_values_positive_test, 0, episode_number
-                )
 
             for block in range(
                 1, 3
@@ -458,7 +478,7 @@ class CAV:
                 )
 
                 # print("Block: ", block, model_path, episode_number)
-                cav = self.calculate_single_cav(
+                self.calculate_single_cav(
                     block,
                     episode_number,
                     positive,
@@ -469,14 +489,6 @@ class CAV:
                     concept,
                 )
 
-                if sensitivity:
-                    self.calculate_tcav(
-                        cav,
-                        positive_test,
-                        q_values_positive_test,
-                        block,
-                        episode_number,
-                    )
         # Save the CAV list
         torch.save(self.cav_list, os.path.join(save_path_activations, f"{concept}.pt"))
         print(
@@ -484,50 +496,9 @@ class CAV:
         )
         # torch.save(self.tcav_list, f"./results/tcav/tcav_list_{concept}.pt")
 
-    def calculate_sensitivity(
-        self, activations: torch.Tensor, network_output: torch.Tensor, cav: np.ndarray
-    ):
-
-        assert isinstance(
-            activations, torch.Tensor
-        ), f"Activations must be a tensor{type(activations)}"
-        # assert all(type(a) for a in activations) == torch.tensor, f"Activations must be a tensor {type(activations)}"
-        assert isinstance(
-            network_output, torch.Tensor
-        ), "Network output must be a tensor"
-        # assert all(type(n) for n in network_output) == torch.Tensor, "Network output must be a tensor"
-        # print(activations[0])
-        # print(network_output[0])
-        outputs = torch.autograd.grad(
-            outputs=network_output,
-            inputs=activations,
-            grad_outputs=torch.ones_like(network_output),
-            retain_graph=True,
-        )[0]
-
-        grad_flattened = outputs.view(outputs.size(0), -1).detach().cpu().numpy()
-
-        return np.dot(grad_flattened, cav.T)
-
-    def calculate_tcav(
-        self,
-        cav: np.ndarray,
-        positive_test_data,
-        q_values_positive: torch.Tensor,
-        block,
-        episode_number,
-    ):
-
-        # Get the activations
-        activations = positive_test_data
-        network_output = q_values_positive
-        sensitivity = self.calculate_sensitivity(activations, network_output, cav)
-        tcav = (sensitivity > 0).mean()
-
-        self.tcav_list.append((block, episode_number, tcav))
-
+   
     def load_cav(self, concept: str):
-        cav_list = torch.load(f"./results/cav/cav_list_{concept}.pt")
+        cav_list = torch.load(f"./results/car/cav_list_{concept}.pt")
         return cav_list
 
     def plot_cav(
@@ -538,7 +509,7 @@ class CAV:
         save_path: str = None,
     ):
 
-        save_path_plots = os.path.join(save_path, "plots")
+        save_path_plots = os.path.join(save_path, "plots_car")
         if not os.path.exists(save_path_plots):
             os.makedirs(save_path_plots, exist_ok=True)
         save_path_plots = os.path.join(save_path_plots, concept)
