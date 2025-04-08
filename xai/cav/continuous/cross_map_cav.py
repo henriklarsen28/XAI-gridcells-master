@@ -22,8 +22,10 @@ from cav import create_activation_dataset
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.utils import shuffle
+import pandas as pd
 
 from utils import build_numpy_list_cav
 
@@ -54,7 +56,7 @@ class Cross_Map_CAV:
         self.sensitivity = config["sensitivity"]
         self.action_index = config["action_index"]
 
-    def load_cav_model(self, model_path) -> LogisticRegression:
+    def load_cav_model(self, model_path) -> LogisticRegression | SVC:
         try:
             model = pickle.load(open(model_path, "rb"))
             return model
@@ -203,44 +205,6 @@ class Cross_Map_CAV:
 
     
 
-    def analyse_pca_components(self):
-        cavs = self.build_cav_list()
-        variance = []
-        pca_best = None
-        for i in range(2, len(cavs)):
-            # pca = PCA(n_components=i)
-            # pca.fit(cavs)
-            # explained_variance = pca.explained_variance_ratio_.sum()
-            # X_reduced = PCA(n_components=i).fit_transform(cavs)
-            X_umap = umap.UMAP(n_components=i, random_state=42).fit_transform(cavs)
-
-            # Compute local variance preservation (approximation)
-            variance_preserved = np.mean(np.var(X_umap, axis=0))  # Simplified metric
-            # variance.append(variance_preserved)
-
-            # print(f"Number of components: {i}, Explained variance: {explained_variance}")
-            dicti = {
-                "num_components": i,
-                "explained_variance": variance_preserved,
-            }
-            variance.append(dicti)
-            """if explained_variance > 0.95:
-                pca_best = pca
-                break"""
-
-        # Plot
-        fig, ax = plt.subplots(figsize=(10, 10))
-        x = [i["num_components"] for i in variance]
-        y = [i["explained_variance"] for i in variance]
-        ax.plot(x, y)
-        ax.set_xlabel("Number of components")
-        ax.set_ylabel("Explained variance")
-        ax.set_title("PCA explained variance")
-        ax.grid()
-        # save_path = f"results/{self.model_name}/remapping_src_{self.source_map}_target_{self.target_map}/grid_length_{self.grid_length}/cosine_similarity/"
-
-        plt.show()
-
     def test_grids(self):
 
         # Change the number of grids to the number of grid observations
@@ -266,6 +230,59 @@ class Cross_Map_CAV:
             accuracy_grid[f"grid_{i}"] = accuracy
 
         return accuracy_grid
+    
+    def save_matrix(self, accuracy_grid, grid_number: int, coordinate: tuple = (-1, -1)):
+        """
+        Saves a matrix representation of accuracy scores to a CSV file.
+        This method processes a grid of accuracy scores, organizes them into a 
+        2D matrix, and saves the resulting matrix to a CSV file. The file is 
+        stored in a directory structure based on the model name, grid length, 
+        source map, and target map.
+        Args:
+            accuracy_grid (dict): A dictionary containing accuracy scores for 
+                each grid cell, where keys are in the format "grid_<index>".
+            grid_number (int): The grid number being processed.
+            coordinate (tuple, optional): The coordinate of the grid. Defaults 
+                to (-1, -1).
+        Attributes:
+            grid_length (int): The base length of the grid.
+            target_map (str): The target map, which determines if the grid 
+                dimensions should be adjusted horizontally or vertically.
+            model_name (str): The name of the model being used.
+            source_map (str): The source map identifier.
+            block (int): The block number in the current context.
+            episode (int): The episode number in the current context.
+        Saves:
+            A CSV file containing the 2D matrix of accuracy scores. The file is 
+            saved in the directory:
+            `remapping/vectors/{model_name}/grid_length_{grid_length}/remapping_src_{source_map}_target_{target_map}/`
+            with the filename:
+            `grid_observations_{coordinate}_block_{block}_episode_{episode}.csv`.
+        """
+        
+        grid_length = self.grid_length
+        grid_length_horizontal = grid_length
+        grid_length_vertical = grid_length
+        if self.target_map.__contains__("horizontally"):
+            grid_length_horizontal = grid_length * 2
+        if self.target_map.__contains__("vertically"):
+            grid_length_vertical = grid_length * 2
+
+
+        scores = []
+        for i in range(grid_length_vertical):
+            row = []
+            for j in range(grid_length_horizontal):
+                row.append(accuracy_grid[f"grid_{i * grid_length_horizontal + j}"])
+            scores.append(row)
+
+        # Save the matrix to a file
+        df = pd.DataFrame(scores)
+        save_path = f"remapping/vectors/{self.model_name}/grid_length_{grid_length}/remapping_src_{self.source_map}_target_{self.target_map}/"
+        os.makedirs(save_path, exist_ok=True)
+        df.to_csv(os.path.join(save_path, f"grid_observations_{grid_number}_{coordinate[0]}_{coordinate[1]}_block_{self.block}_episode_{self.episode}.csv"), index=False)
+
+
 
     def visualize_scores(
         self, accuracy_grid, grid_number: int, coordinate: tuple = (-1, -1)
@@ -285,6 +302,7 @@ class Cross_Map_CAV:
             for j in range(grid_length_horizontal):
                 row.append(accuracy_grid[f"grid_{i * grid_length_horizontal + j}"])
             scores.append(row)
+
 
         # Plot
 
@@ -306,7 +324,8 @@ class Cross_Map_CAV:
 
         sns.heatmap(
             scores, annot=True, ax=ax, vmin=0, vmax=1
-        )  # TODO: Color map is from 0 to 1
+        )
+
         block = self.block
 
         if self.cos_sim:
@@ -318,7 +337,7 @@ class Cross_Map_CAV:
             ax.set_title(
                 f"Accuracy of CAVs for each grid observation for grid {grid_number}, {coordinate}"
             )
-            save_path = f"results/{self.model_name}/remapping_src_{self.source_map}_target_{self.target_map}/grid_length_{grid_length}/"
+            save_path = f"remapping/heatmaps/{self.model_name}/grid_length_{grid_length}/remapping_src_{self.source_map}_target_{self.target_map}"
         rect = patches.Rectangle(
             (coordinate[1], coordinate[0]), 1, 1, linewidth=2, edgecolor="red", facecolor="none"
         )
@@ -339,7 +358,13 @@ def worker(
     block,
     episode,
     embedding,
+    car=False,
 ):
+    cav_path = ""
+    if car:
+        cav_path = "_car"
+
+        
 
     for i in grid_number:
 
@@ -353,9 +378,9 @@ def worker(
             "results_path": f"./results/{model_name}/{source_map}/grid_length_{grid_length}",
             "target_path": f"./results/{model_name}/{target_map}/grid_length_{grid_length}",
             "model_path": f"../../../agent/ppo/models/transformers/{model_name}/actor/policy_network_{episode}.pth",
-            "cav_model": f"./results/{model_name}/{source_map}/grid_length_{grid_length}/models/grid_observations_{i}/grid_observations_{i}_block_{block}_episode_{episode}.pkl",
-            "target_cav_model": f"./results/{model_name}/{target_map}/grid_length_{grid_length}/models/",  # used for cosine similarity
-            "cos_sim": True,
+            "cav_model": f"./results/{model_name}/{source_map}/grid_length_{grid_length}/models{cav_path}/grid_observations_{i}/grid_observations_{i}_block_{block}_episode_{episode}.pkl",
+            "target_cav_model": f"./results/{model_name}/{target_map}/grid_length_{grid_length}/models{cav_path}/",  # used for cosine similarity
+            "cos_sim": False,
             "grid_length": grid_length,
             "block": block,
             "episode": episode,
@@ -364,28 +389,33 @@ def worker(
             "sensitivity": False,
             "action_index": 0,
         }
-        if not config["cos_sim"]:
-            grid_path = f"results/{model_name}/remapping_src_{source_map}_target_{target_map}/grid_length_{grid_length}/grid_observations_{i}_block_{block}_episode_{episode}.png"
-            if os.path.exists(grid_path):
-                print("Skipping grid", i)
-                continue
+        if car:
+            config["cos_sim"] = False
+
         cav = Cross_Map_CAV(config)
         # Check if the plot exists
         accuracy_grid = cav.test_grids()
         grid_coordinate = (i // grid_length, i % grid_length)
+
+        cav.save_matrix(
+            accuracy_grid, grid_number=i, coordinate=grid_coordinate
+        )
+
         cav.visualize_scores(accuracy_grid, i, grid_coordinate)
 
 
 def main():
 
     source_map = "map_circular_4_19"
-    target_map = "map_circular_horizontally_4_40"
+    target_map = "map_circular_rot90_19_16"
     model_name = "helpful-bush-1369"
 
     grid_length = 7
 
     block = 2
     episode = 1100
+
+    car = False
 
     embedding = False
     if block == 0:
@@ -427,6 +457,7 @@ def main():
                 block,
                 episode,
                 embedding,
+                car
             ),
         )
         p.start()
@@ -441,13 +472,15 @@ def analysis():
     source_map = "map_two_rooms_18_19"
     target_map = "map_two_rooms_vertically_36_19"
 
+    model_type = "" # "car"
+
     model_name = "azure-sun-1341"
     # grid_number = 17
 
     grid_length = 7
 
     block = 1
-    episode = 500
+    episode = 1200
     config = {
         "source_map": source_map,
         "target_map": target_map,
@@ -457,7 +490,7 @@ def analysis():
         "results_path": f"./results/{model_name}/{source_map}/grid_length_{grid_length}/",
         "cav_model": f"./results/{model_name}/{source_map}/grid_length_{grid_length}/models/grid_observations_0/grid_observations_0_block_{block}_episode_{episode}.pkl",
         "target_cav_model": f"./results/{model_name}/{target_map}/grid_length_{grid_length}/models/",  # used for cosine similarity
-        "cos_sim": True,
+        "cos_sim": False,
         "grid_length": grid_length,
         "block": block,
         "episode": episode,
@@ -466,7 +499,6 @@ def analysis():
         "action_index": 0,
     }
     cav = Cross_Map_CAV(config)
-    cav.analyse_pca_components()
 
 
 if __name__ == "__main__":

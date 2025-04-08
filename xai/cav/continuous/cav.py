@@ -20,6 +20,7 @@ import wandb
 
 # from logistic_regression import LogisticRegression
 from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
 from sklearn.utils import shuffle
 from torch.utils.data import DataLoader, random_split
 
@@ -188,41 +189,57 @@ class CAV:
         save_path: str = None,
         episode_number: str = None,
     ):
-
-        positive, output_positive = create_activation_dataset(
-            f"{dataset_directory_train}/{concept}_positive_train.csv",
-            model_path,
-            block,
-            embedding=embedding,
-            requires_grad=sensitivity,
-            action_index=action_index,
-        )
+        
+        transformer_block = block - 1
+        activation_file_train = os.path.join(self.activation_path, "train", concept, str(episode_number), f"activation_{concept}_block_{block}.pt")
+        if os.path.exists(activation_file_train):
+            # Read the activation file
+            positive = torch.load(activation_file_train, weights_only=True)
+            output_positive = None
+        else:
+            positive, output_positive = create_activation_dataset(
+                f"{dataset_directory_train}/{concept}_positive_train.csv",
+                model_path,
+                transformer_block,
+                embedding=embedding,
+                requires_grad=sensitivity,
+                action_index=action_index,
+            )
+        
         assert isinstance(positive, torch.Tensor), "Positive must be a tensor"
 
         negative, output_negative = create_activation_dataset(
             f"{dataset_directory_train}/{concept}_negative_train.csv",
             model_path,
-            block,
+            transformer_block,
             embedding=embedding,
             requires_grad=sensitivity,
             action_index=action_index,
         )
         assert isinstance(negative, torch.Tensor), "Negative must be a tensor"
 
-        positive_test, output_positive_test = create_activation_dataset(
-            f"{dataset_directory_test}/{concept}_positive_test.csv",
-            model_path,
-            block,
-            embedding=embedding,
-            requires_grad=sensitivity,
-            action_index=action_index,
-        )
+        activation_file_test = os.path.join(self.activation_path, "test", concept, str(episode_number), f"activation_{concept}_block_{block}.pt")
+
+        if os.path.exists(activation_file_test):
+            print("Loading positive test")
+            # Read the activation file
+            positive_test = torch.load(activation_file_test, weights_only=True)
+            output_positive_test = None
+        else:
+            positive_test, output_positive_test = create_activation_dataset(
+                f"{dataset_directory_test}/{concept}_positive_test.csv",
+                model_path,
+                transformer_block,
+                embedding=embedding,
+                requires_grad=sensitivity,
+                action_index=action_index,
+            )
         assert isinstance(positive_test, torch.Tensor), "Positive_test must be a tensor"
 
         negative_test, output_negative_test = create_activation_dataset(
             f"{dataset_directory_test}/{concept}_negative_test.csv",
             model_path,
-            block,
+            transformer_block,
             embedding=embedding,
             requires_grad=sensitivity,
             action_index=action_index,
@@ -230,10 +247,6 @@ class CAV:
         assert isinstance(negative, torch.Tensor), "Negative_test must be a tensor"
 
         # Make sure the activations are saved the same way as the concept plots
-        if embedding:
-            block = 0
-        else:
-            block += 1
 
         self.save_activations(
             positive, positive_test, concept, save_path, block, episode_number
@@ -257,7 +270,7 @@ class CAV:
             save_path, f"activations/train/{concept}/{episode}"
         )
         save_path_activations_test = os.path.join(
-            save_path, f"activations/test/{concept}/episode_{episode}"
+            save_path, f"activations/test/{concept}/{episode}"
         )
         file_name = f"activation_{concept}_block_{block}.pt"
 
@@ -315,10 +328,11 @@ class CAV:
         # Shuffle the dataset
         train_data, train_labels = shuffle(train_data, train_labels, random_state=42)
         test_data, test_labels = shuffle(test_data, test_labels, random_state=42)
-        # Train the model
-        self.model = LogisticRegression(penalty="l2", C=0.01, solver="lbfgs", max_iter=1000, random_state=42)
 
-        self.model.fit(train_data, train_labels)
+        # Train the model
+        model = LogisticRegression(penalty="l2", C=0.01, solver="lbfgs", max_iter=1000, random_state=42)
+
+        model.fit(train_data, train_labels)
 
         # save the model as pickle file
         save_path_models = os.path.join(save_path, "models")
@@ -329,18 +343,20 @@ class CAV:
 
         save_path_models = os.path.join(concept_model_path, f"{concept}_block_{block}_episode_{episode}.pkl")
         pickle.dump(self.model, open(save_path_models, "wb"))
-
+        
         # Test the model
-        #score = self.model.score(test_data, test_labels)
+        #score = model.score(test_data, test_labels)
+        #score = accuracy_score(test_labels, model.predict(test_data))        
 
-        cav_coef = self.model.coef_
+        cav_coef = model.coef_
 
         score = np.mean(test_data @ cav_coef.T > 0)
 
         score = (score - 0.5) * 2
-
         # Perform relu on the score
         score = max(0, score)
+
+        print("Score: ", score)
         
         return score, cav_coef
 
@@ -393,48 +409,14 @@ class CAV:
             if episode_number not in episode_numbers:
                 continue
 
-            (
-                positive,
-                negative,
-                positive_test,
-                negative_test,
-                q_values_positive,
-                q_values_negative,
-                q_values_positive_test,
-                q_values_negative_test,
-            ) = self.read_dataset(
-                concept=concept,
-                dataset_directory_train=dataset_directory_train,
-                dataset_directory_test=dataset_directory_test,
-                model_path=model_path,
-                block=0,
-                embedding=True,
-                sensitivity=sensitivity,
-                action_index=action_index,
-                save_path=save_path,
-                episode_number=episode_number,
-            )
-
-            cav = self.calculate_single_cav(
-                0,
-                episode_number,
-                positive,
-                negative,
-                positive_test,
-                negative_test,
-                save_path,
-                concept,
-            )
-            # Calculate the tcav
-            if sensitivity:
-                self.calculate_tcav(
-                    cav, positive_test, q_values_positive_test, 0, episode_number
-                )
-
             for block in range(
-                1, 3
+                0, 3
             ):  # NOTE: This must be changed depending on the num blocks (2 blocks here)
                 # load dataset
+
+                embedding = False
+                if block == 0:
+                    embedding = True
                 (
                     positive,
                     negative,
@@ -449,8 +431,8 @@ class CAV:
                     dataset_directory_train=dataset_directory_train,
                     dataset_directory_test=dataset_directory_test,
                     model_path=model_path,
-                    block=block - 1,
-                    embedding=False,
+                    block=block,
+                    embedding=embedding,
                     sensitivity=sensitivity,
                     action_index=action_index,
                     save_path=save_path,

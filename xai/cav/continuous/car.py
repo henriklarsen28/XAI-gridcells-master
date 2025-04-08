@@ -344,7 +344,7 @@ class CAR:
         train_data, train_labels = shuffle(train_data, train_labels, random_state=42)
         test_data, test_labels = shuffle(test_data, test_labels, random_state=42)
         # Train the model
-        self.model = SVC(kernel=self.kernel, C=0.01, gamma=0.01)
+        self.model = SVC(kernel=self.kernel, C=0.05, gamma=0.05)
 
         self.model.fit(train_data, train_labels)
 

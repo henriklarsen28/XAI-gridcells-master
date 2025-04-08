@@ -46,7 +46,7 @@ def main(grid_start, grid_end):
         # ENVIRONMENT
         "env_name": f"{map_path}",
         "env_path": f"../../../env/random_generated_maps/goal/stretched/{map_path}.csv",
-        "grid_length": 7,  # 7 x 7 grid
+        "grid_length": 6,  # 7 x 7 grid
         "cav": {
             "dataset_max_length": 1500,
             "episode_numbers": ["1", "200", "600", "1000", "1200"],
@@ -106,7 +106,7 @@ def main(grid_start, grid_end):
             "n_head": 8,
             "n_layer": 2,
             "dropout": 0.2,
-            "decouple_positional_embedding": False,
+            "decouple_positional_embedding": True,
         },
         "entropy": {"coefficient": 0.015, "min": 0.0001, "step": 1_000},
         "grid_start": grid_start,
@@ -114,10 +114,10 @@ def main(grid_start, grid_end):
         # Relative CAV
         "relative_cav": {
             "episode": 1000,
-            "block": 0,
+            "block": 2,
         },
         "CAR": False,
-        "Relative_CAV": True,
+        "Relative_CAV": False,
     }
 
     wandb.init(project="CAV_PPO", config=config)
@@ -200,11 +200,12 @@ def main(grid_start, grid_end):
                 if config["Relative_CAV"]:
                     for j in range(int(config["grid_length"])**2):
                         concept2 = f"grid_observations_{j}"
-                        filename = f"{concept2}_positive_train.csv"
-                        if filename not in os.listdir(dataset_directory_train):
+                        filename2 = f"{concept2}_positive_train.csv"
+                        if filename2 not in os.listdir(dataset_directory_train):
                             print(
-                                f"Concept {concept} does not exist in the dataset. Skipping..."
+                                f"Concept {concept2} does not exist in the dataset. Skipping."
                             )
+                            
                             continue
                         cav.calculate_rel_cav(
                             concept=concept,

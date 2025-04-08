@@ -21,7 +21,9 @@ from scipy.interpolate import griddata
 
 # from logistic_regression import LogisticRegression
 from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
 from sklearn.utils import shuffle
+from sklearn.metrics import accuracy_score
 from torch.utils.data import DataLoader, random_split
 
 
@@ -64,7 +66,7 @@ class RelativeCAV:
             positive, output_positive = create_activation_dataset(
                 f"{dataset_directory_train}/{concept}_positive_train.csv",
                 model_path,
-                block,
+                block-1,
                 embedding=embedding,
                 requires_grad=sensitivity,
             )
@@ -81,7 +83,7 @@ class RelativeCAV:
             negative, output_negative = create_activation_dataset(
                 f"{dataset_directory_train}/{concept2}_positive_train.csv",
                 model_path,
-                block,
+                block-1,
                 embedding=embedding,
                 requires_grad=sensitivity,
             )
@@ -89,9 +91,8 @@ class RelativeCAV:
 
         assert isinstance(negative, torch.Tensor), "Negative must be a tensor"
         
-        activation_file_test = os.path.join(self.activation_path, "test", concept, str(episode), f"activation_{concept}_block_{block}.pt")
-        print(activation_file_test)
-        print
+        activation_file_test = os.path.join(self.activation_path, "test", concept, f"episode_{episode}", f"activation_{concept}_block_{block}.pt")
+
         if os.path.exists(activation_file_test):
             print("Loading positive test")
             # Read the activation file
@@ -101,7 +102,7 @@ class RelativeCAV:
             positive_test, output_positive_test = create_activation_dataset(
                 f"{dataset_directory_test}/{concept}_positive_test.csv",
                 model_path,
-                block,
+                block-1,
                 embedding=embedding,
                 requires_grad=sensitivity,
             )
@@ -109,7 +110,7 @@ class RelativeCAV:
 
         assert isinstance(positive_test, torch.Tensor), "Positive_test must be a tensor"
 
-        activation_file_test = os.path.join(self.activation_path, "test", concept2, str(episode), f"activation_{concept2}_block_{block}.pt")
+        activation_file_test = os.path.join(self.activation_path, "test", concept2, f"episode_{episode}", f"activation_{concept2}_block_{block}.pt")
         print(activation_file_test)
         if os.path.exists(activation_file_test):
             # Read the activation file
@@ -120,7 +121,7 @@ class RelativeCAV:
             negative_test, output_negative_test = create_activation_dataset(
                 f"{dataset_directory_test}/{concept2}_positive_test.csv",
                 model_path,
-                block,
+                block-1,
                 embedding=embedding,
                 requires_grad=sensitivity,
             )
@@ -128,11 +129,6 @@ class RelativeCAV:
         assert isinstance(negative, torch.Tensor), "Negative_test must be a tensor"
 
         # Make sure the activations are saved the same way as the concept plots
-        if embedding:
-            block = 0
-        else:
-            block += 1
-        
         if not dataset_exists:
             
             self.save_activations(
@@ -160,7 +156,7 @@ class RelativeCAV:
             save_path, f"activations/train/{concept}/{episode}"
         )
         save_path_activations_test = os.path.join(
-            save_path, f"activations/test/{concept}/{episode}"
+            save_path, f"activations/test/{concept}/episode_{episode}"
         )
         file_name = f"activation_{concept}_block_{block}.pt"
 
@@ -218,7 +214,7 @@ class RelativeCAV:
         test_data, test_labels = shuffle(test_data, test_labels, random_state=42)
         # Train the model
         self.model = LogisticRegression(
-            penalty="l2", C=0.01, solver="lbfgs", max_iter=1000, random_state=42
+            penalty="l2", C=0.1, solver="lbfgs", max_iter=1000, random_state=42
         )
 
         self.model.fit(train_data, train_labels)
@@ -236,13 +232,19 @@ class RelativeCAV:
         pickle.dump(self.model, open(save_path_models, "wb"))
 
         # Test the model
-        # score = self.model.score(test_data, test_labels)
+        #score = self.model.score(test_data, test_labels)
+
+        # Get the accuracy of the model
+        #score = accuracy_score(test_labels, self.model.predict(test_data))
+
+        # TODO: Relative CAR score
+        
 
         cav_coef = self.model.coef_
 
         score = np.mean(test_data @ cav_coef.T > 0)
 
-        score = (score - 0.5) * 2
+        #score = (score - 0.5) * 2
 
         # Perform relu on the score
         score = max(0, score)
@@ -261,7 +263,7 @@ class RelativeCAV:
         concept,
         concept2,
     ):
-
+        print("Concept2:", concept2)
         accuracy, cav = self.cav_model(
             positive_train,
             negative_train,
