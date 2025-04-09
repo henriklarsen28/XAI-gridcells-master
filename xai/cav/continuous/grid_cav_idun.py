@@ -32,7 +32,7 @@ def main(grid_start, grid_end):
         "number_of_rays": 40,
     }
 
-    map_path = "map_circular_4_19"
+    map_path = "map_two_rooms_18_19"
     model_name = "helpful-bush-1369"
 
     config = {
@@ -113,7 +113,7 @@ def main(grid_start, grid_end):
         "grid_end": grid_end,
         # Relative CAV
         "relative_cav": {
-            "episode": 1000,
+            "episode": 1200,
             "block": 2,
         },
         "CAR": False,

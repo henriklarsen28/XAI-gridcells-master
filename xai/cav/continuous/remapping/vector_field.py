@@ -21,22 +21,24 @@ class VectorField:
         df = pd.read_csv(path)
         matrix = df.to_numpy()
         best_grid = self._get_best_grid(matrix)
-        vector = self._create_vector(coordinate, best_grid)
-
-        self.vectors[coordinate] = vector
+        if best_grid is None:
+            return
+        vector, coordinate_transformed = self._create_vector(coordinate, best_grid)
+        
+        self.vectors[coordinate_transformed] = vector
 
     def _create_vector(self, coordinate_a, coordinate_b):
         # Create a vector from coordinate_a to coordinate_b
         coordinate_a = (
-            self.grid_length - coordinate_a[0],
+            - coordinate_a[0],
             coordinate_a[1],
         )
         coordinate_b = (
-            self.grid_length - coordinate_b[0],
+            - coordinate_b[0],
             coordinate_b[1],
         )
         vector = np.array(coordinate_b) - np.array(coordinate_a)
-        return vector
+        return vector, coordinate_a
 
     def _get_best_grid(self, matrix):
 
@@ -45,6 +47,10 @@ class VectorField:
 
         # Get the max index
         max_index = np.unravel_index(np.argmax(result), result.shape)
+        # check if the max index is above a threshold
+        threshold = 0.5
+        if result[max_index] < threshold:
+            return None
 
         return tuple(max_index)
 
@@ -73,8 +79,39 @@ class VectorField:
 
 
 
-        plt.xlim(0, self.grid_length)
-        plt.ylim(-self.grid_length, 0)
+        plt.xlim(-0.5, self.grid_length)
+        plt.ylim(-self.grid_length, 0.5)
+        # Line on origin
+        plt.axhline(0, color="black", lw=1)
+        plt.axvline(0, color="black", lw=1)
+        plt.grid()
+        plt.show()
+
+    def plot_field_centered(self):
+        for coordinate, vector in self.vectors.items():
+            color = np.random.rand(3,)  # Generate a random color
+            plt.quiver(
+                0,
+                0,
+                vector[1],
+                vector[0],
+                angles="xy",
+                scale_units="xy",
+                scale=1,
+                color=color,
+            )
+            plt.text(
+                vector[1],
+                vector[0],
+                f"{coordinate}",
+                color=color,
+                fontsize=8,
+            )
+
+
+
+        plt.xlim(-self.grid_length, self.grid_length)
+        plt.ylim(-self.grid_length, self.grid_length)
         # Line on origin
         plt.axhline(0, color="black", lw=1)
         plt.axvline(0, color="black", lw=1)
@@ -88,11 +125,24 @@ def main():
     grid_length = 7
     map_name = "map_circular_4_19"
     target_map = "map_circular_rot90_19_16"
+    cosine_sim = False
 
+    episode = 1100
+    block = 2
+
+    
     path = f"vectors/{model_name}/grid_length_{grid_length}/remapping_src_{map_name}_target_{target_map}/"
+    if cosine_sim:
+        path += "cosine_sim/"
     vector_field = VectorField(grid_length=grid_length)
     for file in os.listdir(path):
         
+        episode_num = int(file.split(".")[0].split("_")[-1])
+        block_num = int(file.split(".")[0].split("_")[-3])
+        if episode_num != episode or block_num != block:
+            continue
+
+
         file = os.path.join(path, file)
         if not file.endswith(".csv"):
             continue
@@ -100,8 +150,9 @@ def main():
 
 
         vector_field.add_vector(file)
-        # vector_field.get_best_grid()
+
     vector_field.plot_field()
+    vector_field.plot_field_centered()
 
 
 if __name__ == "__main__":

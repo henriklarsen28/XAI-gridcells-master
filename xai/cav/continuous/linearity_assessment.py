@@ -74,7 +74,6 @@ def summarize_grids(grid_data):
         columns = get_column_excluding_diagonal(grid_size, grid_data)
 
         all_column_values = [val for col in columns for val in col]  # flatten list
-        print([np.mean(col) for col in columns if col])
 
         mean_diagonal = np.mean([v for v in diagonal_values if v is not None])
         std_diagonal = np.std([v for v in diagonal_values if v is not None])
@@ -99,7 +98,7 @@ def summarize_grids(grid_data):
         )
 
         plot_std(std_diagonal, std_column)
-        heat_map(grid_data, grid_size)
+        #heat_map(grid_data, grid_size)
 
 
 def read_cav_list(dir_path, grid_length=5):
@@ -167,7 +166,7 @@ def read_cav_list(dir_path, grid_length=5):
 
 def main():
     data = {}
-    grid_size = 5
+    grid_size = 7
 
     dir_path = f"./results/helpful-bush-1369/map_circular_4_19/grid_length_{grid_size}/cav_list/"
     data[grid_size] = read_cav_list(dir_path, grid_length=grid_size)

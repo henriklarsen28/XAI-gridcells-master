@@ -244,7 +244,7 @@ class RelativeCAV:
 
         score = np.mean(test_data @ cav_coef.T > 0)
 
-        #score = (score - 0.5) * 2
+        score = (score - 0.5) * 2
 
         # Perform relu on the score
         score = max(0, score)

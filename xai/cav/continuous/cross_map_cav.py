@@ -24,6 +24,7 @@ from sklearn.manifold import TSNE
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.metrics import accuracy_score
 from sklearn.utils import shuffle
 import pandas as pd
 
@@ -44,6 +45,7 @@ class Cross_Map_CAV:
         self.cav_model = config["cav_model"]
         self.target_cav_model = config["target_cav_model"]
         self.cos_sim = config["cos_sim"]
+        self.car = config["car"]
 
         self.embedding = config["embedding"]
         self.block = config["block"]
@@ -137,8 +139,11 @@ class Cross_Map_CAV:
         cav_model = self.load_cav_model(self.cav_model)
         if cav_model is None:
             return 0
-        cav_coef = cav_model.coef_
-        accuracy = np.mean(test_data @ cav_coef.T > 0)
+        if self.car:
+            accuracy = accuracy_score(cav_model.predict(test_data), np.ones(len(test_data)))
+        else:
+            cav_coef = cav_model.coef_
+            accuracy = np.mean(test_data @ cav_coef.T > 0)
         return max(0, (accuracy - 0.5) * 2)
 
     def train_reduction(self):
@@ -183,8 +188,8 @@ class Cross_Map_CAV:
         # print(f"CAV coef shape: {cav_coef}")
 
         # PCA and UMAP
-        #cav_coef = pca.transform(cav_coef)
-        #target_cav_coef = pca.transform(target_cav_coef)
+        cav_coef = pca.transform(cav_coef)
+        target_cav_coef = pca.transform(target_cav_coef)
 
         
 
@@ -216,9 +221,9 @@ class Cross_Map_CAV:
             num_grids = num_grids * 2
 
         accuracy_grid = {}
-        pca = None
-        #pca = self.train_reduction()
-        # for i in range(num_grids - 1):
+        if self.cos_sim:
+            pca = None
+            pca = self.train_reduction()
         for i in range(num_grids):
             concept = f"grid_observations_{i}"
             if self.cos_sim:
@@ -279,6 +284,8 @@ class Cross_Map_CAV:
         # Save the matrix to a file
         df = pd.DataFrame(scores)
         save_path = f"remapping/vectors/{self.model_name}/grid_length_{grid_length}/remapping_src_{self.source_map}_target_{self.target_map}/"
+        if self.cos_sim:
+            save_path += "cosine_sim/"
         os.makedirs(save_path, exist_ok=True)
         df.to_csv(os.path.join(save_path, f"grid_observations_{grid_number}_{coordinate[0]}_{coordinate[1]}_block_{self.block}_episode_{self.episode}.csv"), index=False)
 
@@ -332,7 +339,7 @@ class Cross_Map_CAV:
             ax.set_title(
                 f"Cosine similarity of CAVs for each grid observation for grid {grid_number}, {coordinate}"
             )
-            save_path = f"results/{self.model_name}/remapping_src_{self.source_map}_target_{self.target_map}/grid_length_{grid_length}/cosine_similarity/"
+            save_path = f"remapping/heatmaps/{self.model_name}/grid_length_{grid_length}/remapping_src_{self.source_map}_target_{self.target_map}/cosine_similarity/"
         else:
             ax.set_title(
                 f"Accuracy of CAVs for each grid observation for grid {grid_number}, {coordinate}"
@@ -381,6 +388,7 @@ def worker(
             "cav_model": f"./results/{model_name}/{source_map}/grid_length_{grid_length}/models{cav_path}/grid_observations_{i}/grid_observations_{i}_block_{block}_episode_{episode}.pkl",
             "target_cav_model": f"./results/{model_name}/{target_map}/grid_length_{grid_length}/models{cav_path}/",  # used for cosine similarity
             "cos_sim": False,
+            "car": car,
             "grid_length": grid_length,
             "block": block,
             "episode": episode,
@@ -467,38 +475,6 @@ def main():
     # cav.visualize_scores(accuracy_grid, grid_number)
 
 
-def analysis():
-
-    source_map = "map_two_rooms_18_19"
-    target_map = "map_two_rooms_vertically_36_19"
-
-    model_type = "" # "car"
-
-    model_name = "azure-sun-1341"
-    # grid_number = 17
-
-    grid_length = 7
-
-    block = 1
-    episode = 1200
-    config = {
-        "source_map": source_map,
-        "target_map": target_map,
-        "model_name": model_name,
-        "dataset_path": f"./dataset/{model_name}/{target_map}/grid_length_{grid_length}/test",  # TODO: Change which dataset grid to use
-        "model_path": f"../../../agent/ppo/models/transformers/{model_name}/actor/policy_network_{episode}.pth",
-        "results_path": f"./results/{model_name}/{source_map}/grid_length_{grid_length}/",
-        "cav_model": f"./results/{model_name}/{source_map}/grid_length_{grid_length}/models/grid_observations_0/grid_observations_0_block_{block}_episode_{episode}.pkl",
-        "target_cav_model": f"./results/{model_name}/{target_map}/grid_length_{grid_length}/models/",  # used for cosine similarity
-        "cos_sim": False,
-        "grid_length": grid_length,
-        "block": block,
-        "episode": episode,
-        # TCAV stuff
-        "sensitivity": False,
-        "action_index": 0,
-    }
-    cav = Cross_Map_CAV(config)
 
 
 if __name__ == "__main__":
