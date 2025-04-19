@@ -172,12 +172,14 @@ class CAR:
     # activations = get_activations(model, _, model.blocks[0])
     # print(activations)
 
-    def __init__(self, kernel = "rbf", kernel_width=None):
+    def __init__(self, kernel = "rbf", kernel_width=None, activation_path: str = None):
         self.model = None
         self.cav_coef = None
         self.kernel = kernel
         self.kernel_width = kernel_width
         self.cav_list = []
+        self.activation_path = activation_path
+
 
     def read_dataset(
         self,
@@ -192,41 +194,57 @@ class CAR:
         save_path: str = None,
         episode_number: str = None,
     ):
+        
+        transformer_block = block - 1
+        activation_file_train = os.path.join(self.activation_path, "train", concept, str(episode_number), f"activation_{concept}_block_{block}.pt")
+        if os.path.exists(activation_file_train):
+            # Read the activation file
+            positive = torch.load(activation_file_train, weights_only=True)
+            output_positive = None
+        else:
 
-        positive, output_positive = create_activation_dataset(
-            f"{dataset_directory_train}/{concept}_positive_train.csv",
-            model_path,
-            block,
-            embedding=embedding,
-            requires_grad=sensitivity,
-            action_index=action_index,
-        )
+            positive, output_positive = create_activation_dataset(
+                f"{dataset_directory_train}/{concept}_positive_train.csv",
+                model_path,
+                transformer_block,
+                embedding=embedding,
+                requires_grad=sensitivity,
+                action_index=action_index,
+            )
         assert isinstance(positive, torch.Tensor), "Positive must be a tensor"
 
         negative, output_negative = create_activation_dataset(
             f"{dataset_directory_train}/{concept}_negative_train.csv",
             model_path,
-            block,
+            transformer_block,
             embedding=embedding,
             requires_grad=sensitivity,
             action_index=action_index,
         )
         assert isinstance(negative, torch.Tensor), "Negative must be a tensor"
 
-        positive_test, output_positive_test = create_activation_dataset(
-            f"{dataset_directory_test}/{concept}_positive_test.csv",
-            model_path,
-            block,
-            embedding=embedding,
-            requires_grad=sensitivity,
-            action_index=action_index,
-        )
+        activation_file_test = os.path.join(self.activation_path, "test", concept, str(episode_number), f"activation_{concept}_block_{block}.pt")
+
+        if os.path.exists(activation_file_test):
+            print("Loading positive test")
+            # Read the activation file
+            positive_test = torch.load(activation_file_test, weights_only=True)
+            output_positive_test = None
+        else:
+            positive_test, output_positive_test = create_activation_dataset(
+                f"{dataset_directory_test}/{concept}_positive_test.csv",
+                model_path,
+                transformer_block,
+                embedding=embedding,
+                requires_grad=sensitivity,
+                action_index=action_index,
+            )
         assert isinstance(positive_test, torch.Tensor), "Positive_test must be a tensor"
 
         negative_test, output_negative_test = create_activation_dataset(
             f"{dataset_directory_test}/{concept}_negative_test.csv",
             model_path,
-            block,
+            transformer_block,
             embedding=embedding,
             requires_grad=sensitivity,
             action_index=action_index,
@@ -234,10 +252,6 @@ class CAR:
         assert isinstance(negative, torch.Tensor), "Negative_test must be a tensor"
 
         # Make sure the activations are saved the same way as the concept plots
-        if embedding:
-            block = 0
-        else:
-            block += 1
 
         self.save_activations(
             positive, positive_test, concept, save_path, block, episode_number
@@ -440,21 +454,14 @@ class CAR:
                 episode_number=episode_number,
             )
 
-            self.calculate_single_cav(
-                0,
-                episode_number,
-                positive,
-                negative,
-                positive_test,
-                negative_test,
-                save_path,
-                concept,
-            )
-
             for block in range(
-                1, 3
+                0, 3
             ):  # NOTE: This must be changed depending on the num blocks (2 blocks here)
                 # load dataset
+
+                embedding = False
+                if block == 0:
+                    embedding = True
                 (
                     positive,
                     negative,
@@ -469,8 +476,8 @@ class CAR:
                     dataset_directory_train=dataset_directory_train,
                     dataset_directory_test=dataset_directory_test,
                     model_path=model_path,
-                    block=block - 1,
-                    embedding=False,
+                    block=block,
+                    embedding=embedding,
                     sensitivity=sensitivity,
                     action_index=action_index,
                     save_path=save_path,
@@ -478,7 +485,7 @@ class CAR:
                 )
 
                 # print("Block: ", block, model_path, episode_number)
-                self.calculate_single_cav(
+                cav = self.calculate_single_cav(
                     block,
                     episode_number,
                     positive,
@@ -489,13 +496,23 @@ class CAR:
                     concept,
                 )
 
+                if sensitivity:
+                    self.calculate_tcar(
+                        cav,
+                        positive_test,
+                        q_values_positive_test,
+                        block,
+                        episode_number,
+                    )
+
         # Save the CAV list
         torch.save(self.cav_list, os.path.join(save_path_activations, f"{concept}.pt"))
         print(
             "CAV list saved to:", os.path.join(save_path_activations, f"{concept}.pt")
         )
         # torch.save(self.tcav_list, f"./results/tcav/tcav_list_{concept}.pt")
-
+    def calculate_tcar(self, car, positive_test, q_values_positive_test, block, episode_number):
+        pass
    
     def load_cav(self, concept: str):
         cav_list = torch.load(f"./results/car/cav_list_{concept}.pt")

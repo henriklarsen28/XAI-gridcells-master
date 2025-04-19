@@ -16,7 +16,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..
 sys.path.append(project_root)
 
 import gymnasium as gym
-from agent.ppo.transformer_decoder_policy import TransformerPolicy
+from agent.ppo.transformer_decoder_decoupled_policy import TransformerPolicyDecoupled
 from env import SunburstMazeContinuous
 
 from utils.calculate_fov import calculate_fov_matrix_size
@@ -72,7 +72,7 @@ def build_csv_dataset(
 
     sys.exit()"""
 
-    policy = TransformerPolicy(
+    policy = TransformerPolicyDecoupled(
         input_dim=obs_dim,
         output_dim=act_dim,
         num_envs=6,

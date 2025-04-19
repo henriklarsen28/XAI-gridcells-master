@@ -14,7 +14,7 @@ import math
 import torch
 import wandb
 from car import CAR
-from cav import CAV
+from cav import CAV, TCAV
 from relative_cav import RelativeCAV
 
 from env.continuous.sunburstmaze_continuous import SunburstMazeContinuous
@@ -50,6 +50,12 @@ def main(grid_start, grid_end):
         "cav": {
             "dataset_max_length": 1500,
             "episode_numbers": ["1", "200", "600", "1000", "1200"],
+        },
+        "tcav_param": {
+            "episode_number": 1200,
+            "block": 2,
+            "action": [0, 1, 2, 3, 4, 5],
+            "average": 1,
         },
         # RENDERING
         "train_mode": False,
@@ -116,8 +122,9 @@ def main(grid_start, grid_end):
             "episode": 1200,
             "block": 2,
         },
-        "CAR": False,
+        "CAR": True,
         "Relative_CAV": False,
+        "TCAV": False,
     }
 
     wandb.init(project="CAV_PPO", config=config)
@@ -168,23 +175,33 @@ def main(grid_start, grid_end):
     # Build the dataset
     print(grid_start, grid_end)
 
-
     activations_path = f"./results/{model_name}/{map_name}/{grid_length}/activations"
 
     dicti = {}
+
+    if config["TCAV"]:
+        tcav = TCAV(
+            activation_path=activations_path,
+            episode=config["tcav_param"]["episode_number"],
+            block=config["tcav_param"]["block"],
+            dataset_path_train=dataset_directory_train,
+            dataset_path_test=dataset_directory_test,
+            model_dir=config["model_path"],
+        )
+    analysis = Analysis(config["tcav_param"]["average"])
+
     # Train CAV for grid observations
     for i in range(int(grid_start), int(grid_end)):
         print("CAVing for grid observation", i)
         concept = f"grid_observations_{i}"
         # grid_observation_dataset(model_name, concept)
         # cav = CAV()
-        for action in range(1):
-            average = 1
-            pass
-            analysis = Analysis(average)
-            for _ in range(average):
+        for action in range(
+            len(config["tcav_param"]["action"] if config["TCAV"] else [0])
+        ):
+            for _ in range(config["tcav_param"]["average"] if config["TCAV"] else 1):
                 if config["CAR"]:
-                    cav = CAR("rbf", activations_path)
+                    cav = CAR("rbf", activation_path=activations_path)
                 else:
                     if config["Relative_CAV"]:
                         cav = RelativeCAV(activations_path)
@@ -198,14 +215,14 @@ def main(grid_start, grid_end):
                     )
                     continue
                 if config["Relative_CAV"]:
-                    for j in range(int(config["grid_length"])**2):
+                    for j in range(int(config["grid_length"]) ** 2):
                         concept2 = f"grid_observations_{j}"
                         filename2 = f"{concept2}_positive_train.csv"
                         if filename2 not in os.listdir(dataset_directory_train):
                             print(
                                 f"Concept {concept2} does not exist in the dataset. Skipping."
                             )
-                            
+
                             continue
                         cav.calculate_rel_cav(
                             concept=concept,
@@ -218,7 +235,14 @@ def main(grid_start, grid_end):
                             save_path=save_path,
                         )
                     dicti[concept] = cav.cav_list
-                    
+
+                elif config["TCAV"]:
+                    tcav_sensitivity = tcav.calculate_tcav(
+                        concept=concept, action=action
+                    )
+                    analysis.add_total_tcav_scores(
+                        concept=concept, action=action, sensitivity=tcav_sensitivity
+                    )
 
                 else:
                     cav.calculate_cav(
@@ -258,6 +282,9 @@ def main(grid_start, grid_end):
                         )
                     }
                 )"""
+
+    if config["TCAV"]:
+        analysis.plot_tcav()
 
 
 if __name__ == "__main__":

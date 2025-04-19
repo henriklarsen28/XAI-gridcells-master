@@ -29,14 +29,14 @@ def main():
         "number_of_rays": 40,
     }
 
-    map_path = "map_circular_4_19"
+    map_path = "map_two_rooms_horizontally_18_40"
     model_name = "helpful-bush-1369"
 
     config = {
         # MODEL PATHS
         "model_path": f"../../../agent/ppo/models/transformers/{model_name}/actor",
         "model_name": f"{model_name}",  # NOTE: make sure to update
-        "model_episodes": [200, 700, 1200],  # NOTE: for eval_policy
+        "model_episodes": [200, 700, 1200],  # NOTE: for eval_policy #NOTE: Episodes for circular [200, 700, 1200], rotated: [1025, 1100, 1200
         # PPO
         "policy_load_path": None,
         "critic_load_path": None,
@@ -51,8 +51,8 @@ def main():
         # RENDERING
         "train_mode": False,
         "map_path_train": None,
-        "render": True,
-        "render_mode": None,  # "human",
+        "render": False,
+        "render_mode": "human",
         # HYPERPARAMETERS
         "loss_function": "mse",
         "learning_rate": 3e-4,
@@ -163,7 +163,7 @@ def main():
         dataset_subfolder=dataset_subfolder,
         grid_size=grid_size,
     )
-    """
+    
     # Train CAV for grid observations
     for i in range(grid_size):
         print("CAVing for grid observation", i)
@@ -206,6 +206,6 @@ def main():
                         )
                     }
                 )
-        """
+        
 if __name__ == "__main__":
     main()

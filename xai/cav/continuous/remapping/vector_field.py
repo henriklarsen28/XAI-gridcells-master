@@ -9,8 +9,9 @@ import os
 # Read output
 class VectorField:
 
-    def __init__(self, grid_length: int):
+    def __init__(self, grid_length: int, grid_length_horizontal: int = None):
         self.grid_length = grid_length
+        self.grid_length_horizontal = grid_length_horizontal
         self.vectors = {}
 
     def add_vector(self, path: str):
@@ -42,7 +43,7 @@ class VectorField:
 
     def _get_best_grid(self, matrix):
 
-        kernel = np.ones((2, 2))
+        kernel = np.ones((3, 3))
         result = convolve2d(matrix, kernel, mode="same", fillvalue=0)
 
         # Get the max index
@@ -79,8 +80,8 @@ class VectorField:
 
 
 
-        plt.xlim(-0.5, self.grid_length)
-        plt.ylim(-self.grid_length, 0.5)
+        plt.xlim(-0.5, self.grid_length_horizontal)
+        plt.ylim(-self.grid_length_horizontal, 0.5)
         # Line on origin
         plt.axhline(0, color="black", lw=1)
         plt.axvline(0, color="black", lw=1)
@@ -109,9 +110,8 @@ class VectorField:
             )
 
 
-
-        plt.xlim(-self.grid_length, self.grid_length)
-        plt.ylim(-self.grid_length, self.grid_length)
+        plt.xlim(-self.grid_length_horizontal, self.grid_length_horizontal)
+        plt.ylim(-self.grid_length_horizontal, self.grid_length_horizontal)
         # Line on origin
         plt.axhline(0, color="black", lw=1)
         plt.axvline(0, color="black", lw=1)
@@ -122,30 +122,36 @@ class VectorField:
 def main():
 
     model_name = "helpful-bush-1369"
-    grid_length = 7
+    grid_length = 6
     map_name = "map_circular_4_19"
     target_map = "map_circular_rot90_19_16"
     cosine_sim = False
 
-    episode = 1100
-    block = 2
+    grid_length_horizontal = grid_length
+    if target_map.__contains__("horizontally") or target_map.__contains__("vertically"):
+        grid_length_horizontal = grid_length * 2
+
+    episode = 1200
+    block = 1
 
     
     path = f"vectors/{model_name}/grid_length_{grid_length}/remapping_src_{map_name}_target_{target_map}/"
     if cosine_sim:
         path += "cosine_sim/"
-    vector_field = VectorField(grid_length=grid_length)
+    
+    vector_field = VectorField(grid_length=grid_length, grid_length_horizontal=grid_length_horizontal)
     for file in os.listdir(path):
-        
+        file = os.path.join(path, file)
+        if not file.endswith(".csv"):
+            continue
+
         episode_num = int(file.split(".")[0].split("_")[-1])
         block_num = int(file.split(".")[0].split("_")[-3])
         if episode_num != episode or block_num != block:
             continue
 
 
-        file = os.path.join(path, file)
-        if not file.endswith(".csv"):
-            continue
+        
 
 
 

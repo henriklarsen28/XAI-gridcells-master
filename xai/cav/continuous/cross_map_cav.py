@@ -151,7 +151,7 @@ class Cross_Map_CAV:
         cavs = self.build_cav_list()
 
         pca = PCA(
-            24
+            48
         )  # TODO: Some statistical analysis to determine the number of components coherence score??
         pca.fit(cavs)
 
@@ -188,8 +188,9 @@ class Cross_Map_CAV:
         # print(f"CAV coef shape: {cav_coef}")
 
         # PCA and UMAP
-        cav_coef = pca.transform(cav_coef)
-        target_cav_coef = pca.transform(target_cav_coef)
+        if pca is not None:
+            cav_coef = pca.transform(cav_coef)
+            target_cav_coef = pca.transform(target_cav_coef)
 
         
 
@@ -418,33 +419,16 @@ def main():
     target_map = "map_circular_rot90_19_16"
     model_name = "helpful-bush-1369"
 
-    grid_length = 7
+    grid_length = 6
 
     block = 2
-    episode = 1100
+    episode = 1200
 
     car = False
 
     embedding = False
     if block == 0:
         embedding = True
-
-    """config = {
-        "source_map": source_map,
-        "target_map": target_map,
-        "model_name": model_name,
-
-        "dataset_path": f"./dataset/{model_name}/{target_map}/grid_length_{grid_length}/test", # TODO: Change which dataset grid to use
-        "model_path": f"../../../agent/ppo/models/transformers/{model_name}/actor/policy_network_{episode}.pth",
-        "cav_model": f"./results/{model_name}/flatten/{source_map}/grid_length_{grid_length}/models/grid_observations_{grid_number}/grid_observations_{grid_number}_block_{block}_episode_{episode}.pkl",
-        "grid_length": grid_length,
-        "block": block,
-        "episode": episode,
-
-        # TCAV stuff
-        "sensitivity": False,
-        "action_index": 0,
-    }"""
 
     grids = np.arange(grid_length * grid_length)
     grids_per_worker = np.array_split(grids, multiprocessing.cpu_count() - 2)
