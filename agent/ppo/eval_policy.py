@@ -98,11 +98,11 @@ def rollout(
     while True:
         
 		# Select and load a new random map
-        env = random_maps(
+        """env = random_maps(
             env=env,
 			random_map=True,
 			map_path_random_files=random_map_path,
-		)
+		)"""
 
         obs, _ = env.reset()
         done = False
@@ -123,8 +123,6 @@ def rollout(
             # Render environment if specified, off by default
             if render:
                 env.render()
-            obs = make_toril_blind(obs)
-            print("obs", obs)
             ep_obs.append(obs)
 
             tensor_obs = torch.stack(list(ep_obs)).to(device)

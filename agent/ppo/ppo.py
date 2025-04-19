@@ -40,7 +40,7 @@ map_path_random = os.path.join(project_root, "env/random_generated_maps/goal/str
 map_path_random_files = [
     os.path.join(map_path_random, f)
     for f in os.listdir(map_path_random)
-    if os.path.isfile(os.path.join(map_path_random, f))
+    if os.path.isfile(os.path.join(map_path_random, f)) and f.endswith(".csv")
 ]
 
 
