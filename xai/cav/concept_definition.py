@@ -113,6 +113,7 @@ class Concepts:
         grid_id = self.grid_pos_to_id.get(position, None)
         if grid_id is not None:
             self.datasets['grid_observations'][grid_id].append(observation_sequence)
+            return grid_id
         else:
             print("Position not in grid")
             # print(position)

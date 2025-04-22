@@ -1,9 +1,9 @@
 """
-	This file is used only to evaluate our trained policy/actor after
-	training in main.py with ppo.py. I wrote this file to demonstrate
-	that our trained policy exists independently of our learning algorithm,
-	which resides in ppo.py. Thus, we can test our trained policy without 
-	relying on ppo.py.
+This file is used only to evaluate our trained policy/actor after
+training in main.py with ppo.py. I wrote this file to demonstrate
+that our trained policy exists independently of our learning algorithm,
+which resides in ppo.py. Thus, we can test our trained policy without
+relying on ppo.py.
 """
 
 import copy
@@ -163,6 +163,13 @@ def preprocess_ep_obs(ep_obs, sequence_length, device):
     return padded_obs
 
 
+def update_model(actor_model_paths, ep_num):
+    if ep_num == len(actor_model_paths) - 1:
+        print("Reached the end of the model.")
+        return None
+    return actor_model_paths[ep_num + 200] # +1 
+
+
 def eval_policy(
     policy: TransformerPolicyDecoupled,
     actor_model_paths,
@@ -197,8 +204,8 @@ def eval_policy(
 
     collected_observations = deque()
 
-    max_episodes = 130
-    
+    max_episodes = 1700  # 150
+
     for ep_num, (
         ep_len,
         ep_ret,
@@ -220,17 +227,25 @@ def eval_policy(
             (
                 copy.deepcopy(collected_observation_sequences),
                 copy.deepcopy(collected_positions),
+                ep_num,
             )
         )
+        if ep_num % 5 == 0:
+            if ep_num == 0:
+                continue
+            else:
+                actor_model = update_model(actor_model_paths, ep_num)
+                policy.load_state_dict(torch.load(actor_model, map_location=device))
+            print("Using model: ", actor_model)
 
-        if ep_num == 25:
+        """if ep_num == 25:
             actor_model = actor_model_paths[1]
             policy.load_state_dict(torch.load(actor_model, map_location=device))
             print("Using model: ", actor_model)
         if ep_num == 75:
             actor_model = actor_model_paths[2]
             policy.load_state_dict(torch.load(actor_model, map_location=device))
-            print("Using model: ", actor_model)
+            print("Using model: ", actor_model)"""
 
         if ep_num == max_episodes:
             break

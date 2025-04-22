@@ -10,15 +10,17 @@ from collections import deque
 import pandas as pd
 import torch
 
+import re
+
 # get the path to the project root directory and add it to sys.path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 
 sys.path.append(project_root)
 
 import gymnasium as gym
+
 from agent.ppo.transformer_decoder_policy import TransformerPolicy
 from env import SunburstMazeContinuous
-
 from utils.calculate_fov import calculate_fov_matrix_size
 from utils.sequence_preprocessing import add_to_sequence, padding_sequence
 from utils.state_preprocess import state_preprocess
@@ -33,19 +35,24 @@ from xai.cav.process_data import (
     shuffle_and_trim_datasets,
     split_dataset_into_train_test,
 )
- 
- 
+
+
+def find_closest_model_step(ep_num, model_steps):
+    return min(model_steps, key=lambda x: abs(x - ep_num))
+
 def build_csv_dataset(
-        env:SunburstMazeContinuous, 
-        device,
-        config: dict,
-        actor_model_paths: list, 
-        dataset_path: str,
-        dataset_subfolder: str = '',
-        grid_size: int = None,):
- 
+    env: SunburstMazeContinuous,
+    device,
+    config: dict,
+    actor_model_paths: list,
+    dataset_path: str,
+    dataset_subfolder: str = "",
+    grid_size: int = None,
+    model_files: list = None,
+):
+
     # If the actor model is not specified, then exit
-    if actor_model_paths == '':
+    if actor_model_paths == "":
         print(f"Didn't specify model file. Exiting.", flush=True)
         sys.exit(0)
 
@@ -81,10 +88,19 @@ def build_csv_dataset(
         n_head=config["transformer"]["n_head"],
         n_layer=config["transformer"]["n_layer"],
         dropout=config["transformer"]["dropout"],
-            device=device
+        device=device,
     )
- 
-    
+
+    goal_area_regular = [4, 5, 10, 11]
+    goal_area_rotated = [28, 29, 34, 35]
+
+    # model steps start at 1, then 25, 50, 75, 100, 125, 150, 175, 200 etc up until 1700
+    model_steps = [1] + [i for i in range(25, 1701, 25)]
+    print("Model steps: ", model_steps)
+
+    goal_visitations_regular = {model: 0 for model in model_steps}
+    goal_visitations_rotated = {model: 0 for model in model_steps}
+
     # Evaluate policy
     for collected_observations in eval_policy(
         policy=policy,
@@ -96,14 +112,30 @@ def build_csv_dataset(
         max_steps=config["max_steps_per_episode"],
     ):
         # print("Collected observations", len(collected_observations), collected_observations[0])
-        # TODO: Update model
 
-        for observation, position in collected_observations:
+        for observation, position, ep_num in collected_observations:
+            print("Episode number: ", ep_num)
             for observation_step, position_step in zip(observation, position):
-            # print(len(observation_sequence))
                 if rd.random() > 0.4:
-                    con.in_grid_square(observation_step, position_step)
- 
+                    grid_id = con.in_grid_square(observation_step, position_step)
+                    if ep_num in model_steps:
+                        if grid_id in goal_area_regular:
+                            goal_visitations_regular[ep_num] += 1
+                        elif grid_id in goal_area_rotated:
+                            goal_visitations_rotated[ep_num] += 1
+
+
+    # Save the goal visitations to a file
+    with open(os.path.join("goal_visitations.json"), "w") as f:
+        json.dump(
+            {
+                "regular": goal_visitations_regular,
+                "rotated": goal_visitations_rotated,
+            },
+            f,
+        )
+
+    return 
     path = os.path.join(dataset_path, dataset_subfolder)
 
     max_length = config["cav"]["dataset_max_length"]

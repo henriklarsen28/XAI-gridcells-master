@@ -6,7 +6,9 @@ import torch
 import wandb
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
-ppo_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../agent/ppo"))
+ppo_path = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "../../../agent/ppo")
+)
 
 sys.path.append(project_root)
 sys.path.append(ppo_path)
@@ -19,9 +21,8 @@ from xai.cav.process_data import find_model_files
 
 wandb.login()
 
+
 def main():
-    
-    
 
     fov_config = {
         "fov": math.pi / 1.5,
@@ -36,7 +37,32 @@ def main():
         # MODEL PATHS
         "model_path": f"../../../agent/ppo/models/transformers/{model_name}/actor",
         "model_name": f"{model_name}",  # NOTE: make sure to update
-        "model_episodes": [800, 1025, 1200],  # NOTE: for eval_policy
+        "model_episodes": [
+            1000,
+            1025,
+            1050,
+            1175,
+            1200,
+            1250,
+            1275,
+            1300,
+            1325,
+            1350,
+            1375,
+            1400,
+            1425,
+            1450,
+            1475,
+            1500,
+            1525,
+            1550,
+            1575,
+            1600,
+            1625,
+            1650,
+            1675,
+            1700,
+        ],  # NOTE: for eval_policy
         # PPO
         "policy_load_path": None,
         "critic_load_path": None,
@@ -161,7 +187,7 @@ def main():
         actor_model_paths=model_files,
         dataset_path=dataset_path,
         dataset_subfolder=dataset_subfolder,
-        grid_size=grid_size,
+        grid_size=grid_size
     )
     """
     # Train CAV for grid observations
@@ -207,5 +233,7 @@ def main():
                     }
                 )
         """
+
+
 if __name__ == "__main__":
     main()
