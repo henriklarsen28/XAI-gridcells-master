@@ -89,7 +89,7 @@ class Block(nn.Module):
         return x, att_weights
 
 
-class TransformerPolicy(nn.Module):
+class Transformer(nn.Module):
     def __init__(
         self,
         input_dim,
@@ -153,7 +153,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # device = torch.device(
 #    "mps" if torch.backends.mps.is_available() else "cpu"
 # )  # Was faster with cpu??? Loading between cpu and mps is slow maybe
-print(f"Using device {device}")
+#print(f"Using device {device}")
 
 # ## Suggestion for hyperparameter values
 # n_embd = 128  # Embedding dimension

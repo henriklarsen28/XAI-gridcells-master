@@ -4,22 +4,28 @@ import sys
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.append(project_root)
 
+import multiprocessing
 import multiprocessing as mp
+import queue
 import random as rd
+import time
 from collections import deque
+from multiprocessing import Process, Queue
 
 import gymnasium as gym
 import numpy as np
 import torch
+import torch.multiprocessing as mp
 import torch.nn.functional as F
+import gc
 import wandb
-from attention_pooling import AttentionPooling
-from gated_transformer_decoder import Transformer
-from gated_transformer_decoder_policy import TransformerPolicy
-from network import FeedForwardNN
-from network_policy import FeedForwardNNPolicy
 from torch import nn
 from torch.nn.utils.rnn import pad_sequence
+from transformer_decoder import Transformer
+from transformer_decoder_policy import TransformerPolicy
+from transformer_decoder_decoupled import TransformerDecoupled
+from transformer_decoder_decoupled_policy import TransformerPolicyDecoupled
+#from transformer_decoder_combined import Transformer
 
 # from gated_transformer_decoder_combined import Transformer
 
@@ -30,7 +36,7 @@ torch.autograd.set_detect_anomaly(True)
 from env import SunburstMazeContinuous
 from utils import add_to_sequence, create_gif, padding_sequence
 
-map_path_random = os.path.join(project_root, "env/random_generated_maps/goal/large")
+map_path_random = os.path.join(project_root, "env/random_generated_maps/goal/stretched")
 map_path_random_files = [
     os.path.join(map_path_random, f)
     for f in os.listdir(map_path_random)
@@ -55,20 +61,7 @@ def id_2_env_dict() -> dict:
 class PPO_agent:
 
     def __init__(self, env: SunburstMazeContinuous, device, config):
-        wandb.login()
         self.config = config
-        self.run = wandb.init(project="sunburst-maze-continuous", config=self)
-
-        self.gif_path = f"./gifs/{self.run.name}"
-
-        # Create the nessessary directories
-        if not os.path.exists(self.gif_path):
-            os.makedirs(self.gif_path)
-
-        model_path = f"./model/transformers/ppo/model_{self.run.name}"
-        if not os.path.exists(model_path):
-            os.makedirs(model_path)
-
         self.env = env
         self.obs_dim = env.observation_space.shape[0]
         self.act_dim = env.action_space.shape[0]
@@ -89,7 +82,77 @@ class PPO_agent:
 
         self.env_2_id = env_2_id_dict()
 
-        self.policy_network = TransformerPolicy(
+        self.policy_params = {
+            "input_dim": self.obs_dim,
+            "output_dim": self.act_dim,
+            "block_size": self.sequence_length,
+            "num_envs": len(self.env_2_id),
+            "n_embd": n_embd,
+            "n_head": n_head,
+            "n_layer": n_layer,
+            "dropout": dropout,
+            "device": self.device,
+        }
+        self.critic_params = {
+            "input_dim": self.obs_dim,
+            "output_dim": 1,
+            "block_size": self.sequence_length,
+            "n_embd": n_embd,
+            "n_head": n_head,
+            "n_layer": n_layer,
+            "dropout": dropout,
+            "device": self.device,
+        }
+
+
+        if self.decouple_pos:
+            
+            self.policy_network = TransformerPolicyDecoupled(
+                input_dim=self.obs_dim,
+                output_dim=self.act_dim,
+                block_size=self.sequence_length,
+                num_envs=len(self.env_2_id),
+                n_embd=n_embd,
+                n_head=n_head,
+                n_layer=n_layer,
+                dropout=dropout,
+                device=self.device,
+            )
+            self.critic_network = TransformerDecoupled(
+                input_dim=self.obs_dim,
+                output_dim=1,
+                block_size=self.sequence_length,
+                n_embd=n_embd,
+                n_head=n_head,
+                n_layer=n_layer,
+                dropout=dropout,
+                device=self.device,
+            )
+        else:
+            self.policy_network = TransformerPolicy(
+                input_dim=self.obs_dim,
+                output_dim=self.act_dim,
+                block_size=self.sequence_length,
+                num_envs=len(self.env_2_id),
+                n_embd=n_embd,
+                n_head=n_head,
+                n_layer=n_layer,
+                dropout=dropout,
+                device=self.device,
+            )
+
+            self.critic_network = Transformer(
+                input_dim=self.obs_dim,
+                output_dim=1,
+                block_size=self.sequence_length,
+                n_embd=n_embd,
+                n_head=n_head,
+                n_layer=n_layer,
+                dropout=dropout,
+                device=self.device,
+            )
+
+        """self.policy_network = Transformer(
             input_dim=self.obs_dim,
             output_dim=self.act_dim,
             block_size=self.sequence_length,
@@ -99,41 +162,13 @@ class PPO_agent:
             n_layer=n_layer,
             dropout=dropout,
             device=self.device,
-        )
-
-        self.critic_network = Transformer(
-            input_dim=self.obs_dim,
-            output_dim=1,
-            block_size=self.sequence_length,
-            n_embd=n_embd,
-            n_head=n_head,
-            n_layer=n_layer,
-            dropout=dropout,
-            device=self.device,
-        )
-
-        """self.network = Transformer(
-            input_dim=self.obs_dim,
-            output_dim=self.act_dim,
-            num_envs=len(self.env_2_id),
-            block_size=self.sequence_length,
-            n_embd=n_embd,
-            n_head=n_head,
-            n_layer=n_layer,
-            dropout=dropout,
-            device=self.rollout_device,
         )"""
+        
 
-        """self.policy_attention_pooling = AttentionPooling(
-            hidden_dim=self.act_dim,"""
 
         self.policy_network.to(self.device)
         self.critic_network.to(self.device)
 
-        """self.policy_optimizer = torch.optim.Adam(
-            self.network.parameters(),
-            lr=self.learning_rate,
-        )"""
 
         self.policy_optimizer = torch.optim.Adam(
             self.policy_network.parameters(),
@@ -147,10 +182,10 @@ class PPO_agent:
         self.cov_var = torch.full(size=(self.act_dim,), fill_value=0.5).to(self.device)
         self.cov_mat = torch.diag(self.cov_var).to(self.device)
 
-    def learn(self, total_timesteps):
 
+    def learn(self, total_timesteps, iteration_counter = 0):
+        self.__init_learn()
         timestep_counter = 0
-        iteration_counter = 0
 
         while timestep_counter < total_timesteps:
 
@@ -162,35 +197,32 @@ class PPO_agent:
                 log_probs_batch,
                 batch_rews,
                 rtgs,
-                env_classes_target,
+                batch_env_classes_target,
                 lens,
-                attention_masks,
                 frames,
             ) = self.rollout(iteration_counter)
 
             # rollouts = self.rollout(iteration_counter)  # Collect rollouts
             # minibatches = self.batch_rollouts(rollouts)  # Create mini-batches
-
+            """
             # Minibatches
-            """minibatches = self.generate_minibatches(
+            minibatches = self.generate_minibatches(
                 obs_batch,
                 actions_batch,
                 log_probs_batch,
-                batch_rews.flatten(0, 1),
                 rtgs,
-                attention_masks,
+                batch_env_classes_target,
             )"""
 
             timestep_counter += sum(lens)
             iteration_counter += 1
-
-            """for (
+            """
+            for (
                 obs_batch,
                 actions_batch,
                 log_probs_batch,
-                _,
                 rtgs,
-                attention_masks,
+                batch_env_classes_target,
             ) in minibatches:"""
 
             # print("Obs: ", obs, obs.shape)
@@ -198,105 +230,65 @@ class PPO_agent:
             value, _, _, _ = self.evaluate(
                 obs_batch,
                 actions_batch,
-                attention_masks,
             )
             # print(value, value.shape)
-
-            """# Normalize rewards
-            all_rewards = np.concatenate(rewards_batch)
-            mean = np.mean(all_rewards)
-            std = np.std(all_rewards) + 1e-8
-            rewards_batch = [(np.array(rewards) - mean) / std for rewards in rewards_batch]
-
-            rewards_batch = list(rewards_batch)"""
+            kl_div = self.kl_divergence(obs_batch, actions_batch)
 
             # advantages, returns = self.compute_gae(rewards_batch, value, dones_batch)
-
-            # rtgs = rtgs.unsqueeze(1)
 
             advantages = rtgs - value.detach()
 
             # Normalize the advantages
-            # advantages = rtgs_batch
-
-            advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
-            for _ in range(self.n_updates_per_iteration):
-                value_new, current_log_prob, entropy, env_classes_batch = self.evaluate(
-                    obs_batch, actions_batch, attention_masks
+            if self.normalize_advantage:
+                advantages = (advantages - advantages.mean()) / (
+                    advantages.std() + 1e-8
                 )
+                # print(value, value.shape)
 
-                """kl_div = kl_divergence(
-                    obs_batch, actions_batch, self.policy_network, self.cov_mat
-                )"""
-
-                """ratio = torch.exp(
-                    torch.clamp(current_log_prob - log_probs_batch, min=-20.0, max=5.0)
-                )"""
-                print("Current log prob: ", current_log_prob)
-                print("Log probs batch: ", log_probs_batch)
+            for i in range(self.n_updates_per_iteration):
+                print(f"Iteration: {iteration_counter}. Update: {i}")
+                value_new, current_log_prob, entropy, env_classes = self.evaluate(
+                    obs_batch, actions_batch
+                )
+                # print("Current log prob: ", current_log_prob)
+                # print("Log probs batch: ", log_probs_batch)
                 ratio = torch.exp(current_log_prob - log_probs_batch)
-                # print("Ratio: ", ratio)
-                # print("Advantages: ", advantages)
+
                 surrogate_loss1 = ratio * advantages
                 surrogate_loss2 = (
                     torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * advantages
                 )
 
                 policy_loss_ppo = (-torch.min(surrogate_loss1, surrogate_loss2)).mean()
-                """env_class_loss = F.cross_entropy(
-                    env_classes_batch, env_classes_target_batch.float()
-                )"""
+                env_class_loss = self.env_loss_factor * F.cross_entropy(
+                    env_classes, batch_env_classes_target.float()
+                )
 
-                """policy_loss = (
-                    policy_loss_ppo
-                    + self.policy_params * kl_div
-                    - self.entorpy_coefficient * entropy
-                )"""
+                # print(env_class_loss)
 
-                """policy_loss_ppo = -torch.where(
-                    (kl_div >= self.kl_range)
-                    & (surrogate_loss1 > advantages),
-                    surrogate_loss1 - self.policy_params * kl_div,
-                    surrogate_loss1 - self.kl_range,
-                )"""
-
-                policy_loss = policy_loss_ppo  # - self.entorpy_coefficient * entropy
+                policy_loss = (
+                    policy_loss_ppo + env_class_loss
+                )  # - self.entorpy_coefficient * entropy
                 # print("Kl",kl_div, "Entropy", entropy)
-
-                """value_clipped = value.detach() + torch.clamp(
-                    value_new - value.detach(),
-                    -self.config["PPO"]["clip"],
-                    self.config["PPO"]["clip"],
-                )"""
 
                 critic_loss = nn.MSELoss()(value_new, rtgs)
 
-                # loss = policy_loss + 0.5 * critic_loss
                 # Normalize the gradients
-
-                print("Policy loss step")
-                self.policy_optimizer.zero_grad()
+                self.policy_optimizer.zero_grad(set_to_none=True)
                 policy_loss.backward(retain_graph=True)
                 torch.nn.utils.clip_grad_norm_(
                     self.policy_network.parameters(), self.clip_grad_normalization
                 )
                 self.policy_optimizer.step()
 
-                # self.env_network_backprop(env_class_loss)
-                # self.network.zero_grad()
-                # loss.backward(retain_graph=True)
-                # self.policy_optimizer.step()
-
-                self.critic_optimizer.zero_grad()
-                critic_loss.backward(retain_graph=True)
+                self.critic_optimizer.zero_grad(set_to_none=True)
+                critic_loss.backward()
                 torch.nn.utils.clip_grad_norm_(
                     self.critic_network.parameters(), self.clip_grad_normalization
                 )
                 self.critic_optimizer.step()
-                print("After")
                 self.entorpy_coefficient_decay()
 
-            # TODO: Something wrong with rollout and the creation of sequences
             gif = None
             if frames:
 
@@ -307,50 +299,73 @@ class PPO_agent:
 
             lens = np.array(lens)
 
+            torch.cuda.empty_cache()
             wandb.log(
                 {
                     "Timesteps": timestep_counter,
                     "Rewards per episode": rtgs.mean().item(),
                     # "Rewards mean": rewads_mean,
                     "Policy_ppo loss": policy_loss_ppo.mean().item(),
-                    # "Env_class loss": env_class_loss.item(),
+                    "Env_class loss": env_class_loss.item(),
                     "Policy loss": policy_loss.item(),
                     "Critic loss": critic_loss.item(),
                     # "Environment": self.env_2_id[self.env.maze_file],
                     "Steps done": lens.mean(),
                     "Entropy": entropy.item(),
                     "Entropy coefficient": self.entorpy_coefficient,
-                    # "KL divergence": kl_div.item(),
+                    "KL divergence": kl_div.item(),
                     "Gif:": (wandb.Video(gif, fps=4, format="gif") if gif else None),
                 },
                 commit=True,
             )
 
-            if iteration_counter % self.save_interval == 0:
+            # Clean the variables
+            del obs_batch
+            del actions_batch
+            del log_probs_batch
+            del batch_rews
+            del rtgs
+            del batch_env_classes_target
+            del lens
+            del frames
+            del policy_loss
+            del critic_loss
+            del policy_loss_ppo
+            del env_class_loss
+            del value
+            del value_new
+            del current_log_prob
+            del entropy
+            del env_classes
+            del kl_div
+            del ratio
+            del surrogate_loss1
+            del surrogate_loss2
+            del advantages
+
+
+
+            gc.collect()
+            torch.cuda.empty_cache()
+
+            if iteration_counter % self.save_interval == 0 or iteration_counter == 0:
                 torch.save(
                     self.policy_network.state_dict(),
-                    f"./model/transformers/ppo/model_{self.run.name}/policy_network_{iteration_counter}.pth",
+                    f"./models/transformers/ppo/{self.run.name}/policy_network_{iteration_counter}.pth",
                 )
                 torch.save(
                     self.critic_network.state_dict(),
-                    f"./model/transformers/ppo/model_{self.run.name}/critic_network_{iteration_counter}.pth",
+                    f"./models/transformers/ppo/{self.run.name}/critic_network_{iteration_counter}.pth",
                 )
                 """torch.save(
                     self.network.state_dict(),
                     f"./model/transformers/ppo/model_{self.run.name}/network_{iteration_counter}.pth",
                 )"""
 
-    def env_network_backprop(self, env_class_loss):
-        """# Freeze the rest of the policy network
-        for param in self.policy_network.blocks.parameters():
-            param.requires_grad = False
-        for param in self.policy_network.ln_f.parameters():
-            param.requires_grad = False
-        for param in self.policy_network.output.parameters():
-            param.requires_grad = False
-        for param in self.policy_network.env_class.parameters():
-                param.requires_grad = True
 
+    """ def run_episode(
+        self, env: SunburstMazeContinuous, policy_network, render, i_so_far
+    ):
         self.policy_optimizer.zero_grad()
         env_class_loss.backward(retain_graph=True)
         self.policy_optimizer.step()
@@ -365,7 +380,45 @@ class PPO_agent:
 
         # Freeze the env class network
         for param in self.policy_network.env_class.parameters():
-            param.requires_grad = False"""
+            param.requires_grad = False
+
+    def worker(
+        self,
+        env: SunburstMazeContinuous,
+        policy_network,
+        render,
+        i_so_far,
+        output_queue,
+    ):
+        try:
+            result = self.run_episode(env, policy_network, render, i_so_far)
+            (
+                worker_obs,
+                worker_acts,
+                worker_log_probs,
+                worker_rews,
+                worker_dones,
+                worker_env_classes_target,
+                lens,
+                frames,
+            ) = result
+
+            output_queue.put(
+                (
+                    worker_obs,
+                    worker_acts,
+                    worker_log_probs,
+                    worker_rews,
+                    worker_dones,
+                    worker_env_classes_target,
+                    lens,
+                    frames,
+                )
+            )
+        except Exception as e:
+            print(f"Worker failed: {e}")
+            output_queue.put(None)
+    """
 
     def rollout(self, i_so_far):
         """
@@ -385,14 +438,10 @@ class PPO_agent:
         batch_acts = []
         batch_log_probs = []
         batch_rews = []
-        batch_values = []
-        batch_next_values = []
         batch_dones = []
         batch_rtgs = []
         batch_lens = []
-        env_classes_target = []
-        batch_attention_masks = []
-
+        batch_env_classes_target = []
         frames = []
         t = 0  # Total timesteps in batch
 
@@ -400,20 +449,17 @@ class PPO_agent:
             ep_obs = deque(maxlen=self.sequence_length)
             next_ep_obs = deque(maxlen=self.sequence_length)
             ep_rews = []
-            ep_values = []
-            ep_next_values = []
             ep_dones = []
-            ep_attention_mask = []
 
             # Reset environment
             self.env = self.random_maps(env=self.env, random_map=True)
             obs, _ = self.env.reset()
-            obs = torch.tensor(obs, dtype=torch.float, device=self.device)
 
             done = False
             for ep_t in range(self.max_steps):
                 t += 1
 
+                obs = torch.tensor(obs, dtype=torch.float, device=self.device)
                 ep_obs.append(obs)
 
                 tensor_obs = torch.stack(list(ep_obs)).to(self.device)
@@ -423,12 +469,9 @@ class PPO_agent:
 
                 # Get action and log probability (transformer expects a full sequence, so we pass collected states)
                 action, log_prob = self.get_action(tensor_obs)  # Pass full sequence
-                with torch.no_grad():
-                    value, _ = self.critic_network(tensor_obs.unsqueeze(0))
-                    value = value.squeeze()
 
                 obs, reward, terminated, truncated, _ = self.env.step(action)
-                obs = obs.flatten()
+                #obs = obs.flatten()
                 if self.render_mode == "rgb_array" and i_so_far % 30 == 0:
                     frame = self.env.render()
                     if isinstance(frame, np.ndarray):
@@ -439,28 +482,23 @@ class PPO_agent:
 
                 done = terminated or truncated
 
-                obs = torch.tensor(obs, dtype=torch.float, device=self.device)
-                next_ep_obs.append(obs)
 
-                tensor_next_obs = torch.stack(list(next_ep_obs)).to(self.device)
-                tensor_next_obs = self.preprocess_ep_obs(tensor_next_obs)
-                with torch.no_grad():
-                    next_value, _ = self.critic_network(tensor_next_obs.unsqueeze(0))
-                    next_value = next_value.squeeze()
-                # ep_acts.append(action)
+
                 ep_rews.append(reward)
-                ep_values.append(value)
-                ep_next_values.append(next_value)
                 ep_dones.append(done)
 
                 batch_acts.append(action)
                 batch_log_probs.append(log_prob)
 
-                attention_masks = torch.zeros(self.sequence_length)
-                for length in range(len(ep_obs)):
-                    attention_masks[:length] = 1
+                env_id = torch.tensor(self.env_2_id[self.env.unwrapped.maze_file])
+                batch_env_classes_target.append(
+                    torch.nn.functional.one_hot(
+                        env_id,
+                        num_classes=len(self.env_2_id),
+                    )
+                )
 
-                ep_attention_mask.append(attention_masks)
+                # print("Env", self.env.unwrapped.maze_file, self.env_2_id[self.env.unwrapped.maze_file])
 
                 if done:
                     break
@@ -470,76 +508,32 @@ class PPO_agent:
             # batch_obs.append(torch.stack(ep_tensor_seq))
             batch_lens.append(ep_t + 1)
             batch_rews.append(torch.tensor(ep_rews, dtype=torch.float))
-            batch_values.append(torch.tensor(ep_values, dtype=torch.float))
-            batch_next_values.append(torch.tensor(ep_next_values, dtype=torch.float))
-            batch_dones.append(torch.tensor(ep_dones, dtype=torch.float))
-
-            """attention_masks = torch.zeros((len(batch_obs), self.sequence_length))
-            for i, length in enumerate(batch_lens):
-                attention_masks[i, :length] = 1"""
-            batch_attention_masks.append(torch.stack(ep_attention_mask))
+            # batch_values.append(torch.tensor(ep_values, dtype=torch.float))
+            # batch_next_values.append(torch.tensor(ep_next_values, dtype=torch.float))
+            #batch_dones.append(torch.tensor(ep_dones, dtype=torch.float))
 
         batch_obs = torch.stack(batch_obs)
         batch_acts = torch.tensor(batch_acts, dtype=torch.float, device=self.device)
-        batch_log_probs = torch.tensor(batch_log_probs, dtype=torch.float, device=self.device)
-        # batch_rews = torch.stack(batch_rews)
-        # batch_values = torch.stack(batch_values)
-        # batch_next_values = torch.stack(batch_next_values)
-        # batch_dones = torch.stack(batch_dones)
+        batch_log_probs = torch.tensor(
+            batch_log_probs, dtype=torch.float, device=self.device
+        )
         batch_lens = torch.tensor(batch_lens)
-        # batch_attention_masks = torch.stack(batch_attention_masks)
-
-        # print(batch_obs.shape)
-        # print(batch_acts)
-        # print(batch_log_probs.shape)
-        # print(batch_values.shape)
-
-        """# Pad sequences to the max episode length in the batch
-        batch_obs = pad_sequence(
-            batch_obs, batch_first=True
-        )  # Shape: [batch_size, max_len, obs_dim]"""
-
-        """batch_acts = pad_sequence(batch_acts, batch_first=True)
-        batch_dones = pad_sequence(batch_dones, batch_first=True)"""
-
-        # batch_dones = batch_dones.unsqueeze(2)
 
         # Compute RTGs
         batch_rtgs = self.compute_rtgs(batch_rews)
 
-        # Create attention masks (1 for real data, 0 for padding)
-
-        """env_classes_target.append(
-            torch.nn.functional.one_hot(
-                torch.tensor(self.env_2_id[self.env.maze_file]),
-                num_classes=len(self.env_2_id),
-            )
-        )  # TODO: This is not updated for the env change each episode"""
-        env_classes_target.append(torch.tensor([1, 0, 0], dtype=torch.float32))
-
-        env_classes_target = torch.stack(env_classes_target)
-
+        batch_env_classes_target = torch.stack(batch_env_classes_target).to(self.device)
         # advantages, returns = self.compute_gae(batch_rews, batch_values, batch_next_values, batch_dones)
 
-        # FLatten the batch
-        # batch_obs = batch_obs.flatten(0,1)
-        # batch_acts = batch_acts.flatten(0,1)
-        # batch_log_probs = batch_log_probs.flatten(0,1)
-        # batch_dones = batch_dones.flatten(0, 1)
-        # batch_attention_masks = batch_attention_masks.flatten(0, 1)
-        # returns = returns.flatten(0,1)
-        # advantages = advantages.flatten(0,1)
-        # batch_lens = batch_lens.flatten(1,2)
-        print(batch_lens)
+        # print(batch_lens)
         return (
             batch_obs,
             batch_acts,
             batch_log_probs,
             batch_rews,
             batch_rtgs,
-            env_classes_target,
+            batch_env_classes_target,
             batch_lens,
-            batch_attention_masks,
             frames,
         )
 
@@ -559,20 +553,22 @@ class PPO_agent:
         if len(obs.shape) == 2:
             obs = obs.unsqueeze(0)
 
-        attention_mask = (obs.sum(dim=-1) != 0).to(torch.float32)
-        mean, std, _, _ = self.policy_network(obs)
+        mean, _, _, _ = self.policy_network(obs)
+
+        # mean, _, std, _, _ = self.policy_network(obs)
         dist = torch.distributions.MultivariateNormal(mean, self.cov_mat)
 
         action = dist.sample()
         log_prob = dist.log_prob(action)
 
-        action = torch.tensor(action, dtype=torch.float32, device=self.device)
+        # action = torch.tensor(action, dtype=torch.float32, device=self.device)
         action = action.squeeze(0)
         return action.cpu().detach().numpy(), log_prob.detach()[0]
 
-    def evaluate(self, obs, actions, attention_mask):
+    def evaluate(self, obs, actions):
         # obs = self.preprocess_ep_obs(obs)
         V, _ = self.critic_network(obs)
+        #mean, V, _, env_class, _ = self.policy_network(obs)
         V = V.squeeze()
         mean, _, env_class, _ = self.policy_network(obs)
         dist = torch.distributions.MultivariateNormal(mean, self.cov_mat)
@@ -580,8 +576,8 @@ class PPO_agent:
         entropy = dist.entropy()
         return V, log_prob, entropy.mean(), env_class
 
-    def kl_divergence(self, obs, actions, attention_mask):
-        mean, _, _, _ = self.policy_network(obs, attention_mask)
+    def kl_divergence(self, obs, actions):
+        mean, _, _, _ = self.policy_network(obs)
         dist = torch.distributions.MultivariateNormal(mean, self.cov_mat)
         old_dist = torch.distributions.MultivariateNormal(actions, self.cov_mat)
 
@@ -646,24 +642,6 @@ class PPO_agent:
 
         return advantages, returns
 
-        """ # Iterate through episodes in reverse order
-        for ep_rews, ep_dones in zip(reversed(rewards), reversed(dones)):
-            for t in reversed(range(len(ep_rews))):
-                delta = (
-                    ep_rews[t]
-                    + self.gamma * values_extended[t + 1] * (1 - ep_dones[t])
-                    - values[t]
-                )
-                gae = delta + self.gamma * self.gae_lambda * (1 - ep_dones[t]) * gae
-                advantages.insert(0, gae)
-        """
-        advantages = torch.tensor(advantages, dtype=torch.float, device=self.device)
-
-        # Compute value targets as advantages + value estimates
-        returns = advantages + values
-
-        return advantages, returns
-
     """
 
     def compute_gae(self, rewards, states, gamma=0.99, lam=0.95):
@@ -698,7 +676,6 @@ class PPO_agent:
         self.policy_params = config["PPO"]["policy_params"]
         self.kl_range = config["PPO"]["policy_kl_range"]
         self.batch_size = config["batch_size"]
-        self.mini_batch_size = config["mini_batch_size"]
         self.n_mini_batches = config["n_mini_batches"]
         self.save_interval = config["save_interval"]
         # self.max_episodes = config["total_episodes"]
@@ -710,13 +687,51 @@ class PPO_agent:
         self.entropy_step = (self.entorpy_coefficient - self.entropy_min) / config[
             "entropy"
         ]["step"]
+        self.normalize_advantage = config["PPO"]["normalize_advantage"]
+        self.env_loss_factor = config["PPO"]["env_loss_factor"]
+
+        self.decouple_pos = config["transformer"]["decouple_positional_embedding"]
+
+    def __init_learn(self):
+        wandb.login()
+        self.run = wandb.init(project="sunburst-maze-continuous", config=self)
+
+        self.gif_path = f"./gifs/{self.run.name}"
+
+        # Create the nessessary directories
+        if not os.path.exists(self.gif_path):
+            os.makedirs(self.gif_path)
+
+        model_path = f"./models/transformers/ppo/{self.run.name}"
+        if not os.path.exists(model_path):
+            os.makedirs(model_path)
+
+        config_path = f"{model_path}/config"
+        if not os.path.exists(config_path):
+            os.makedirs(config_path)
+
+        # Save the config file as json
+        with open(f"{config_path}/policy_params.json", "w") as f:
+            f.write(str(self.policy_params))
+
+        with open(f"{config_path}/critic_params.json", "w") as f:
+            f.write(str(self.critic_params))
+
+        torch.save(
+            self.policy_network.state_dict(),
+            f"./models/transformers/ppo/{self.run.name}/policy_network_0.pth",
+        )
+        torch.save(
+            self.critic_network.state_dict(),
+            f"./models/transformers/ppo/{self.run.name}/critic_network_0.pth",
+        )
 
     def entorpy_coefficient_decay(self):
         self.entorpy_coefficient -= self.entropy_step
         self.entorpy_coefficient = max(self.entropy_min, self.entorpy_coefficient)
 
     def generate_minibatches(
-        self, obs, actions, log_probs, advantages, returns, attention_masks
+        self, obs, actions, log_probs, rtgs, env_class_target
     ):
         minibatches = []
 
@@ -731,56 +746,12 @@ class PPO_agent:
                         obs[mini_batch_indices],
                         actions[mini_batch_indices],
                         log_probs[mini_batch_indices],
-                        # values[mini_batch_indices],
-                        advantages[mini_batch_indices],
-                        returns[mini_batch_indices],
-                        attention_masks[mini_batch_indices],
+                        rtgs[mini_batch_indices],
+                        env_class_target[mini_batch_indices],
                     )
                 )
 
         return minibatches
-
-    def batch_rollouts(self, rollouts):
-        """
-        Create mini-batches from rollouts for training.
-        """
-        all_states = []
-        all_actions = []
-        all_rewards = []
-        all_next_states = []
-        all_masks = []
-
-        # Unzip all episodes into their components (states, actions, rewards)
-        for episode, mask in rollouts:
-            states, actions, rewards, next_states, _ = zip(*episode)
-            all_states.append(states)
-            all_actions.append(actions)
-            all_rewards.append(rewards)
-            all_next_states.append(next_states)
-            all_masks.append(mask)
-
-        # Stack the components into a tensor
-        all_states_tensor = torch.stack(all_states)
-        all_actions_tensor = torch.stack(all_actions)
-        all_rewards_tensor = torch.stack(all_rewards)
-        all_next_states_tensor = torch.stack(all_next_states)
-        all_masks_tensor = torch.stack(all_masks)
-
-        # Batch into mini-batches
-        num_batches = len(all_states_tensor) // self.batch_size
-        mini_batches = []
-
-        for i in range(num_batches):
-            mini_batch = (
-                all_states_tensor[i * self.batch_size : (i + 1) * self.batch_size],
-                all_actions_tensor[i * self.batch_size : (i + 1) * self.batch_size],
-                all_rewards_tensor[i * self.batch_size : (i + 1) * self.batch_size],
-                all_next_states_tensor[i * self.batch_size : (i + 1) * self.batch_size],
-                all_masks_tensor[i * self.batch_size : (i + 1) * self.batch_size],
-            )
-            mini_batches.append(mini_batch)
-
-            return mini_batches
 
     def random_maps(
         self,
@@ -854,7 +825,19 @@ class PPO_agent:
             )
 
         return env"""
+    def load_models(self):
+        policy_network_path = self.config["policy_load_path"]
+        critic_network_path = self.config["critic_load_path"]
+        self.policy_network.load_state_dict(
+            torch.load(
+                policy_network_path
+            )
+        )
+        self.critic_network.load_state_dict(
+            torch.load(
+                critic_network_path
+            )
+        )
 
     def load_model(self, policy_path, critic_path):
         self.policy_network.load_state_dict(torch.load(policy_path))
-        self.critic_network.load_state_dict(torch.load(critic_path))

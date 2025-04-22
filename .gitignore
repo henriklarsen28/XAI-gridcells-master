@@ -8,22 +8,17 @@ agent/losses_rewards.csv
 agent/gifs*
 agent/matrix.csv
 agent/attention_plot*
-xai/cav/dataset/*
-xai/cav/cav_ff/dataset/*
-agent/grad_sam/*
-xai/cav/*.pt
-xai/cav/*.png
-
-xai/cav/cav_ff/*.pt
 agent/grad_sam/*
 
-
+agent/**/*.pth
+agent/grad_sam/*
 agent/attention_plot/*
-xai/cav/*.pt
-xai/cav/*.csv
-xai/cav/*.png
-xai/cav/dataset/*
-xai/cav/cav_ff/dataset/*
+
+xai/cav/**/*.pt
+xai/cav/**/*.csv
+xai/cav/**/*.png
+xai/cav/**/*.json
+
 
 
 agent/ppo_test_code/gifs/*
@@ -33,7 +28,6 @@ agent/ppo_test_code/gifs/*
 agent/ppo_test_code/__pycache__/*
 agent/ppo_test_code/ppo_actor.pth
 agent/ppo_test_code/ppo_critic.pth
-
 
 agent/dqn/wandb/*
 agent/dqn/gifs/*
@@ -45,10 +39,24 @@ agent/ppo/gifs/*
 agent/ppo/models/*
 agent/ppo/model/*
 agent/ppo_test_code/models/*
-
-agent/ppo/model/*
-agent/ppo_test_code/models/*
-
 agent/ppo_rnn/gifs/*
 agent/ppo_rnn/model/*
 agent/ppo_rnn/wandb/*
+
+xai/cav/results/cav/*.pt
+xai/cav/results/cav/**/*.pt
+xai/cav/results/**/*.png
+xai/cav/results/**/*.pkl
+xai/cav/continuous/results/**/*.pkl
+xai/cav/**/*.pkl
+agent/ppo/models/transformers/*
+xai/cav/continuous/wandb/*
+
+wandb*
+
+load.sh
+xai/cav/continuous/output.txt
+xai/cav/continuous/run_cav.slurm
+xai/cav/continuous/results/azure-sun-1341/remapping_src_map_two_rooms_18_19_target_map_two_rooms_horizontally_18_40.zip
+xai/cav/continuous/results/feasible-lake-1351/map_circular_4_19_without decouple.zip
+xai/cav/continuous/results/feasible-lake-1351/map_circular_horizontally_4_40 without decouple.zip

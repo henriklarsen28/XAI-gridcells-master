@@ -158,16 +158,18 @@ class TransformerPolicy(nn.Module):
             *[Block(n_embd, n_head, block_size, dropout) for _ in range(n_layer)]
         )
         self.ln_f = nn.LayerNorm(n_embd)
-        self.output = FeedForward_Final(n_embd, output_dim)
+        self.output = nn.Linear(n_embd, output_dim)
         self.apply(self.init_weights)
 
-        self.env_class = nn.Sequential(
+        """self.env_class = nn.Sequential(
             nn.Linear(n_embd, 64),
             nn.ReLU(),
             nn.Linear(64, num_envs),
-        )
+        )"""
+        self.env_class = nn.Linear(n_embd, num_envs)
 
-        self.log_std = nn.Parameter(torch.zeros(np.prod(output_dim)))
+
+        #self.log_std = nn.Parameter(torch.zeros(np.prod(output_dim)))
 
     def init_weights(self, module):
         if isinstance(module, nn.Linear):
@@ -199,11 +201,11 @@ class TransformerPolicy(nn.Module):
         output = self.output(x[:,-1,:].to(torch.float32))
         env_class_out = self.env_class(x[:, -1, :])
         env_class_out = F.gumbel_softmax(env_class_out, tau=1, hard=True)
-        x_std = torch.exp(self.log_std)
+        #x_std = torch.exp(self.log_std)
         #x = F.tanh(x)
         #x_last = x[:, -1, :]
         #output = output[:, -1, :]
-        return output, x_std, env_class_out, att_weights_list
+        return output, None, env_class_out, att_weights_list
 
 
 # device = torch.device("mps" if torch.backends.mps.is_available() else "cpu") # Was faster with cpu??? Loading between cpu and mps is slow maybe

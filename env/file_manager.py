@@ -1,6 +1,7 @@
 import numpy as np
 from PIL import Image
 import random as rd
+import re
 
 def build_grid_layout(env_map: np.array, num_cells: int):
     """
@@ -30,8 +31,92 @@ def build_grid_layout(env_map: np.array, num_cells: int):
                 for col in range(col_start, col_end):
                     grid_layout[(row, col)] = grid_id
             grid_id += 1
+    
+    num_cells = grid_id + 1
 
-    return grid_layout
+    return grid_layout, num_cells
+
+def build_grid_layout_horizontal_stretch(env_map: np.array, num_cells_vertical: int):
+    total_rows, total_cols = env_map.shape
+    #Remove the borders of the map
+    # Calculate heights and widths accounting for remainder
+    subgrid_height = (total_rows + num_cells_vertical - 1) // num_cells_vertical
+    subgrid_width = subgrid_height
+    #subgrid_width = (total_cols + num_cells - 1) // num_cells
+    
+    grid_layout = {}
+    grid_id = 0
+    # Create indices for subgrids
+    for row_start in range(0, total_rows, subgrid_height):
+        for col_start in range(0, total_cols, subgrid_width):
+            row_end = min(row_start + subgrid_height, total_rows)
+            col_end = min(col_start + subgrid_width, total_cols)
+            # Assign grid index to each cell within the subgrid
+            for row in range(row_start, row_end):
+                for col in range(col_start, col_end):
+                    grid_layout[(row, col)] = grid_id
+            grid_id += 1
+    
+    num_cells = grid_id + 1
+
+    return grid_layout, num_cells
+
+def build_grid_layout_vertical_stretch(env_map: np.array, num_cells_horizontal: int):
+    total_rows, total_cols = env_map.shape
+    #Remove the borders of the map
+    # Calculate heights and widths accounting for remainder
+    subgrid_width = (total_cols + num_cells_horizontal - 1) // num_cells_horizontal
+    subgrid_height = subgrid_width
+    #subgrid_width = (total_cols + num_cells - 1) // num_cells
+    
+    grid_layout = {}
+    grid_id = 0
+    # Create indices for subgrids
+    for row_start in range(0, total_rows, subgrid_height):
+        for col_start in range(0, total_cols, subgrid_width):
+            row_end = min(row_start + subgrid_height, total_rows)
+            col_end = min(col_start + subgrid_width, total_cols)
+            # Assign grid index to each cell within the subgrid
+            for row in range(row_start, row_end):
+                for col in range(col_start, col_end):
+                    grid_layout[(row, col)] = grid_id
+            grid_id += 1
+    
+    num_cells = grid_id + 1
+
+    return grid_layout, num_cells
+
+def extract_goal_coordinates(map_path: str):
+    """
+    Extracts the goal coordinates from the maze filename.
+
+    Returns:
+        tuple: The goal coordinates extracted from the maze filename.
+    """
+    # Extract the goal coordinates from the maze filename
+    match = re.search(r"(\d+)_(\d+)\.csv$", map_path)
+    if match:
+        goal = (int(match.group(1)), int(match.group(2)))
+    else:
+        goal = None
+    #print("Goal:", self.goal, "in maze file:", self.maze_file)
+    return goal
+
+def extract_goal_coordinates(map_path: str):
+    """
+    Extracts the goal coordinates from the maze filename.
+
+    Returns:
+        tuple: The goal coordinates extracted from the maze filename.
+    """
+    # Extract the goal coordinates from the maze filename
+    match = re.search(r"(\d+)_(\d+)\.csv$", map_path)
+    if match:
+        goal = (int(match.group(1)), int(match.group(2)))
+    else:
+        goal = None
+    #print("Goal:", self.goal, "in maze file:", self.maze_file)
+    return goal
 
 def get_map(map_path):
 
@@ -44,12 +129,13 @@ def get_map(map_path):
     return map
 
 def read_map(map_file):
+    
     with open(map_file, "r", encoding="utf-8-sig") as f:
         lines = f.readlines()
     return lines
 
 
-def build_map(map_file):
+def build_map(map_file: str) -> np.array:
     assert map_file is not None, "Map file is not defined"
     lines = read_map(map_file)
     env_map = []

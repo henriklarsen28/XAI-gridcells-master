@@ -12,24 +12,35 @@ import math
 import gymnasium as gym
 import numpy as np
 import torch
+from eval_policy import eval_policy
 from ppo import PPO_agent
 
 import env.continuous.register_env as register_env
-from env import SunburstMazeContinuous, SunburstMazeDiscrete
-from utils.state_preprocess import state_preprocess
 
 # Define the CSV file path relative to the project root
 map_path_train = os.path.join(
-    project_root, "env/random_generated_maps/goal/large/map_circular_4_19.csv"
-)
-map_path_test = os.path.join(project_root, "env/map_v0/map_open_doors_90_degrees.csv")
-map_path_test_2 = os.path.join(
-    project_root, "env/map_v0/map_open_doors_horizontal_v2.csv"
+    project_root, "env/random_generated_maps/goal/stretched/map_circular_rot90__19_16.csv"
 )
 
-device = torch.device(
-    "mps" if torch.backends.mps.is_available() else "cpu"
-)  # Was faster with cpu??? Loading between cpu and mps is slow maybe
+map_path_random = os.path.join(project_root, "env/random_generated_maps/goal/large")
+map_path_random_files = [
+    os.path.join(map_path_random, f)
+    for f in os.listdir(map_path_random)
+    if os.path.isfile(os.path.join(map_path_random, f))
+]
+
+
+map_path_random = os.path.join(project_root, "env/random_generated_maps/goal/stretched")
+map_path_random_files = [
+    os.path.join(map_path_random, f)
+    for f in os.listdir(map_path_random)
+    if os.path.isfile(os.path.join(map_path_random, f))
+]
+
+
+#device = torch.device(
+#    "mps" if torch.backends.mps.is_available() else "cpu"
+#)  # Was faster with cpu??? Loading between cpu and mps is slow maybe
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # device = torch.device("cpu")
 
@@ -81,11 +92,10 @@ class Model_TrainTest:
         self.number_of_rays = config["number_of_rays"]
 
         map_path = map_path_train
-        if not self.train_mode:
-            map_path = map_path_test
+        
 
         # Define Env
-        
+
         self.env = gym.make(
             "SunburstMazeContinuous-v0",
             maze_file=map_path,
@@ -97,8 +107,9 @@ class Model_TrainTest:
             fov=self.fov,
             ray_length=self.ray_length,
             number_of_rays=self.number_of_rays,
+            #grid_length=None,
         )
-        #self.env = gym.make("Pendulum-v1", render_mode=self.render_mode)
+        # self.env = gym.make("Pendulum-v1", render_mode=self.render_mode)
         self.agent = PPO_agent(
             env=self.env,
             device=device,
@@ -111,26 +122,37 @@ class Model_TrainTest:
         """
         self.agent.learn(20_000_000)
 
-    def test(self, max_episodes=100):
+    def learn_from_agent(self):
+
+        self.agent.load_models()
+        self.agent.learn(5_000_000, iteration_counter=1000)
+
+    def test(self):
         """
         Reinforcement learning testing loop.
         """
         self.agent.load_model(self.policy_load_path, self.critic_load_path)
-        self.agent.rollout(max_episodes, render=True)
+        policy_network = self.agent.policy_network
+        eval_policy(
+            policy=policy_network,
+            env=self.env,
+            sequence_length=self.agent.sequence_length,
+            device=device,
+            render=True,
+            max_steps=self.max_steps,
+            random_map_path=map_path_random_files,
+        )
 
 
 if __name__ == "__main__":
     # Parameters:
 
     train_mode = True
-
     render = True
     render_mode = "human"
 
     if train_mode:
         render_mode = "rgb_array" if render else None
-
-    map_version = map_path_test.split("/")[-2]
 
     # Read the map file to find the number of states
     # num_states = get_num_states(map_path_train)
@@ -145,41 +167,41 @@ if __name__ == "__main__":
     config = {
         "train_mode": train_mode,
         "map_path_train": map_path_train,
+        "map_path_random_files": map_path_random_files,
         "render": render,
         "render_mode": render_mode,
-        "model_name": "vivid-firebrand-872",
-        "policy_load_path": f"./model/transformers/seq_len_45/model_vivid-firebrand-872/sunburst_maze_map_v0_5100.pth",
-        "critic_load_path": "/model/transformers/ppo/model_vivid-firebrand-872/sunburst_maze_map_v0_5100.pth",
+        "policy_load_path": f"./models/transformers/ppo/feasible-lake-1351/policy_network_1000.pth",
+        "critic_load_path": "./models/transformers/ppo/feasible-lake-1351/critic_network_1000.pth",
         # "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
-        "learning_rate": 3e-4,
-        "batch_size": 3000,
-        "mini_batch_size": 64,
-        "n_mini_batches": 5,
+        "learning_rate": 3e-5,
+        "batch_size": 7000,
+        "n_mini_batches": 10,
         "optimizer": "adam",
         "PPO": {
             "gamma": 0.99,
             "gae_lambda": 0.95,
             "n_updates_per_iteration": 10,  # hard update of the target model
             "clip": 0.2,
-            "clip_grad_normalization": 0.5,
+            "clip_grad_normalization": 1,
             "policy_kl_range": 0.0008,
             "policy_params": 5,
+            "env_loss_factor": 0.2,
+            "normalize_advantage": True,
         },
-        "map_path": map_path_train,
-        "max_steps_per_episode": 500,
+        "max_steps_per_episode": 400,
         "random_start_position": True,
         "random_goal_position": False,
         "rewards": {
-            "is_goal": 5,
-            "hit_wall": -0.001,
-            "has_not_moved": -0.005,
+            "is_goal": 30/10,
+            "hit_wall": -0.001/10,
+            "has_not_moved": -0.005/10,
             "new_square": 0.0,
-            "max_steps_reached": -0.025,
-            "penalty_per_step": -0.00002,
+            "max_steps_reached": -0.025/10,
+            "penalty_per_step": -0.00002/10,
             "number_of_squares_visible": 0,
-            "goal_in_sight": 0.001,
-            "is_false_goal": -0.01,
+            "goal_in_sight": 0.001/10,
+            "is_false_goal": 0,
             # and the proportion of number of squares viewed (set in the env)
         },
         # TODO
@@ -196,11 +218,11 @@ if __name__ == "__main__":
         "number_of_rays": fov_config["number_of_rays"],
         "transformer": {
             "sequence_length": 30,
-            "n_embd": 128,
-            "n_head": 6,
+            "n_embd": 196,
+            "n_head": 8,
             "n_layer": 2,
             "dropout": 0.2,
-            "decouple_positional_embedding": False,
+            "decouple_positional_embedding": True,
         },
         "entropy": {"coefficient": 0.015, "min": 0.0001, "step": 1_000},
     }
@@ -209,9 +231,7 @@ if __name__ == "__main__":
     DRL = Model_TrainTest(config)
     # Train
     if train_mode:
-        DRL.train()
-        # DRL.train_from_model()
+        DRL.learn_from_agent()
     else:
-        # Test
-        # DRL.test(max_episodes=config["total_episodes"])
-        DRL.test(max_episodes=100)
+        DRL.test()
+

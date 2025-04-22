@@ -13,7 +13,7 @@ from PIL import Image
 
 from utils.calculate_fov import calculate_fov_matrix_size, step_angle
 
-from .file_manager import build_grid_layout, build_map
+from .file_manager import build_grid_layout, build_map, extract_goal_coordinates
 from .maze_game import Maze
 
 checkpoints = [
@@ -212,22 +212,6 @@ class SunburstMazeDiscrete(gym.Env):
         # Get the matrix of marked squares without rendering
         return np.array([*matrix, self.orientation])
 
-    def extract_goal_coordinates(self):
-        """
-        Extracts the goal coordinates from the maze filename.
-
-        Returns:
-            tuple: The goal coordinates extracted from the maze filename.
-        """
-         # Extract the goal coordinates from the maze filename
-        match = re.search(r'(\d+)_(\d+)\.csv$', self.maze_file)
-        if match:
-            self.goal = (int(match.group(1)), int(match.group(2)))
-        else:
-            self.goal = None
-        # print("Goal:", self.goal, "in maze file:", self.maze_file)
-        return self.goal
-
     def reset(self, seed=None, options=None) -> tuple:
 
         super().reset(seed=seed)
@@ -245,7 +229,7 @@ class SunburstMazeDiscrete(gym.Env):
         self.env_map = copy.deepcopy(self.initial_map)
 
         self.position = self.select_start_position()
-        self.goal = self.extract_goal_coordinates()
+        self.goal = extract_goal_coordinates()
 
         self.steps_current_episode = 0
 
@@ -298,10 +282,6 @@ class SunburstMazeDiscrete(gym.Env):
                     self.wall_rays.add((x, y))
                     break
 
-                if self.env_map[x][y] == -1:  # Red wall
-                    marked_x, marked_y = self.find_relative_position_in_matrix(x, y)
-                    self.observed_red_wall.add((marked_x, marked_y))
-                    break
 
                 self.find_relative_position_in_matrix(x, y)
 
@@ -310,9 +290,6 @@ class SunburstMazeDiscrete(gym.Env):
 
         matrix = self.calculate_fov_matrix()
         return matrix
-
-    def find_relative_position_in_matrix(self, x2, y2):
-        x, y = self.position
 
     def find_relative_position_in_matrix(self, x2, y2):
         x, y = self.position
@@ -332,6 +309,8 @@ class SunburstMazeDiscrete(gym.Env):
         if self.orientation == 3:
             marked_x = self.matrix_middle_index + x2 - x
             marked_y = y - y2
+        else:
+            raise ValueError("Invalid orientation")
 
         # Add the goal square
         if (marked_x, marked_y) == self.goal:
