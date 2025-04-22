@@ -94,8 +94,8 @@ def build_csv_dataset(
     goal_area_regular = [4, 5, 10, 11]
     goal_area_rotated = [28, 29, 34, 35]
 
-    # model steps start at 1, then 25, 50, 75, 100, 125, 150, 175, 200 etc up until 1700
-    model_steps = [1] + [i for i in range(25, 1701, 25)]
+    model_steps = {int(re.search(r'policy_network_(\d+)\.pth', path).group(1)) for path in actor_model_paths}
+    model_steps = sorted(list(model_steps))
     print("Model steps: ", model_steps)
 
     goal_visitations_regular = {model: 0 for model in model_steps}
@@ -109,20 +109,20 @@ def build_csv_dataset(
         sequence_length=config["transformer"]["sequence_length"],
         device=device,
         render=True,
-        max_steps=config["max_steps_per_episode"],
+        max_steps=config["max_steps_per_episode"]
     ):
         # print("Collected observations", len(collected_observations), collected_observations[0])
 
-        for observation, position, ep_num in collected_observations:
-            print("Episode number: ", ep_num)
+        for observation, position, model_num in collected_observations:
+            print("Model num: ", model_num)
             for observation_step, position_step in zip(observation, position):
                 if rd.random() > 0.4:
                     grid_id = con.in_grid_square(observation_step, position_step)
-                    if ep_num in model_steps:
+                    if model_num in model_steps:
                         if grid_id in goal_area_regular:
-                            goal_visitations_regular[ep_num] += 1
+                            goal_visitations_regular[model_num] += 1
                         elif grid_id in goal_area_rotated:
-                            goal_visitations_rotated[ep_num] += 1
+                            goal_visitations_rotated[model_num] += 1
 
 
     # Save the goal visitations to a file

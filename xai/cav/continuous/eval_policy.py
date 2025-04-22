@@ -163,12 +163,11 @@ def preprocess_ep_obs(ep_obs, sequence_length, device):
     return padded_obs
 
 
-def update_model(actor_model_paths, ep_num):
+def update_model(actor_model_paths, curr_index):
     if ep_num == len(actor_model_paths) - 1:
         print("Reached the end of the model.")
         return None
-    return actor_model_paths[ep_num + 200] # +1 
-
+    # return the next model in the list not depending on the current episode number
 
 def eval_policy(
     policy: TransformerPolicyDecoupled,
@@ -199,12 +198,16 @@ def eval_policy(
     # collected_observations = deque ()
 
     # Load in the actor model saved by the PPO algorithm
-    actor_model = actor_model_paths[0]
+    curr_model_index = 0
+    actor_model = actor_model_paths[curr_model_index]
+
     policy.load_state_dict(torch.load(actor_model, map_location=device))
 
     collected_observations = deque()
 
-    max_episodes = 1700  # 150
+    max_episodes = 150
+
+    model_num = int(actor_model.split("_")[-1].split(".")[0])
 
     for ep_num, (
         ep_len,
@@ -227,16 +230,19 @@ def eval_policy(
             (
                 copy.deepcopy(collected_observation_sequences),
                 copy.deepcopy(collected_positions),
-                ep_num,
+                model_num,
             )
         )
         if ep_num % 5 == 0:
             if ep_num == 0:
                 continue
             else:
-                actor_model = update_model(actor_model_paths, ep_num)
+                actor_model = actor_model_paths[curr_model_index + 1]
                 policy.load_state_dict(torch.load(actor_model, map_location=device))
             print("Using model: ", actor_model)
+            # extract the model number from the path
+            model_num = int(actor_model.split("_")[-1].split(".")[0])
+            print("Model number: ", model_num)
 
         """if ep_num == 25:
             actor_model = actor_model_paths[1]
