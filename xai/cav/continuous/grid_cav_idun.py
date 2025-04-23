@@ -39,7 +39,7 @@ def main(grid_start, grid_end):
         # MODEL PATHS
         "model_path": f"../../../agent/ppo/models/transformers/{model_name}/actor",
         "model_name": f"{model_name}",  # NOTE: make sure to update
-        "model_episodes": [400, 500, 1200],  # NOTE: for eval_policy
+        "model_episodes": [400, 500, 1700],  # NOTE: for eval_policy
         # PPO
         "policy_load_path": None,
         "critic_load_path": None,
@@ -49,7 +49,7 @@ def main(grid_start, grid_end):
         "grid_length": 6,  # 7 x 7 grid
         "cav": {
             "dataset_max_length": 1500,
-            "episode_numbers": ["1", "200", "600", "1000", "1200"],
+            "episode_numbers": ["1", "200", "600", "1000", "1025", "1100", "1300", "1700"],
         },
         "tcav_param": {
             "episode_number": 1200,
@@ -119,7 +119,7 @@ def main(grid_start, grid_end):
         "grid_end": grid_end,
         # Relative CAV
         "relative_cav": {
-            "episode": 1200,
+            "episode": 1000,
             "block": 2,
         },
         "CAR": True,

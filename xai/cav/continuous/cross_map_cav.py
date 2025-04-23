@@ -274,6 +274,17 @@ class Cross_Map_CAV:
         if self.target_map.__contains__("vertically"):
             grid_length_vertical = grid_length * 2
 
+        
+        if self.target_map.__contains__("horizontally"):
+            # Transform the square to map to the horizontal map
+            target_coordinate = (coordinate[0], coordinate[1] * 2)
+        elif self.target_map.__contains__("vertically"):
+            # Transform the square to map to the vertical map
+            target_coordinate = (coordinate[1]*2, coordinate[0])
+        elif self.target_map.__contains__("rot90") and self.model_name == "helpful-bush-1369":
+            # Transform the square to map to the rotated map
+            target_coordinate = (coordinate[1], -coordinate[0] + grid_length-1)
+
 
         scores = []
         for i in range(grid_length_vertical):
@@ -288,7 +299,7 @@ class Cross_Map_CAV:
         if self.cos_sim:
             save_path += "cosine_sim/"
         os.makedirs(save_path, exist_ok=True)
-        df.to_csv(os.path.join(save_path, f"grid_observations_{grid_number}_{coordinate[0]}_{coordinate[1]}_block_{self.block}_episode_{self.episode}.csv"), index=False)
+        df.to_csv(os.path.join(save_path, f"grid_observations_{grid_number}_{coordinate[0]}_{coordinate[1]}_block_{self.block}_episode_{self.episode}_target_{target_coordinate[0]}_{target_coordinate[1]}.csv"), index=False)
 
 
 
@@ -415,14 +426,14 @@ def worker(
 
 def main():
 
-    source_map = "map_circular_4_19"
-    target_map = "map_circular_rot90_19_16"
+    source_map = "map_two_rooms_18_19"
+    target_map = "map_two_rooms_rot90_19_2"
     model_name = "helpful-bush-1369"
 
     grid_length = 6
 
     block = 2
-    episode = 1200
+    episode = 1700
 
     car = False
 

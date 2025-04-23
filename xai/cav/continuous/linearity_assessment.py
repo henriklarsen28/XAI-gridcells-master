@@ -40,7 +40,7 @@ def get_column_excluding_diagonal(grid_size, grid_data):
             #idx = row * grid_size + col
             if row != col:  # exclude diagonal
                 column_values.append(grid_data[f"grid_observations_{idx}"])
-        print(np.mean([v for v in column_values if v is not None]))
+        #print(np.mean([v for v in column_values if v is not None]))
         all_columns.append(column_values)
     return all_columns
 
@@ -97,8 +97,8 @@ def summarize_grids(grid_data):
             f"Mean columns (excluding diag): {mean_column:.4f}, Std columns: {std_column:.4f}"
         )
 
-        plot_std(std_diagonal, std_column)
-        #heat_map(grid_data, grid_size)
+        #plot_std(std_diagonal, std_column)
+        heat_map(grid_data, grid_size)
 
 
 def read_cav_list(dir_path, grid_length=5):
@@ -133,7 +133,7 @@ def read_cav_list(dir_path, grid_length=5):
     for key in cav_dicti.keys():
         for i in range(grid_length**2):
             if f"grid_observations_{i}" not in cav_dicti[key]:
-                cav_dicti[key][f"grid_observations_{i}"] = None
+                cav_dicti[key][f"grid_observations_{i}"] = 0
 
 
     # Flatten the dictionary with new keys without nesting
@@ -159,26 +159,47 @@ def read_cav_list(dir_path, grid_length=5):
     sorted_dict = dict(sorted_items)
 
     # To print or use
-    for k, v in sorted_dict.items():
-        print(f"{k}: {v}")
+    #for k, v in sorted_dict.items():
+    #    print(f"{k}: {v}")
 
     return sorted_dict
 
+def box_and_whisker_plot():
+    data = {"5x5":	[0.1950,0.2224,	0.2359,	0.2091],
+            "6x6":	[0.1227,0.2275,	0.2234,	0.2156],
+            "7x7":	[0.1455,0.2926,	0.2658,	0.3011]
+            }
+    
+
+    fig, ax = plt.subplots()
+    means = [np.mean(v) for v in data.values()]
+    stds = [np.std(v) for v in data.values()]
+    ax.bar(data.keys(), means, yerr=stds, capsize=5)
+    ax.errorbar(data.keys(), means, yerr=stds, fmt='o', color='black', capsize=5)
+    ax.set_title("Box and Whisker Plot")
+    ax.set_ylabel("Values")
+    ax.set_xlabel("Grid Size")
+    plt.show()
+
+
 def main():
     data = {}
-    grid_size = 7
+    #grid_size = 5
 
-    dir_path = f"./results/helpful-bush-1369/map_circular_4_19/grid_length_{grid_size}/cav_list/"
-    data[grid_size] = read_cav_list(dir_path, grid_length=grid_size)
+    #data[grid_size] = read_cav_list(dir_path, grid_length=grid_size)
     # Generate random grid data
-    """grid_sizes = [7]  # Example grid sizes
+    grid_sizes = [5,6,7]  # Example grid sizes
     for grid_size in grid_sizes:
-        grid_data = generate_random_grid_data(grid_size)
-        data[grid_size] = grid_data"""
+        #grid_data = generate_random_grid_data(grid_size)
+        dir_path = f"./results/helpful-bush-1369/map_circular_4_19/grid_length_{grid_size}/cav_list/"
+
+        data[grid_size] = read_cav_list(dir_path, grid_length=grid_size)
 
 
     summarize_grids(data)
 
 
 if __name__ == "__main__":
-    main()
+    #main()
+    box_and_whisker_plot()
+

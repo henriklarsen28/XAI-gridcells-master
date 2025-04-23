@@ -358,7 +358,7 @@ class CAR:
         train_data, train_labels = shuffle(train_data, train_labels, random_state=42)
         test_data, test_labels = shuffle(test_data, test_labels, random_state=42)
         # Train the model
-        self.model = SVC(kernel=self.kernel, C=0.05, gamma=0.05)
+        self.model = SVC(kernel=self.kernel, C=0.005, gamma=0.005)
 
         self.model.fit(train_data, train_labels)
 
@@ -485,7 +485,7 @@ class CAR:
                 )
 
                 # print("Block: ", block, model_path, episode_number)
-                cav = self.calculate_single_cav(
+                self.calculate_single_cav(
                     block,
                     episode_number,
                     positive,
@@ -495,16 +495,6 @@ class CAR:
                     save_path,
                     concept,
                 )
-
-                if sensitivity:
-                    self.calculate_tcar(
-                        cav,
-                        positive_test,
-                        q_values_positive_test,
-                        block,
-                        episode_number,
-                    )
-
         # Save the CAV list
         torch.save(self.cav_list, os.path.join(save_path_activations, f"{concept}.pt"))
         print(

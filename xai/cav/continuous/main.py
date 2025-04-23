@@ -29,14 +29,14 @@ def main():
         "number_of_rays": 40,
     }
 
-    map_path = "map_two_rooms_horizontally_18_40"
+    map_path = "map_two_rooms_rot90_19_2"
     model_name = "helpful-bush-1369"
 
     config = {
         # MODEL PATHS
         "model_path": f"../../../agent/ppo/models/transformers/{model_name}/actor",
         "model_name": f"{model_name}",  # NOTE: make sure to update
-        "model_episodes": [200, 700, 1200],  # NOTE: for eval_policy #NOTE: Episodes for circular [200, 700, 1200], rotated: [1025, 1100, 1200
+        "model_episodes": [200, 1025, 1700],  # NOTE: for eval_policy #NOTE: Episodes for circular [200, 700, 1200], rotated: [1025, 1100, 1200
         # PPO
         "policy_load_path": None,
         "critic_load_path": None,

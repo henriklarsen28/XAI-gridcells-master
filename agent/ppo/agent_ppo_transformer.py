@@ -19,7 +19,7 @@ import env.continuous.register_env as register_env
 
 # Define the CSV file path relative to the project root
 map_path_train = os.path.join(
-    project_root, "env/random_generated_maps/goal/stretched/map_two_rooms_rot90_19_2.csv"
+    project_root, "env/random_generated_maps/goal/stretched/map_circular_rot90_19_16.csv"
 )
 
 
@@ -163,7 +163,7 @@ if __name__ == "__main__":
         "map_path_random_files": map_path_random_files,
         "render": render,
         "render_mode": render_mode,
-        "policy_load_path": f"./models/transformers/helpful-bush-1369/actor/policy_network_1200.pth",
+        "policy_load_path": f"./models/transformers/helpful-bush-1369/actor/policy_network_1700.pth",
         "critic_load_path": "./models/transformers/helpful-bush-1369/critic/critic_network_1000.pth",
         # "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",

@@ -13,15 +13,26 @@ class VectorField:
         self.grid_length = grid_length
         self.grid_length_horizontal = grid_length_horizontal
         self.vectors = {}
+        self.threshold_grids = 1 #Check the grids around the target
+
+        """
+        0 , 0 , 0.3
+        0 , t , 0
+        0 , 1 , 0
+        """
 
     def add_vector(self, path: str):
 
         coordinate = path.split("/")[-1].split("_")[3:5]
         coordinate = (int(coordinate[0]), int(coordinate[1]))
 
+        target_coordinate = path.split("/")[-1].split("_")[-2:-1]
+        target_coordinate = (int(target_coordinate[0]), int(target_coordinate[1]))
+        print(coordinate, target_coordinate)
+
         df = pd.read_csv(path)
         matrix = df.to_numpy()
-        best_grid = self._get_best_grid(matrix)
+        best_grid = self._get_best_grid(matrix, target_coordinate=target_coordinate)
         if best_grid is None:
             return
         vector, coordinate_transformed = self._create_vector(coordinate, best_grid)
@@ -41,11 +52,11 @@ class VectorField:
         vector = np.array(coordinate_b) - np.array(coordinate_a)
         return vector, coordinate_a
 
-    def _get_best_grid(self, matrix):
+    def _get_best_grid(self, matrix, target_coordinate=None):
 
         kernel = np.ones((3, 3))
         result = convolve2d(matrix, kernel, mode="same", fillvalue=0)
-
+        result = self.select_grid_close_to_target(result, (1, 1))
         # Get the max index
         max_index = np.unravel_index(np.argmax(result), result.shape)
         # check if the max index is above a threshold
@@ -54,6 +65,26 @@ class VectorField:
             return None
 
         return tuple(max_index)
+
+    def select_grid_close_to_target(self, matrix, target_coordinate):
+
+        neighbours = []
+        for i in range(-self.threshold_grids, self.threshold_grids + 1):
+            for j in range(-self.threshold_grids, self.threshold_grids + 1):
+                neighbour_coordinate = (
+                    target_coordinate[0] + i,
+                    target_coordinate[1] + j
+                )
+                neighbours.append(neighbour_coordinate)
+
+        neighbours = np.array(neighbours)
+
+        max_index = np.unravel_index(np.argmax(matrix), matrix.shape)
+
+        return max_index
+                
+                
+
 
     def plot_field(self):
         # Plot the vector field
@@ -123,16 +154,16 @@ def main():
 
     model_name = "helpful-bush-1369"
     grid_length = 6
-    map_name = "map_circular_4_19"
-    target_map = "map_circular_rot90_19_16"
-    cosine_sim = False
+    map_name = "map_two_rooms_18_19"
+    target_map = "map_two_rooms_rot90_19_2"
+    cosine_sim = True
 
     grid_length_horizontal = grid_length
     if target_map.__contains__("horizontally") or target_map.__contains__("vertically"):
         grid_length_horizontal = grid_length * 2
 
-    episode = 1200
-    block = 1
+    episode = 1700
+    block = 2
 
     
     path = f"vectors/{model_name}/grid_length_{grid_length}/remapping_src_{map_name}_target_{target_map}/"
@@ -145,8 +176,8 @@ def main():
         if not file.endswith(".csv"):
             continue
 
-        episode_num = int(file.split(".")[0].split("_")[-1])
-        block_num = int(file.split(".")[0].split("_")[-3])
+        episode_num = int(file.split(".")[0].split("_")[-3])
+        block_num = int(file.split(".")[0].split("_")[-5])
         if episode_num != episode or block_num != block:
             continue
 
