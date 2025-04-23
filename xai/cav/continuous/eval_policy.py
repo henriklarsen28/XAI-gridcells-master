@@ -238,11 +238,11 @@ def eval_policy(
                 continue
             else:
                 actor_model = actor_model_paths[curr_model_index + 1]
+                curr_model_index += 1
                 policy.load_state_dict(torch.load(actor_model, map_location=device))
-            print("Using model: ", actor_model)
-            # extract the model number from the path
-            model_num = int(actor_model.split("_")[-1].split(".")[0])
-            print("Model number: ", model_num)
+                # extract the model number from the path
+                model_num = int(actor_model.split("_")[-1].split(".")[0])
+                print("Model number: ", model_num)
 
         """if ep_num == 25:
             actor_model = actor_model_paths[1]

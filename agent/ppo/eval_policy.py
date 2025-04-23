@@ -123,7 +123,7 @@ def rollout(
             # Render environment if specified, off by default
             if render:
                 env.render()
-            obs = make_toril_blind(obs)
+            #obs = make_toril_blind(obs)
             print("obs", obs)
             ep_obs.append(obs)
 
