@@ -426,8 +426,8 @@ def worker(
 
 def main():
 
-    source_map = "map_two_rooms_18_19"
-    target_map = "map_two_rooms_rot90_19_2"
+    source_map = "map_circular_4_19"
+    target_map = "map_circular_rot90_19_16"
     model_name = "helpful-bush-1369"
 
     grid_length = 6
