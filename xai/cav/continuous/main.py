@@ -189,7 +189,7 @@ def main():
         dataset_subfolder=dataset_subfolder,
         grid_size=grid_size,
     )
-    """
+    
     # Train CAV for grid observations
     for i in range(grid_size):
         print("CAVing for grid observation", i)
@@ -232,8 +232,6 @@ def main():
                         )
                     }
                 )
-        """
-
-
+        
 if __name__ == "__main__":
     main()

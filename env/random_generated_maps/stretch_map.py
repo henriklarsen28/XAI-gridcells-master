@@ -175,12 +175,12 @@ def main():
 
     
     save_map(stretched_map, goal, map_name+"_horizontally", folder)
-
+    """
     stretched_map, goal = stretch_map_vertically(map_path, stretch_factor=2)
-    save_map(stretched_map, goal, map_name+"_vertically", folder)"""
+    save_map(stretched_map, goal, map_name+"_vertically", folder)
 
-    rotated_map, goal = rotate_map(map_path, angle=90)
-    save_map(rotated_map, goal, map_name+"_rot90_", folder)
+    #rotated_map, goal = rotate_map(map_path, angle=90)
+    #save_map(rotated_map, goal, map_name+"_rot90_", folder)
 
 if __name__ == "__main__":
     main()
