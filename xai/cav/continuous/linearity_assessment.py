@@ -86,7 +86,7 @@ def summarize_grids(grid_data):
             "mean_diagonal_values": mean_diagonal,
             "std_diagonal_values": std_diagonal,
             "mean_column_values": mean_column,
-            "std_column_values": std_column,
+            "std_column_values": std_column
         }
 
         summaries.append(summary)
@@ -194,7 +194,6 @@ def main():
         dir_path = f"./results/helpful-bush-1369/map_circular_4_19/grid_length_{grid_size}/cav_list/"
 
         data[grid_size] = read_cav_list(dir_path, grid_length=grid_size)
-
 
     summarize_grids(data)
 
