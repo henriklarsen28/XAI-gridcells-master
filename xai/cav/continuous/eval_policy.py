@@ -227,7 +227,7 @@ def eval_policy(
             actor_model = actor_model_paths[1]
             policy.load_state_dict(torch.load(actor_model, map_location=device))
             print("Using model: ", actor_model)
-        if ep_num == 75:
+        if ep_num == 60:
             actor_model = actor_model_paths[2]
             policy.load_state_dict(torch.load(actor_model, map_location=device))
             print("Using model: ", actor_model)

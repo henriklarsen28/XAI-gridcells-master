@@ -2,25 +2,29 @@ import os
 import sys
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
-ppo_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../agent/ppo"))
+ppo_path = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "../../../agent/ppo")
+)
 
 sys.path.append(project_root)
 sys.path.append(ppo_path)
 
-from cav import CAV
-import wandb
 import math
+
+import torch
+import wandb
+from car import CAR
+from cav import CAV, TCAV
+from relative_cav import RelativeCAV
 
 from env.continuous.sunburstmaze_continuous import SunburstMazeContinuous
 from xai.cav.continuous.cav import Analysis
 from xai.cav.process_data import find_model_files
-import torch
 
 wandb.login()
 
+
 def main(grid_start, grid_end):
-    
-    
 
     fov_config = {
         "fov": math.pi / 1.5,
@@ -28,24 +32,30 @@ def main(grid_start, grid_end):
         "number_of_rays": 40,
     }
 
-    map_path = "map_circular_4_19"
+    map_path = "map_two_rooms_horizontally_18_40"
     model_name = "helpful-bush-1369"
 
     config = {
         # MODEL PATHS
         "model_path": f"../../../agent/ppo/models/transformers/{model_name}/actor",
         "model_name": f"{model_name}",  # NOTE: make sure to update
-        "model_episodes": [400, 500, 1200],  # NOTE: for eval_policy
+        "model_episodes": [400, 500, 1700],  # NOTE: for eval_policy
         # PPO
         "policy_load_path": None,
         "critic_load_path": None,
         # ENVIRONMENT
         "env_name": f"{map_path}",
         "env_path": f"../../../env/random_generated_maps/goal/stretched/{map_path}.csv",
-        "grid_length": 7,  # 7 x 7 grid
+        "grid_length": 6,  # 7 x 7 grid
         "cav": {
             "dataset_max_length": 1500,
-            "episode_numbers": ["1200"],
+            "episode_numbers": ["1", "200", "600", "1000", "1025", "1100", "1300", "1700"],
+        },
+        "tcav_param": {
+            "episode_number": 1200,
+            "block": 2,
+            "action": [0, 1, 2, 3, 4, 5],
+            "average": 1,
         },
         # RENDERING
         "train_mode": False,
@@ -102,11 +112,19 @@ def main(grid_start, grid_end):
             "n_head": 8,
             "n_layer": 2,
             "dropout": 0.2,
-            "decouple_positional_embedding": False,
+            "decouple_positional_embedding": True,
         },
         "entropy": {"coefficient": 0.015, "min": 0.0001, "step": 1_000},
         "grid_start": grid_start,
         "grid_end": grid_end,
+        # Relative CAV
+        "relative_cav": {
+            "episode": 1000,
+            "block": 2,
+        },
+        "CAR": False,
+        "Relative_CAV": False,
+        "TCAV": False,
     }
 
     wandb.init(project="CAV_PPO", config=config)
@@ -155,29 +173,40 @@ def main(grid_start, grid_end):
     grid_size = env.num_cells
 
     # Build the dataset
-    """build_csv_dataset(
-        env=env,
-        device=device,
-        config=config,
-        actor_model_paths=model_files,
-        dataset_path=dataset_path,
-        dataset_subfolder=dataset_subfolder,
-        grid_size=grid_size,
-    )"""
     print(grid_start, grid_end)
-    
+
+    activations_path = f"./results/{model_name}/{map_name}/{grid_length}/activations"
+
+    dicti = {}
+
+    if config["TCAV"]:
+        tcav = TCAV(
+            activation_path=activations_path,
+            episode=config["tcav_param"]["episode_number"],
+            block=config["tcav_param"]["block"],
+            dataset_path_train=dataset_directory_train,
+            dataset_path_test=dataset_directory_test,
+            model_dir=config["model_path"],
+        )
+    analysis = Analysis(config["tcav_param"]["average"])
+
     # Train CAV for grid observations
     for i in range(int(grid_start), int(grid_end)):
         print("CAVing for grid observation", i)
         concept = f"grid_observations_{i}"
         # grid_observation_dataset(model_name, concept)
         # cav = CAV()
-        for action in range(1):
-            average = 1
-            pass
-            analysis = Analysis(average)
-            for _ in range(average):
-                cav = CAV()
+        for action in range(
+            len(config["tcav_param"]["action"] if config["TCAV"] else [0])
+        ):
+            for _ in range(config["tcav_param"]["average"] if config["TCAV"] else 1):
+                if config["CAR"]:
+                    cav = CAR("rbf", activation_path=activations_path)
+                else:
+                    if config["Relative_CAV"]:
+                        cav = RelativeCAV(activations_path)
+                    else:
+                        cav = CAV(activations_path)
                 # check if the concept exists by checking if the concept name exists in the dataset
                 filename = f"{concept}_positive_train.csv"
                 if filename not in os.listdir(dataset_directory_train):
@@ -185,21 +214,66 @@ def main(grid_start, grid_end):
                         f"Concept {concept} does not exist in the dataset. Skipping..."
                     )
                     continue
-                cav.calculate_cav(
-                    concept=concept,
-                    dataset_directory_train=dataset_directory_train,
-                    dataset_directory_test=dataset_directory_test,
-                    model_dir=config["model_path"],
-                    sensitivity=False,
-                    action_index=action,
-                    episode_numbers=episode_numbers,
-                    save_path=save_path,
+                if config["Relative_CAV"]:
+                    for j in range(int(config["grid_length"]) ** 2):
+                        concept2 = f"grid_observations_{j}"
+                        filename2 = f"{concept2}_positive_train.csv"
+                        if filename2 not in os.listdir(dataset_directory_train):
+                            print(
+                                f"Concept {concept2} does not exist in the dataset. Skipping."
+                            )
+
+                            continue
+                        cav.calculate_rel_cav(
+                            concept=concept,
+                            concept2=f"grid_observations_{j}",
+                            dataset_directory_train=dataset_directory_train,
+                            dataset_directory_test=dataset_directory_test,
+                            model_dir=config["model_path"],
+                            episode=config["relative_cav"]["episode"],
+                            block=config["relative_cav"]["block"],
+                            save_path=save_path,
+                        )
+                    dicti[concept] = cav.cav_list
+
+                elif config["TCAV"]:
+                    tcav_sensitivity = tcav.calculate_tcav(
+                        concept=concept, action=action
+                    )
+                    analysis.add_total_tcav_scores(
+                        concept=concept, action=action, sensitivity=tcav_sensitivity
+                    )
+
+                else:
+                    cav.calculate_cav(
+                        concept=concept,
+                        dataset_directory_train=dataset_directory_train,
+                        dataset_directory_test=dataset_directory_test,
+                        model_dir=config["model_path"],
+                        sensitivity=False,
+                        action_index=action,
+                        episode_numbers=episode_numbers,
+                        save_path=save_path,
+                    )
+                    cav.plot_cav(
+                        concept=concept,
+                        episode_numbers=episode_numbers,
+                        save_path=save_path,
+                    )
+
+            # Save the cav_list
+            if config["Relative_CAV"]:
+                os.makedirs(
+                    os.path.join(save_path, "cav_list"),
+                    exist_ok=True,
                 )
-                """cav.plot_cav(
-                    concept=concept,
-                    episode_numbers=episode_numbers,
-                    save_path=save_path,
-                )"""
+                torch.save(
+                    dicti,
+                    os.path.join(
+                        save_path,
+                        f"cav_list/cav_list_{concept}_{action}.pt",
+                    ),
+                )
 
                 """wandb.log(
                     {
@@ -209,13 +283,13 @@ def main(grid_start, grid_end):
                     }
                 )"""
 
+    if config["TCAV"]:
+        analysis.plot_tcav()
+
+
 if __name__ == "__main__":
 
     grid_start = sys.argv[1] if len(sys.argv) > 1 else 0
     grid_end = sys.argv[2] if len(sys.argv) > 2 else grid_start + 1
 
-    
-    
     main(grid_start, grid_end)
-
-

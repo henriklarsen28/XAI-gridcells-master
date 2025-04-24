@@ -19,15 +19,8 @@ import env.continuous.register_env as register_env
 
 # Define the CSV file path relative to the project root
 map_path_train = os.path.join(
-    project_root, "env/random_generated_maps/goal/stretched/map_circular_rot90__19_16.csv"
+    project_root, "env/random_generated_maps/goal/stretched/map_circular_rot90_19_16.csv"
 )
-
-map_path_random = os.path.join(project_root, "env/random_generated_maps/goal/large")
-map_path_random_files = [
-    os.path.join(map_path_random, f)
-    for f in os.listdir(map_path_random)
-    if os.path.isfile(os.path.join(map_path_random, f))
-]
 
 
 map_path_random = os.path.join(project_root, "env/random_generated_maps/goal/stretched")
@@ -147,7 +140,7 @@ class Model_TrainTest:
 if __name__ == "__main__":
     # Parameters:
 
-    train_mode = True
+    train_mode = False
     render = True
     render_mode = "human"
 
@@ -170,8 +163,8 @@ if __name__ == "__main__":
         "map_path_random_files": map_path_random_files,
         "render": render,
         "render_mode": render_mode,
-        "policy_load_path": f"./models/transformers/ppo/feasible-lake-1351/policy_network_1000.pth",
-        "critic_load_path": "./models/transformers/ppo/feasible-lake-1351/critic_network_1000.pth",
+        "policy_load_path": f"./models/transformers/helpful-bush-1369/actor/policy_network_1700.pth",
+        "critic_load_path": "./models/transformers/helpful-bush-1369/critic/critic_network_1000.pth",
         # "save_path": f"/sunburst_maze_{map_version}",
         "loss_function": "mse",
         "learning_rate": 3e-5,

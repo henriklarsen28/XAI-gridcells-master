@@ -74,7 +74,7 @@ def play_with_keyboard():
     }
 
     env = SunburstMazeContinuous(
-        maze_file=f"{project_root}/env/random_generated_maps/goal/stretched/map_two_rooms_18_19.csv",
+        maze_file=f"{project_root}/env/random_generated_maps/goal/stretched/map_circular_horizontally_4_40.csv",
         render_mode="human",
         rewards=config["rewards"],
         random_start_position=config["random_start_position"],
@@ -82,7 +82,7 @@ def play_with_keyboard():
         fov=config["fov"],
         ray_length=config["ray_length"],
         number_of_rays=config["number_of_rays"],
-        grid_length=7
+        grid_length=6
     )
 
     pygame.init()
