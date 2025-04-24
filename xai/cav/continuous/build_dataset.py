@@ -4,13 +4,12 @@ import json
 import math
 import os
 import random as rd
+import re
 import sys
 from collections import deque
 
 import pandas as pd
 import torch
-
-import re
 
 # get the path to the project root directory and add it to sys.path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
@@ -19,7 +18,7 @@ sys.path.append(project_root)
 
 import gymnasium as gym
 
-from agent.ppo.transformer_decoder_policy import TransformerPolicy
+from agent.ppo.transformer_decoder_decoupled_policy import TransformerPolicyDecoupled
 from env import SunburstMazeContinuous
 from utils.calculate_fov import calculate_fov_matrix_size
 from utils.sequence_preprocessing import add_to_sequence, padding_sequence
@@ -39,6 +38,7 @@ from xai.cav.process_data import (
 
 def find_closest_model_step(ep_num, model_steps):
     return min(model_steps, key=lambda x: abs(x - ep_num))
+
 
 def build_csv_dataset(
     env: SunburstMazeContinuous,
@@ -79,7 +79,7 @@ def build_csv_dataset(
 
     sys.exit()"""
 
-    policy = TransformerPolicy(
+    policy = TransformerPolicyDecoupled(
         input_dim=obs_dim,
         output_dim=act_dim,
         num_envs=6,
@@ -91,10 +91,13 @@ def build_csv_dataset(
         device=device,
     )
 
-    goal_area_regular = [4, 5, 10, 11]
-    goal_area_rotated = [28, 29, 34, 35]
+    goal_area_regular = [5, 11]
+    goal_area_rotated = [34, 35]
 
-    model_steps = {int(re.search(r'policy_network_(\d+)\.pth', path).group(1)) for path in actor_model_paths}
+    model_steps = {
+        int(re.search(r"policy_network_(\d+)\.pth", path).group(1))
+        for path in actor_model_paths
+    }
     model_steps = sorted(list(model_steps))
     print("Model steps: ", model_steps)
 
@@ -109,24 +112,23 @@ def build_csv_dataset(
         sequence_length=config["transformer"]["sequence_length"],
         device=device,
         render=True,
-        max_steps=config["max_steps_per_episode"]
+        max_steps=config["max_steps_per_episode"],
     ):
         # print("Collected observations", len(collected_observations), collected_observations[0])
 
-        for observation, position, model_num in collected_observations:
+        for position, model_num in collected_observations:
             print("Model num: ", model_num)
-            for observation_step, position_step in zip(observation, position):
+            for position_step in position:
                 if rd.random() > 0.4:
-                    grid_id = con.in_grid_square(observation_step, position_step)
+                    grid_id = con.in_grid_square(None, position_step)
                     if model_num in model_steps:
                         if grid_id in goal_area_regular:
                             goal_visitations_regular[model_num] += 1
                         elif grid_id in goal_area_rotated:
                             goal_visitations_rotated[model_num] += 1
 
-
     # Save the goal visitations to a file
-    with open(os.path.join("goal_visitations.json"), "w") as f:
+    with open(os.path.join("goal_visitations_circular.json"), "w") as f:
         json.dump(
             {
                 "regular": goal_visitations_regular,
@@ -135,11 +137,10 @@ def build_csv_dataset(
             f,
         )
 
-    return 
     path = os.path.join(dataset_path, dataset_subfolder)
 
     max_length = config["cav"]["dataset_max_length"]
- 
+
     if os.path.exists(path) == False:
         os.makedirs(path)
     for key, val in con.datasets.items():
@@ -147,7 +148,7 @@ def build_csv_dataset(
         if isinstance(val, dict):
             for sub_key, sub_val in val.items():
                 if sub_val:
-                    filename = str(key) + '_' + str(sub_key)
+                    filename = str(key) + "_" + str(sub_key)
                     data_preprocessed = shuffle_and_trim_datasets(sub_val, max_length)
                     if len(data_preprocessed) > 1:
                         save_to_csv(data_preprocessed, filename, path)
@@ -164,14 +165,16 @@ def build_csv_dataset(
     del con
     # Save the config as a file for reference
     save_config(dataset_path, config)
-    
+
     # Using the raw dataset, build a random dataset
     build_random_dataset(dataset_path, dataset_subfolder)
 
     # Split the dataset into a training and test set
-    split_dataset_into_train_test(dataset_path, dataset_subfolder, ratio = 0.8)
+    split_dataset_into_train_test(dataset_path, dataset_subfolder, ratio=0.8)
 
     # Build a dataset for grid observations
-    grid_observation_dataset(dataset_path, grid_size) # specifically for grid layout concept
-    
+    grid_observation_dataset(
+        dataset_path, grid_size
+    )  # specifically for grid layout concept
+
     print("Finished building dataset!")

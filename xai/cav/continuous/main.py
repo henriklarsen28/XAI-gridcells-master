@@ -30,7 +30,7 @@ def main():
         "number_of_rays": 40,
     }
 
-    map_path = "map_circular_rot90_19_16"
+    map_path = "map_two_rooms_rot90__19_2"
     model_name = "helpful-bush-1369"
 
     config = {
@@ -69,7 +69,7 @@ def main():
         # ENVIRONMENT
         "env_name": f"{map_path}",
         "env_path": f"../../../env/random_generated_maps/goal/stretched/{map_path}.csv",
-        "grid_length": 7,  # 7 x 7 grid
+        "grid_length": 6,  # 7 x 7 grid
         "cav": {
             "dataset_max_length": 1500,
             "episode_numbers": ["1200"],
@@ -78,7 +78,7 @@ def main():
         "train_mode": False,
         "map_path_train": None,
         "render": True,
-        "render_mode": None,  # "human",
+        "render_mode": "human",  # "human",
         # HYPERPARAMETERS
         "loss_function": "mse",
         "learning_rate": 3e-4,
@@ -187,7 +187,7 @@ def main():
         actor_model_paths=model_files,
         dataset_path=dataset_path,
         dataset_subfolder=dataset_subfolder,
-        grid_size=grid_size
+        grid_size=grid_size,
     )
     """
     # Train CAV for grid observations

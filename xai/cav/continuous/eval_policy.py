@@ -164,10 +164,11 @@ def preprocess_ep_obs(ep_obs, sequence_length, device):
 
 
 def update_model(actor_model_paths, curr_index):
-    if ep_num == len(actor_model_paths) - 1:
+    if curr_index == len(actor_model_paths) - 1:
         print("Reached the end of the model.")
         return None
     # return the next model in the list not depending on the current episode number
+
 
 def eval_policy(
     policy: TransformerPolicyDecoupled,
@@ -205,7 +206,7 @@ def eval_policy(
 
     collected_observations = deque()
 
-    max_episodes = 150
+    max_episodes = 120
 
     model_num = int(actor_model.split("_")[-1].split(".")[0])
 
@@ -228,21 +229,29 @@ def eval_policy(
         _log_summary(ep_len=ep_len, ep_ret=ep_ret, ep_num=ep_num)
         collected_observations.append(
             (
-                copy.deepcopy(collected_observation_sequences),
+                # copy.deepcopy(collected_observation_sequences),
                 copy.deepcopy(collected_positions),
                 model_num,
             )
         )
+
+        if ep_num == max_episodes:
+            break
+        
         if ep_num % 5 == 0:
             if ep_num == 0:
                 continue
             else:
+                if curr_model_index == len(actor_model_paths) - 1:
+                    print("Reached the end of the model.")
+                    continue
                 actor_model = actor_model_paths[curr_model_index + 1]
+                curr_model_index += 1
                 policy.load_state_dict(torch.load(actor_model, map_location=device))
-            print("Using model: ", actor_model)
-            # extract the model number from the path
-            model_num = int(actor_model.split("_")[-1].split(".")[0])
-            print("Model number: ", model_num)
+
+                # extract the model number from the path
+                model_num = int(actor_model.split("_")[-1].split(".")[0])
+                print("Model number: ", model_num)
 
         """if ep_num == 25:
             actor_model = actor_model_paths[1]
@@ -253,8 +262,7 @@ def eval_policy(
             policy.load_state_dict(torch.load(actor_model, map_location=device))
             print("Using model: ", actor_model)"""
 
-        if ep_num == max_episodes:
-            break
+        
 
         ep_num += 1
 
