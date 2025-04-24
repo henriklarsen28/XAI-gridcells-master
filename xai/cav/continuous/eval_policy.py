@@ -237,7 +237,7 @@ def eval_policy(
 
         if ep_num == max_episodes:
             break
-        
+
         if ep_num % 5 == 0:
             if ep_num == 0:
                 continue
@@ -248,7 +248,6 @@ def eval_policy(
                 actor_model = actor_model_paths[curr_model_index + 1]
                 curr_model_index += 1
                 policy.load_state_dict(torch.load(actor_model, map_location=device))
-
                 # extract the model number from the path
                 model_num = int(actor_model.split("_")[-1].split(".")[0])
                 print("Model number: ", model_num)

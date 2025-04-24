@@ -7,11 +7,11 @@
 #SBATCH --mem=40G              # 16 gigabytes memory
 #SBATCH --cpus-per-task=2     # 2 CPU cores
 #SBATCH --output=output.txt    # Log file
-#SBATCH --mail-user=henrihl@stud.ntnu.no
+#SBATCH --mail-user=geoleivs@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
 module load Anaconda3/2024.02-1
 
-conda activate rl_env
+conda activate xai_master_idun
 
 python ./main.py
