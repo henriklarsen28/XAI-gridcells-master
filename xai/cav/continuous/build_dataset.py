@@ -36,6 +36,62 @@ from xai.cav.process_data import (
 )
 
 
+def get_grid_data(env_name):
+    
+    # TWO ROOMS
+
+    if env_name == "two_rooms":
+        goal_area = {
+            "regular" : [35],
+            "rotated" : [30]
+        }
+    elif env_name == "circular":
+        goal_area = {
+            "regular" : [4, 5, 10, 11],
+            "rotated" : [28, 29, 34, 35]
+        }
+    else:
+        print("Invalid environment name. Exiting.")
+        sys.exit(0)
+
+
+    grid_data = {
+        grid_id: {
+            model_num: 0
+            for model_num in range(1000, 1701, 25)
+        }
+        for grid_id in range(36)
+    }
+
+    return goal_area, grid_data
+
+
+def get_model_steps(actor_model_paths):
+    model_steps = {
+        int(re.search(r"policy_network_(\d+)\.pth", path).group(1))
+        for path in actor_model_paths
+    }
+
+    model_steps = sorted(list(model_steps))
+    print("Model steps: ", model_steps)
+
+    return model_steps
+
+def save_movements(env_name, goal_visitations_regular, goal_visitations_rotated, grid_data):
+    with open(os.path.join(f"goal_visitations_{env_name}.json"), "w") as f: # change to two rooms
+        json.dump(
+            {
+                "regular": goal_visitations_regular,
+                "rotated": goal_visitations_rotated,
+            },
+            f,
+        )
+    
+    # Save the grid data to a file
+    with open(os.path.join("grid_data_two_rooms.json"), "w") as f: # change to two rooms
+        json.dump(grid_data, f)
+
+
 def find_closest_model_step(ep_num, model_steps):
     return min(model_steps, key=lambda x: abs(x - ep_num))
 
@@ -91,18 +147,18 @@ def build_csv_dataset(
         device=device,
     )
 
-    goal_area_regular = [5, 11]
-    goal_area_rotated = [34, 35]
-
-    model_steps = {
-        int(re.search(r"policy_network_(\d+)\.pth", path).group(1))
-        for path in actor_model_paths
-    }
-    model_steps = sorted(list(model_steps))
-    print("Model steps: ", model_steps)
-
+    model_steps = get_model_steps(actor_model_paths)
+    
     goal_visitations_regular = {model: 0 for model in model_steps}
     goal_visitations_rotated = {model: 0 for model in model_steps}
+
+    env_name = None
+    if "two_rooms" in dataset_path:
+        env_name = "two_rooms"
+    elif "circular" in dataset_path:
+        env_name = "circular"
+        
+    goal_area, grid_data = get_grid_data(env_name)
 
     # Evaluate policy
     for collected_observations in eval_policy(
@@ -116,26 +172,19 @@ def build_csv_dataset(
     ):
         # print("Collected observations", len(collected_observations), collected_observations[0])
 
-        for position, model_num in collected_observations:
-            print("Model num: ", model_num)
+        for _, position, model_num in collected_observations:
+            # print("Model num: ", model_num)
             for position_step in position:
                 if rd.random() > 0.4:
                     grid_id = con.in_grid_square(None, position_step)
                     if model_num in model_steps:
-                        if grid_id in goal_area_regular:
+                        grid_data[grid_id][model_num] += 1
+                        if grid_id in goal_area["regular"]:
                             goal_visitations_regular[model_num] += 1
-                        elif grid_id in goal_area_rotated:
+                        elif grid_id in goal_area["rotated"]:
                             goal_visitations_rotated[model_num] += 1
-
-    # Save the goal visitations to a file
-    with open(os.path.join("goal_visitations_circular.json"), "w") as f:
-        json.dump(
-            {
-                "regular": goal_visitations_regular,
-                "rotated": goal_visitations_rotated,
-            },
-            f,
-        )
+    
+    save_movements(env_name, goal_visitations_regular, goal_visitations_rotated, grid_data)
 
     path = os.path.join(dataset_path, dataset_subfolder)
 
@@ -178,3 +227,4 @@ def build_csv_dataset(
     )  # specifically for grid layout concept
 
     print("Finished building dataset!")
+

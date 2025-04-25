@@ -230,6 +230,7 @@ def eval_policy(
         collected_observations.append(
             (
                 # copy.deepcopy(collected_observation_sequences),
+                None,
                 copy.deepcopy(collected_positions),
                 model_num,
             )

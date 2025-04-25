@@ -30,7 +30,7 @@ def main():
         "number_of_rays": 40,
     }
 
-    map_path = "map_two_rooms_rot90__19_2"
+    map_path = "map_two_rooms_rot90_19_2"
     model_name = "helpful-bush-1369"
 
     config = {
@@ -77,8 +77,8 @@ def main():
         # RENDERING
         "train_mode": False,
         "map_path_train": None,
-        "render": True,
-        "render_mode": "human",  # "human",
+        "render": False,
+        "render_mode": None,  # "human",
         # HYPERPARAMETERS
         "loss_function": "mse",
         "learning_rate": 3e-4,
