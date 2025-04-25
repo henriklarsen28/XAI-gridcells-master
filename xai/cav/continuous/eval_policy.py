@@ -164,10 +164,11 @@ def preprocess_ep_obs(ep_obs, sequence_length, device):
 
 
 def update_model(actor_model_paths, curr_index):
-    if ep_num == len(actor_model_paths) - 1:
+    if curr_index == len(actor_model_paths) - 1:
         print("Reached the end of the model.")
         return None
     # return the next model in the list not depending on the current episode number
+
 
 def eval_policy(
     policy: TransformerPolicyDecoupled,
@@ -234,10 +235,17 @@ def eval_policy(
                 model_num,
             )
         )
+
+        if ep_num == max_episodes:
+            break
+
         if ep_num % 5 == 0:
             if ep_num == 0:
                 continue
             else:
+                if curr_model_index == len(actor_model_paths) - 1:
+                    print("Reached the end of the model.")
+                    continue
                 actor_model = actor_model_paths[curr_model_index + 1]
                 curr_model_index += 1
                 policy.load_state_dict(torch.load(actor_model, map_location=device))
@@ -249,13 +257,12 @@ def eval_policy(
             actor_model = actor_model_paths[1]
             policy.load_state_dict(torch.load(actor_model, map_location=device))
             print("Using model: ", actor_model)
-        if ep_num == 75:
+        if ep_num == 60:
             actor_model = actor_model_paths[2]
             policy.load_state_dict(torch.load(actor_model, map_location=device))
             print("Using model: ", actor_model)"""
 
-        if ep_num == max_episodes:
-            break
+        
 
         ep_num += 1
 

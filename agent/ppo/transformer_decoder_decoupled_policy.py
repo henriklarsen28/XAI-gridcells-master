@@ -147,8 +147,8 @@ class TransformerPolicyDecoupled(nn.Module):
         x = self.ln_f(tok_emb)  # Use tok_emb instead of x
 
         output = self.output(x[:, -1, :].to(torch.float32))
-        env_class_out = self.env_class(x[:, -1, :])
-        env_class_out = F.gumbel_softmax(env_class_out, tau=1, hard=True)
+        env_class_out = self.env_class(x[:, :, :]) # NOTE: Change when training
+        #env_class_out = F.gumbel_softmax(env_class_out, tau=1, hard=True)
 
         return output, None, env_class_out, att_weights_list
 
