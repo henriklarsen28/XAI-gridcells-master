@@ -30,7 +30,7 @@ def main():
         "number_of_rays": 40,
     }
 
-    map_path = "map_circular_rot90_19_16"
+    map_path = "map_two_rooms_rot90__19_2"
     model_name = "helpful-bush-1369"
 
     config = {

@@ -205,7 +205,7 @@ def eval_policy(
 
     collected_observations = deque()
 
-    max_episodes = 150
+    max_episodes = 120
 
     model_num = int(actor_model.split("_")[-1].split(".")[0])
 
@@ -228,7 +228,8 @@ def eval_policy(
         _log_summary(ep_len=ep_len, ep_ret=ep_ret, ep_num=ep_num)
         collected_observations.append(
             (
-                copy.deepcopy(collected_observation_sequences),
+                # copy.deepcopy(collected_observation_sequences),
+                None,
                 copy.deepcopy(collected_positions),
                 model_num,
             )

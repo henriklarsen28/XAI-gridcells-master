@@ -19,7 +19,7 @@ sys.path.append(project_root)
 
 import gymnasium as gym
 
-from agent.ppo.transformer_decoder_policy import TransformerPolicy
+from agent.ppo.transformer_decoder_decoupled_policy import TransformerPolicyDecoupled
 from env import SunburstMazeContinuous
 from utils.calculate_fov import calculate_fov_matrix_size
 from utils.sequence_preprocessing import add_to_sequence, padding_sequence
@@ -79,7 +79,7 @@ def build_csv_dataset(
 
     sys.exit()"""
 
-    policy = TransformerPolicy(
+    policy = TransformerPolicyDecoupled(
         input_dim=obs_dim,
         output_dim=act_dim,
         num_envs=6,
@@ -115,9 +115,9 @@ def build_csv_dataset(
 
         for observation, position, model_num in collected_observations:
             print("Model num: ", model_num)
-            for observation_step, position_step in zip(observation, position):
+            for position_step in position:
                 if rd.random() > 0.4:
-                    grid_id = con.in_grid_square(observation_step, position_step)
+                    grid_id = con.in_grid_square(None, position_step)
                     if model_num in model_steps:
                         if grid_id in goal_area_regular:
                             goal_visitations_regular[model_num] += 1
