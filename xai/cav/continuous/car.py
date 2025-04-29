@@ -9,6 +9,7 @@ import pickle
 import random as rd
 import sys
 from collections import defaultdict
+import json
 
 import numpy as np
 import pandas as pd
@@ -23,6 +24,7 @@ import wandb
 
 # from logistic_regression import LogisticRegression
 from sklearn.svm import SVC
+from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import accuracy_score
 from sklearn.utils import shuffle
 from torch.utils.data import DataLoader, random_split
@@ -358,13 +360,31 @@ class CAR:
         train_data, train_labels = shuffle(train_data, train_labels, random_state=42)
         test_data, test_labels = shuffle(test_data, test_labels, random_state=42)
         # Train the model
-        self.model = SVC(kernel=self.kernel, C=0.005, gamma=0.005)
 
+
+        self.model = SVC(kernel=self.kernel)
         self.model.fit(train_data, train_labels)
+        """self.model = SVC()
+        param_grid = {
+            'C': [0.01, 0.1, 1, 10, 100],
+            'gamma': [1e-3, 1e-2, 0.1, 1, 10]
+        }
+
+        grid = GridSearchCV(self.model, param_grid, cv=5)
+        grid.fit(train_data, train_labels)
+        # Save the model params
+        self.model = grid.best_estimator_"""
 
         # save the model as pickle file
         save_path_models = os.path.join(save_path, "models_car")
         os.makedirs(save_path_models, exist_ok=True)
+        
+        os.makedirs(os.path.join(save_path_models, "params"), exist_ok=True)
+        
+        # Save the parameters
+        """with open(os.path.join(save_path_models, "params", f"{concept}_block_{block}_episode_{episode}.json"), "w") as f:
+            json.dump(grid.best_params_, f, indent=4)"""
+
 
         concept_model_path = os.path.join(save_path_models, concept)
         os.makedirs(concept_model_path, exist_ok=True)

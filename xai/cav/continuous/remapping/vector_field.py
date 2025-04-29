@@ -200,7 +200,7 @@ def main():
         file = os.path.join(path, file)
         if not file.endswith(".csv"):
             continue
-
+        print(file)
         episode_num = int(file.split(".")[0].split("_")[-4])
         block_num = int(file.split(".")[0].split("_")[-6])
         if episode_num != episode or block_num != block:
