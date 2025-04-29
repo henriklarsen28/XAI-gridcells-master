@@ -19,7 +19,7 @@ from cav import CAV, Analysis
 from env import SunburstMazeContinuous
 from xai.cav.process_data import find_model_files
 
-wandb.login()
+#wandb.login()
 
 
 def main():
@@ -134,7 +134,7 @@ def main():
         "entropy": {"coefficient": 0.015, "min": 0.0001, "step": 1_000},
     }
 
-    wandb.init(project="CAV_PPO", config=config)
+    #wandb.init(project="CAV_PPO", config=config)
 
     device = torch.device("cpu")
 
@@ -225,13 +225,13 @@ def main():
                     save_path=save_path,
                 )
 
-                wandb.log(
+                '''wandb.log(
                     {
                         f"CAV_{concept}": wandb.Image(
                             os.path.join(save_path, f"plots/{concept}_{action}.png")
                         )
                     }
-                )
+                )'''
         
 if __name__ == "__main__":
     main()

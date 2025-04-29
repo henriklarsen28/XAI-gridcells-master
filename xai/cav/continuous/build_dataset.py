@@ -42,8 +42,8 @@ def get_grid_data(env_name):
 
     if env_name == "two_rooms":
         goal_area = {
-            "regular" : [35],
-            "rotated" : [30]
+            "regular" : [28, 29, 34, 35],
+            "rotated" : [24, 25, 30, 31]
         }
     elif env_name == "circular":
         goal_area = {
@@ -78,7 +78,13 @@ def get_model_steps(actor_model_paths):
     return model_steps
 
 def save_movements(env_name, goal_visitations_regular, goal_visitations_rotated, grid_data):
-    with open(os.path.join(f"goal_visitations_{env_name}.json"), "w") as f: # change to two rooms
+
+    # create folder
+    if not os.path.exists("movements_in_environment"):
+        os.makedirs("movements_in_environment")
+    
+    # Save the goal visitations to a file
+    with open(os.path.join("movements_in_environment", f"goal_visitations_{env_name}.json"), "w") as f: # change to two rooms
         json.dump(
             {
                 "regular": goal_visitations_regular,
@@ -86,9 +92,8 @@ def save_movements(env_name, goal_visitations_regular, goal_visitations_rotated,
             },
             f,
         )
-    
     # Save the grid data to a file
-    with open(os.path.join("grid_data_two_rooms.json"), "w") as f: # change to two rooms
+    with open(os.path.join("movements_in_environment", f"grid_data_{env_name}.json"), "w") as f: # change to two rooms
         json.dump(grid_data, f)
 
 
