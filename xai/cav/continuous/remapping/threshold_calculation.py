@@ -58,6 +58,8 @@ def visualize_histogram(matrix: np.ndarray, title: str, normal_dist):
 
 def visualize_meta(cav_meta: dict):
     grid_nums = list(cav_meta.keys())
+    # split the grid_num to retrieve int at the end of the string
+    grid_nums = [int(grid_num.split("_")[-1]) for grid_num in grid_nums]
     means = [cav_meta[grid_num]["mean"] for grid_num in grid_nums]
     # stds = [cav_meta[grid_num]["std"] for grid_num in grid_nums]
 
@@ -123,8 +125,7 @@ def main():
         #visualize_histogram(matrix, f"Histogram of {grid_num}")
         mean, std = find_mean_std(matrix)
         cav_meta[grid_num] = {
-            "mean": mean,
-            "std": std
+            "mean": mean
         }
         # Exclude values over the graph
         exclude_over_graph(matrix, grid_num, normal_dist)
