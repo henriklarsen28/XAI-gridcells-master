@@ -14,9 +14,17 @@ def read_csv(path: str):
     matrix = df.to_numpy()
     return matrix
 
-def exclude_over_graph(matrix:)
+def exclude_over_graph(matrix):
     pass
 
+
+def find_mean_std(matrix: np.ndarray):
+    """
+    Find the mean and standard deviation of the matrix.
+    """
+    mean = np.mean(matrix.flatten())
+    std = np.std(matrix.flatten())
+    return mean, std
 
 def visualize_histogram(matrix: np.ndarray, title: str, normal_dist):
     """
@@ -46,6 +54,18 @@ def visualize_histogram(matrix: np.ndarray, title: str, normal_dist):
     plt.plot(x, y, color="red", label="Normal Distribution")
     plt.show()
 
+def visualize_grid_meta(grid_meta: dict):
+    grid_nums = list(grid_meta.keys())
+    means = [grid_meta[grid_num]["mean"] for grid_num in grid_nums]
+    stds = [grid_meta[grid_num]["std"] for grid_num in grid_nums]
+
+    plt.figure(figsize=(8, 5))
+    plt.errorbar(grid_nums, means, yerr=stds, fmt='o', capsize=5)
+    plt.xlabel('Grid Number')
+    plt.ylabel('Mean Value')
+    plt.title('Mean and Std by Grid Number')
+    plt.grid(True)
+    plt.show()
 
 def main():
 
@@ -64,6 +84,8 @@ def main():
 
     path = f"vectors/{model_name}/grid_length_{grid_length}/remapping_src_{map_name}_target_{target_map}/"
 
+    grid_meta = {}
+
     for file in os.listdir(path):
         file_new = os.path.join(path, file)
         if not file_new.endswith(".csv"):
@@ -81,7 +103,13 @@ def main():
 
         # Visualize the histogram of the matrix
         visualize_histogram(matrix, f"Histogram of {grid_num}")
+        mean, std = find_mean_std(matrix)
+        grid_meta[grid_num] = {
+            "mean": mean,
+            "std": std
+        }
 
+    visualize_grid_meta(grid_meta)
 
 if __name__ == "__main__":
     main()
