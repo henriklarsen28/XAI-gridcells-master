@@ -57,14 +57,14 @@ def visualize_histogram(matrix: np.ndarray, title: str, normal_dist):
 def visualize_meta(cav_meta: dict):
     grid_nums = list(cav_meta.keys())
     means = [cav_meta[grid_num]["mean"] for grid_num in grid_nums]
-    stds = [cav_meta[grid_num]["std"] for grid_num in grid_nums]
+    # stds = [cav_meta[grid_num]["std"] for grid_num in grid_nums]
 
     plt.figure(figsize=(8, 5))
-    plt.errorbar(grid_nums, means, yerr=stds, fmt='o', capsize=5)
+    plt.bar(grid_nums, means)
     plt.xlabel('Grid Number')
     plt.ylabel('Mean Value')
-    plt.title('Mean and Std by Grid Number')
-    plt.grid(True)
+    plt.title('Mean Value by Grid Number')
+    plt.grid(axis='y')
     plt.show()
 
 def main():
