@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy.signal import convolve2d
+from threshold_calculation import calculate_threshold
 
 
 # Read output
@@ -72,7 +73,6 @@ class VectorField:
         for i in range(-self.threshold_grids, self.threshold_grids + 1, 1):
             for j in range(-self.threshold_grids, self.threshold_grids + 1, 1):
 
-                print("I,J", i, j)
                 if (
                     target_coordinate[0] + i < 0
                     or target_coordinate[1] + j < 0
@@ -100,9 +100,6 @@ class VectorField:
         # Ensure mask has the same shape as matrix
         mask = mask.astype(bool)
         matrix = np.where(mask, matrix, 0)
-        print("Neighbour: ", neighbours)
-        print(matrix)
-
         # max_index = np.unravel_index(np.argmax(max_value), max_value.shape)
         # loop through the neighbours and find
 
@@ -195,8 +192,9 @@ def main():
     model_name = "helpful-bush-1369"
     grid_length = 6
     map_name = "map_two_rooms_18_19"
-    target_map = "map_two_rooms_18_19"
-    cosine_sim = True
+    target_map = "map_two_rooms_rot90_19_2"
+    cosine_sim = False
+    exclude = True
 
     grid_length_horizontal = grid_length
     if target_map.__contains__("horizontally") or target_map.__contains__("vertically"):
@@ -213,17 +211,23 @@ def main():
         grid_length=grid_length, grid_length_horizontal=grid_length_horizontal
     )
 
-    excluded_grid_nums = read_excluded_files(path, block, episode, cosine_sim)
+    #excluded_grid_nums = read_excluded_files(path, block, episode, cosine_sim)
 
     for file in os.listdir(path):
         file = os.path.join(path, file)
-        if not file.endswith(".csv") or file in excluded_grid_nums:
+        if not file.endswith(".csv"):
             print("Excluded file", file)
             continue
-        print(file)
         episode_num = int(file.split(".")[0].split("_")[-4])
         block_num = int(file.split(".")[0].split("_")[-6])
         if episode_num != episode or block_num != block:
+            continue
+
+        grid_num = file.split("/")[-1].split("_")[0:3]
+        grid_num = "_".join(grid_num)
+        
+        if calculate_threshold(file, grid_num, True) and exclude:
+            print("Excluded file", file)
             continue
 
         vector_field.add_vector(file)
