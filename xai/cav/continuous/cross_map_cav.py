@@ -224,7 +224,7 @@ class Cross_Map_CAV:
         accuracy_grid = {}
         if self.cos_sim:
             pca = None
-            pca = self.train_reduction()
+            #pca = self.train_reduction()
         for i in range(num_grids):
             concept = f"grid_observations_{i}"
             if self.cos_sim:
@@ -284,6 +284,9 @@ class Cross_Map_CAV:
         elif self.target_map.__contains__("rot90") and self.model_name == "helpful-bush-1369":
             # Transform the square to map to the rotated map
             target_coordinate = (coordinate[1], -coordinate[0] + grid_length-1)
+
+        else:
+            target_coordinate = coordinate
 
 
         scores = []
@@ -427,7 +430,7 @@ def worker(
 def main():
 
     source_map = "map_two_rooms_18_19"
-    target_map = "map_two_rooms_rot90_19_2"
+    target_map = "map_two_rooms_18_19"
     model_name = "helpful-bush-1369"
 
     grid_length = 6

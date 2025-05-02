@@ -52,13 +52,13 @@ class VectorField:
         vector = np.array(coordinate_b) - np.array(coordinate_a)
         return vector, coordinate_a
 
-    def _get_best_grid(self, matrix, target_coordinate=(-1,-1)):
-        
-        kernel = np.ones((3, 3))
+    def _get_best_grid(self, matrix, target_coordinate=(-1, -1)):
+
+        kernel = np.ones((2, 2))
         result = convolve2d(matrix, kernel, mode="same", fillvalue=0)
-        result2 = self.select_grid_close_to_target(result, target_coordinate)
+        # result2 = self.select_grid_close_to_target(result, target_coordinate)
         # Get the max index
-        max_index = np.unravel_index(np.argmax(result2), result.shape)
+        max_index = np.unravel_index(np.argmax(result), result.shape)
         # check if the max index is above a threshold
         threshold = 0.5
         if result[max_index] < threshold:
@@ -82,7 +82,6 @@ class VectorField:
                     print("Out of bounds")
                     continue
 
-                
                 neighbour_coordinate = (
                     target_coordinate[0] + i,
                     target_coordinate[1] + j,
@@ -93,8 +92,8 @@ class VectorField:
         # check if the neighbours are in the matrix
         max_value = [[neighbour[0], neighbour[1]] for neighbour in neighbours]
         max_value = np.array(max_value)
-        #print(max_value)
-        #print(max_value[:, 0])
+        # print(max_value)
+        # print(max_value[:, 0])
         mask = np.zeros_like(matrix)
         mask[max_value[:, 0], max_value[:, 1]] = True
 
@@ -174,13 +173,30 @@ class VectorField:
         plt.show()
 
 
+def read_excluded_files(path, block: int, episode: int, cos_sim: bool) -> list:
+    path = os.path.join(path,"excluded_grid_nums")
+
+    files = os.listdir(path)
+
+    if cos_sim:
+        files = [f for f in files if "cosine_sim" in f]
+
+    files = [f for f in files if f"block_{block}" in f]
+    files = [f for f in files if f"episode_{episode}" in f]
+    files = [f for f in files if f.endswith(".csv")]
+
+    df = pd.read_csv(os.path.join(path, files[0]))
+    excluded_grid_nums = df["Excluded Grid Numbers"].tolist()
+    return excluded_grid_nums
+
+
 def main():
 
     model_name = "helpful-bush-1369"
     grid_length = 6
-    map_name = "map_circular_4_19"
-    target_map = "map_circular_rot90_19_16"
-    cosine_sim = False
+    map_name = "map_two_rooms_18_19"
+    target_map = "map_two_rooms_18_19"
+    cosine_sim = True
 
     grid_length_horizontal = grid_length
     if target_map.__contains__("horizontally") or target_map.__contains__("vertically"):
@@ -196,9 +212,13 @@ def main():
     vector_field = VectorField(
         grid_length=grid_length, grid_length_horizontal=grid_length_horizontal
     )
+
+    excluded_grid_nums = read_excluded_files(path, block, episode, cosine_sim)
+
     for file in os.listdir(path):
         file = os.path.join(path, file)
-        if not file.endswith(".csv"):
+        if not file.endswith(".csv") or file in excluded_grid_nums:
+            print("Excluded file", file)
             continue
         print(file)
         episode_num = int(file.split(".")[0].split("_")[-4])

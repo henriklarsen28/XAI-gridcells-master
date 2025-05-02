@@ -19,7 +19,7 @@ import env.continuous.register_env as register_env
 
 # Define the CSV file path relative to the project root
 map_path_train = os.path.join(
-    project_root, "env/random_generated_maps/goal/stretched/map_circular_rot90_19_16.csv"
+    project_root, "env/random_generated_maps/goal/stretched/map_circular_4_19.csv"
 )
 
 
@@ -140,7 +140,7 @@ class Model_TrainTest:
 if __name__ == "__main__":
     # Parameters:
 
-    train_mode = False
+    train_mode = True
     render = True
     render_mode = "human"
 
@@ -224,6 +224,7 @@ if __name__ == "__main__":
     DRL = Model_TrainTest(config)
     # Train
     if train_mode:
+        DRL.train()
         DRL.learn_from_agent()
     else:
         DRL.test()

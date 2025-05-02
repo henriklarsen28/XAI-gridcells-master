@@ -27,7 +27,10 @@ def exclude_over_graph(matrix: np.ndarray, grid_num:str, normal_dist: dict):
     )
 
     print("Over graph index", over_graph_index)
-    return
+
+    if len(over_graph_index) != 0:
+        return True
+    return False
 
 
 
@@ -75,9 +78,10 @@ def main():
 
     model_name = "helpful-bush-1369"
     grid_length = 6
-    map_name = "map_circular_4_19"
-    target_map = "map_circular_rot90_19_16"
-    cosine_sim = False
+    map_name = "map_two_rooms_18_19"
+
+    target_map = "map_two_rooms_18_19"
+    cosine_sim = True
 
 
     peak_height = 36  # y at x=0
@@ -105,6 +109,9 @@ def main():
     path = f"vectors/{model_name}/grid_length_{grid_length}/remapping_src_{map_name}_target_{target_map}/"
 
     cav_meta = {}
+    excluded_grid_nums = []
+    if cosine_sim:
+        path += "cosine_sim/"
 
     for file in os.listdir(path):
         file_new = os.path.join(path, file)
@@ -123,14 +130,33 @@ def main():
 
         # Visualize the histogram of the matrix
         #visualize_histogram(matrix, f"Histogram of {grid_num}")
-        mean, std = find_mean_std(matrix)
+        """mean, std = find_mean_std(matrix)
         cav_meta[grid_num] = {
             "mean": mean
-        }
+        }"""
         # Exclude values over the graph
-        exclude_over_graph(matrix, grid_num, normal_dist)
+        exclude = exclude_over_graph(matrix, grid_num, normal_dist)
 
-    visualize_meta(cav_meta)
+        if exclude:
+            excluded_grid_nums.append(grid_num)
+            print(f"Excluded grid number: {grid_num}")
+            continue
+
+    # Save the list of excluded grid numbers to a CSV file
+    if cosine_sim:
+        file_name = f"excluded_grid_nums_episode_{episode}_block_{block}_cosine_sim.csv"
+        
+    else:
+        file_name = f"excluded_grid_nums_episode_{episode}_block_{block}.csv"
+
+    save_path = os.path.join(path,"excluded_grid_nums/")
+    os.makedirs(save_path, exist_ok=True)
+
+    excluded_grid_nums_path = os.path.join(save_path, file_name)
+
+    excluded_grid_nums_df = pd.DataFrame(excluded_grid_nums, columns=["Excluded Grid Numbers"])
+    excluded_grid_nums_df.to_csv(excluded_grid_nums_path, index=False)
+    #visualize_meta(cav_meta)
 
 if __name__ == "__main__":
     main()
