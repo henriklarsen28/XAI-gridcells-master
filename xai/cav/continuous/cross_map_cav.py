@@ -301,6 +301,9 @@ class Cross_Map_CAV:
         save_path = f"remapping/vectors/{self.model_name}/grid_length_{grid_length}/remapping_src_{self.source_map}_target_{self.target_map}/"
         if self.cos_sim:
             save_path += "cosine_sim/"
+
+        if self.car:
+            save_path += "car/"
         os.makedirs(save_path, exist_ok=True)
         df.to_csv(os.path.join(save_path, f"grid_observations_{grid_number}_{coordinate[0]}_{coordinate[1]}_block_{self.block}_episode_{self.episode}_target_{target_coordinate[0]}_{target_coordinate[1]}.csv"), index=False)
 
@@ -430,7 +433,7 @@ def worker(
 def main():
 
     source_map = "map_two_rooms_18_19"
-    target_map = "map_two_rooms_18_19"
+    target_map = "map_two_rooms_rot90_19_2"
     model_name = "helpful-bush-1369"
 
     grid_length = 6

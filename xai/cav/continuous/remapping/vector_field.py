@@ -10,11 +10,12 @@ from threshold_calculation import calculate_threshold
 # Read output
 class VectorField:
 
-    def __init__(self, grid_length: int, grid_length_horizontal: int = None):
+    def __init__(self, grid_length: int, grid_length_horizontal: int = None, target: bool = False):
         self.grid_length = grid_length
         self.grid_length_horizontal = grid_length_horizontal
         self.vectors = {}
         self.threshold_grids = 1  # Check the grids around the target
+        self.target = target
 
         """
         0 , 0 , 0.3
@@ -57,11 +58,16 @@ class VectorField:
 
         kernel = np.ones((2, 2))
         result = convolve2d(matrix, kernel, mode="same", fillvalue=0)
-        # result2 = self.select_grid_close_to_target(result, target_coordinate)
-        # Get the max index
-        max_index = np.unravel_index(np.argmax(result), result.shape)
+
+        if self.target:
+            result2 = self.select_grid_close_to_target(result, target_coordinate)
+            # Get the max index
+            max_index = np.unravel_index(np.argmax(result2), result.shape)
+        else:
+            # Get the max index
+            max_index = np.unravel_index(np.argmax(result), result.shape)
         # check if the max index is above a threshold
-        threshold = 0.5
+        threshold = 0.4
         if result[max_index] < threshold:
             return None
 
@@ -187,14 +193,17 @@ def read_excluded_files(path, block: int, episode: int, cos_sim: bool) -> list:
     return excluded_grid_nums
 
 
-def main():
+def create_vector_field(target: bool = False):
 
     model_name = "helpful-bush-1369"
     grid_length = 6
     map_name = "map_two_rooms_18_19"
     target_map = "map_two_rooms_rot90_19_2"
     cosine_sim = False
+    car = False
     exclude = True
+
+    
 
     grid_length_horizontal = grid_length
     if target_map.__contains__("horizontally") or target_map.__contains__("vertically"):
@@ -207,8 +216,13 @@ def main():
     if cosine_sim:
         path += "cosine_sim/"
 
+    elif car:
+        path += "car/"   
+
+    
+
     vector_field = VectorField(
-        grid_length=grid_length, grid_length_horizontal=grid_length_horizontal
+        grid_length=grid_length, grid_length_horizontal=grid_length_horizontal, target=target
     )
 
     #excluded_grid_nums = read_excluded_files(path, block, episode, cosine_sim)
@@ -226,15 +240,21 @@ def main():
         grid_num = file.split("/")[-1].split("_")[0:3]
         grid_num = "_".join(grid_num)
         
-        if calculate_threshold(file, grid_num, True) and exclude:
+        if calculate_threshold(file, grid_num, False) and exclude:
             print("Excluded file", file)
             continue
 
         vector_field.add_vector(file)
 
+
+    print("Vectors", vector_field.vectors)
     vector_field.plot_field()
     vector_field.plot_field_centered()
 
 
+    return vector_field
+
+
+
 if __name__ == "__main__":
-    main()
+    create_vector_field()
