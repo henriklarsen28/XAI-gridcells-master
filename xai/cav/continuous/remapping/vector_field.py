@@ -30,7 +30,6 @@ class VectorField:
 
         target_coordinate = path.split("/")[-1].split(".")[0].split("_")[-2:]
         target_coordinate = (int(target_coordinate[0]), int(target_coordinate[1]))
-        print("Target", coordinate, target_coordinate)
 
         df = pd.read_csv(path)
         matrix = df.to_numpy()
@@ -85,7 +84,6 @@ class VectorField:
                     or target_coordinate[0] + i >= matrix.shape[0]
                     or target_coordinate[1] + j >= matrix.shape[1]
                 ):
-                    print("Out of bounds")
                     continue
 
                 neighbour_coordinate = (
@@ -98,8 +96,7 @@ class VectorField:
         # check if the neighbours are in the matrix
         max_value = [[neighbour[0], neighbour[1]] for neighbour in neighbours]
         max_value = np.array(max_value)
-        # print(max_value)
-        # print(max_value[:, 0])
+
         mask = np.zeros_like(matrix)
         mask[max_value[:, 0], max_value[:, 1]] = True
 
