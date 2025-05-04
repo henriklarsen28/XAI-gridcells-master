@@ -405,7 +405,7 @@ def worker(
             "model_path": f"../../../agent/ppo/models/transformers/{model_name}/actor/policy_network_{episode}.pth",
             "cav_model": f"./results/{model_name}/{source_map}/grid_length_{grid_length}/models{cav_path}/grid_observations_{i}/grid_observations_{i}_block_{block}_episode_{episode}.pkl",
             "target_cav_model": f"./results/{model_name}/{target_map}/grid_length_{grid_length}/models{cav_path}/",  # used for cosine similarity
-            "cos_sim": False,
+            "cos_sim": True,
             "car": car,
             "grid_length": grid_length,
             "block": block,
@@ -433,7 +433,7 @@ def worker(
 def main():
 
     source_map = "map_two_rooms_18_19"
-    target_map = "map_two_rooms_rot90_19_2"
+    target_map = "map_two_rooms_horizontally_18_40"
     model_name = "helpful-bush-1369"
 
     grid_length = 6

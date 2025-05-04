@@ -190,13 +190,12 @@ def read_excluded_files(path, block: int, episode: int, cos_sim: bool) -> list:
     return excluded_grid_nums
 
 
-def create_vector_field(target: bool = False):
+def create_vector_field(source_map, target_map,target: bool = False):
 
     model_name = "helpful-bush-1369"
     grid_length = 6
-    map_name = "map_two_rooms_18_19"
-    target_map = "map_two_rooms_rot90_19_2"
-    cosine_sim = False
+
+    cosine_sim = True
     car = False
     exclude = True
 
@@ -209,7 +208,7 @@ def create_vector_field(target: bool = False):
     episode = 1700
     block = 2
 
-    path = f"vectors/{model_name}/grid_length_{grid_length}/remapping_src_{map_name}_target_{target_map}/"
+    path = f"vectors/{model_name}/grid_length_{grid_length}/remapping_src_{source_map}_target_{target_map}/"
     if cosine_sim:
         path += "cosine_sim/"
 

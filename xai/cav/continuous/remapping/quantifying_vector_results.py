@@ -65,6 +65,18 @@ def rotation_vectors(vector_field: VectorField, grid_length: int):
     plt.show()
 
 
+def nearest_neighbour(vector: np.ndarray, target_vectors, k: int = 3) -> np.ndarray:
+    # Compute Euclidean distances to all vectors in V
+    distances = np.linalg.norm(target_vectors - vector, axis=1)
+
+    # Get indices of the 3 smallest distances
+    nearest_indices = np.argsort(distances)[:k]
+
+    # Get the nearest vectors
+    nearest_vectors = target_vectors[nearest_indices]
+
+    return nearest_vectors
+
 
 def compare_to_target(vector_field: VectorField, target_vector_field: VectorField, grid_length: int):
     
@@ -78,33 +90,100 @@ def compare_to_target(vector_field: VectorField, target_vector_field: VectorFiel
 
 
     # drop the keys that are not in the target vector field
-    vector_field_dict = {k: vector_field_dict[k] for k in vector_field_dict.keys() if k in target_vector_field_dict}
+    #vector_field_dict = {k: vector_field_dict[k] for k in vector_field_dict.keys() if k in target_vector_field_dict}
+    # second method is to find the nearest neighbour
 
-    if vector_field_dict.keys() != target_vector_field_dict.keys():
-        raise ValueError("The keys of the two dictionaries are not the same.")
+
+    #if vector_field_dict.keys() != target_vector_field_dict.keys():
+    #    raise ValueError("The keys of the two dictionaries are not the same.")
     
 
     # Calculate the cosine similarity between the two vector fields
     vector_field_values = np.array(list(vector_field_dict.values()))
     target_vector_field_values = np.array(list(target_vector_field_dict.values()))
     
-    for vector, target_vector in zip(vector_field_values, target_vector_field_values):
+    for vector in vector_field_values:
+
+        nearest_target_vectors = nearest_neighbour(vector, target_vector_field_values, k=3)
+
+        # Calculate the cos sim for all the nearest target vectors
+        cos_sim_vectors = cosine_similarity(vector.reshape(1, -1), nearest_target_vectors)
+        cos_sim = np.max(cos_sim_vectors, axis=1)
+        #select the max cosine similarity
+        target_vector_field_index = np.argmax(cos_sim)
+        target_vector = nearest_target_vectors[target_vector_field_index]
+
+
+        #cos_sim = cosine_similarity(vector.reshape(1, -1), target_vector.reshape(1, -1))
+
         
-        print(f"Vector: {vector}")
+        #print(f"Vector: {vector}")
         print(f"Target vector: {target_vector}")
-        cos_sim = cosine_similarity(vector.reshape(1, -1), target_vector.reshape(1, -1))
         print(f"Cosine similarity: {cos_sim}")
+        print(f"Difference in length: {np.linalg.norm(vector) - np.linalg.norm(target_vector)}")
+
+def compare_vector_direction(vector_field: VectorField, vertical: bool = False, range: int = 45):
+
+    """
+    See how many of the vectors are in the same direction as expected, within a certain range.
+    """
+
+    count = 0
+
+    if vertical:
+        expected_range = (270 - range/2, 270 + range/2)
+
+    else:
+        expected_range = (0 + range/2, 360 - range/2)
+
+    print(expected_range)
+
+    for coordinate, vector in vector_field.vectors.items():
+        angle = np.degrees(np.arctan2(vector[0], vector[1]))
+        if angle < 0:
+            angle += 360
+
+        if  angle <= expected_range[0] or angle >= expected_range[1]:
+            print("Angle", angle)
+            count += 1
+        else:
+            print("vector", vector, "Angle", angle)
+            
+
+
+
+    print(f"Number of vectors in the expected direction: {count}", "out of", len(vector_field.vectors))
+    print("Percentage of vectors in the expected direction: ", count / len(vector_field.vectors) * 100, "%")
+
+    # Plot the vectors with the expected direction
+    #plt.figure(figsize=(10, 5))
+    angle_rad = np.deg2rad(expected_range[0])
+
+    # Length of vector (e.g., 1 unit)
+    length = 100
+    x = length * np.cos(angle_rad)
+    y = length * np.sin(angle_rad)
+
+    plt.plot([0, x], [0, y], 'r--', linewidth=2)  # red dashed line
+    angle_rad = np.deg2rad(expected_range[1])
+    x = length * np.cos(angle_rad)
+    y = length * np.sin(angle_rad)
+    plt.plot([0, x], [0, y], 'r--', linewidth=2)  # red dashed line    
+    vector_field.plot_field_centered()
     
 
 def main():
     # Example usage
+    source_map = "map_two_rooms_18_19"
+    target_map = "map_two_rooms_horizontally_18_40"
     
-    vector_field = create_vector_field()
-    rotation_vectors(vector_field, vector_field.grid_length)
+    vector_field = create_vector_field(source_map, target_map, target=False)
+    #rotation_vectors(vector_field, vector_field.grid_length)
 
-    target_vector_field = create_vector_field(target=True)
+    target_vector_field = create_vector_field(source_map, target_map, target=True)
 
     compare_to_target(vector_field, target_vector_field, vector_field.grid_length)
+    #compare_vector_direction(vector_field, vertical=False, range=45)
 
 
 
