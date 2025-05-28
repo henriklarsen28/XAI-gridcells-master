@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
+import seaborn as sns
+
 
 import re
 
@@ -170,15 +172,20 @@ def box_and_whisker_plot():
             "7x7":	[0.1455,0.2926,	0.2658,	0.3011]
             }
     
+    # Color palette
+    palette = sns.color_palette(["#82B366", "#6C8EBF","#D6B656"])
+    sns.set_palette(palette)
 
     fig, ax = plt.subplots()
     means = [np.mean(v) for v in data.values()]
     stds = [np.std(v) for v in data.values()]
-    ax.bar(data.keys(), means, yerr=stds, capsize=5)
-    ax.errorbar(data.keys(), means, yerr=stds, fmt='o', color='black', capsize=5)
-    ax.set_title("Box and Whisker Plot")
+    #ax.bar(data.keys(), means, yerr=stds, capsize=5)
+    #ax.errorbar(data.keys(), means, yerr=stds, fmt='o', color='black', capsize=5)
+    sns.boxplot(data=list(data.values()), ax=ax)
+    ax.set_title("Linear assessment of relative CAVs")
     ax.set_ylabel("Values")
     ax.set_xlabel("Grid Size")
+    ax.set_xticklabels(data.keys())
     plt.show()
 
 

@@ -164,9 +164,7 @@ def create_activation_dataset(
             model, state_tensors, block_name, embedding=embedding
         )
         activation = activations[block_name]["output"][0]
-        # TODO: Look inside the block
-        # TODO: After attention, after feed forward
-        # print("Activations:", activation)
+        
 
     assert isinstance(activation, torch.Tensor), "Activation must be a tensor"
     return activation, env_class
@@ -183,7 +181,7 @@ class CAV:
         self.cav_coef = None
         self.cav_list = []
         self.tcav_list = []
-        self.activation_path = activation_path
+        self.activation_path = activation_path or ""
 
     def read_dataset(
         self,
@@ -286,6 +284,7 @@ class CAV:
     def save_activations(
         self, activations_train, activations_test, concept, save_path, block, episode
     ):
+        print("Episode, ", episode)
         save_path_activations_train = os.path.join(
             save_path, f"activations/train/{concept}/{episode}"
         )

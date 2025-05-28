@@ -442,7 +442,7 @@ class CAR:
         save_path: str = None,
     ):
         model_list = os.listdir(model_dir)
-        save_path_activations = os.path.join(save_path, "plot_data")
+        save_path_activations = os.path.join(save_path, "plot_data_car")
         os.makedirs(save_path_activations, exist_ok=True)
 
         for model in model_list:

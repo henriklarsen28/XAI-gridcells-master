@@ -13,6 +13,7 @@ sys.path.append(ppo_path)
 
 from build_dataset import build_csv_dataset
 from cav import CAV, Analysis
+from car import CAR
 
 from env import SunburstMazeContinuous
 from xai.cav.process_data import find_model_files
@@ -29,7 +30,7 @@ def main():
         "number_of_rays": 40,
     }
 
-    map_path = "map_circular_rot90_19_16"
+    map_path = "map_circular_4_19"
     model_name = "helpful-bush-1369"
 
     config = {
@@ -46,7 +47,7 @@ def main():
         "grid_length": 6,  # 7 x 7 grid
         "cav": {
             "dataset_max_length": 1500,
-            "episode_numbers": ["1200"],
+            "episode_numbers": ["1", "200", "600", "1000", "1025", "1100", "1300", "1700"],
         },
         # RENDERING
         "train_mode": False,
@@ -106,6 +107,8 @@ def main():
             "decouple_positional_embedding": False,
         },
         "entropy": {"coefficient": 0.015, "min": 0.0001, "step": 1_000},
+        "CAR": True,
+
     }
 
     wandb.init(project="CAV_PPO", config=config)
@@ -140,7 +143,7 @@ def main():
 
     # CAV
     map_name = config["env_name"]
-    dataset_directory_random = f"./dataset/{model_name}/{map_name}"
+    dataset_directory_random = f"./dataset/{model_name}/{map_name}/{grid_length}"
     save_path = f"./results/{model_name}/{map_name}/{grid_length}"
     dataset_directory_train = f"{dataset_path}/train"
     dataset_directory_test = f"{dataset_path}/test"
@@ -154,7 +157,7 @@ def main():
     grid_size = env.num_cells
 
     # Build the dataset
-    build_csv_dataset(
+    """build_csv_dataset(
         env=env,
         device=device,
         config=config,
@@ -162,7 +165,36 @@ def main():
         dataset_path=dataset_path,
         dataset_subfolder=dataset_subfolder,
         grid_size=grid_size,
-    )
+    )"""
+    random = True
+    if random:
+        print("CAVing for random observations")
+        concept = "random"
+
+        if config["CAR"]:
+            cav = CAR()
+        else:
+            cav = CAV()
+        filename = f"{concept}_positive.csv"
+        print(os.listdir(dataset_directory_random))
+        
+        cav.calculate_cav(
+            concept=concept,
+            dataset_directory_train=dataset_directory_random,
+            dataset_directory_test=dataset_directory_random,
+            model_dir=config["model_path"],
+            sensitivity=False,
+            action_index=0,
+            episode_numbers=episode_numbers,
+            save_path=save_path,
+        )
+        cav.plot_cav(
+            concept=concept,
+            episode_numbers=episode_numbers,
+            save_path=save_path,
+        )
+
+    
     
     # Train CAV for grid observations
     for i in range(grid_size):

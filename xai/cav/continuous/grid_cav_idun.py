@@ -32,7 +32,7 @@ def main(grid_start, grid_end):
         "number_of_rays": 40,
     }
 
-    map_path = "map_circular_4_19"
+    map_path = "map_circular_vertically_8_19"
     model_name = "helpful-bush-1369"
 
     config = {
@@ -49,7 +49,7 @@ def main(grid_start, grid_end):
         "grid_length": 6,  # 7 x 7 grid
         "cav": {
             "dataset_max_length": 1500,
-            "episode_numbers": ["1", "200", "600", "1000", "1025", "1100", "1300", "1700"],
+            "episode_numbers": ["1700"] #["1", "200", "600", "1000", "1025", "1100", "1300", "1700"],
         },
         "tcav_param": {
             "episode_number": 1200,
@@ -122,7 +122,7 @@ def main(grid_start, grid_end):
             "episode": 1000,
             "block": 2,
         },
-        "CAR": True,
+        "CAR": False,
         "Relative_CAV": False,
         "TCAV": False,
     }
@@ -255,11 +255,11 @@ def main(grid_start, grid_end):
                         episode_numbers=episode_numbers,
                         save_path=save_path,
                     )
-                    cav.plot_cav(
+                    """cav.plot_cav(
                         concept=concept,
                         episode_numbers=episode_numbers,
                         save_path=save_path,
-                    )
+                    )"""
 
             # Save the cav_list
             if config["Relative_CAV"]:

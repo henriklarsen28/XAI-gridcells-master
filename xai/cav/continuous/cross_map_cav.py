@@ -24,11 +24,15 @@ from sklearn.manifold import TSNE
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 from sklearn.metrics.pairwise import cosine_similarity
+from scipy.stats import pearsonr
 from sklearn.metrics import accuracy_score
 from sklearn.utils import shuffle
 import pandas as pd
+import matplotlib
 
 from utils import build_numpy_list_cav
+
+matplotlib.use('Agg')
 
 
 class Cross_Map_CAV:
@@ -68,13 +72,14 @@ class Cross_Map_CAV:
     def read_test_dataset(self, concept):
         # See if activation dataset exists
         if os.path.exists(
-            f"{self.target_path}/activations/test/{concept}/episode_{self.episode}/activation_{concept}_block_{self.block}.pt"
+            f"{self.target_path}/activations/test/{concept}/{self.episode}/activation_{concept}_block_{self.block}.pt"
         ):
             positive_test = torch.load(
-                f"{self.target_path}/activations/test/{concept}/episode_{self.episode}/activation_{concept}_block_{self.block}.pt"
+                f"{self.target_path}/activations/test/{concept}/{self.episode}/activation_{concept}_block_{self.block}.pt"
             )
         else:
-            print("Did not find actication dataset: ", f"{self.target_path}/activations/test/{concept}/episode_{self.episode}/activation_{concept}_block_{self.block}.pt")
+            path = f"{self.target_path}/activations/test/{concept}/{self.episode}/"
+            print("Did not find actication dataset: ", f"{path}/activation_{concept}_block_{self.block}.pt")
             positive_test, _ = create_activation_dataset(
                 dataset_path=f"{self.dataset_path}/{concept}_positive_test.csv",
                 model_path=self.model_path,
@@ -83,6 +88,13 @@ class Cross_Map_CAV:
                 requires_grad=self.sensitivity,
                 action_index=self.action_index,
             )
+            # Save the activation dataset
+            os.makedirs(path, exist_ok=True)
+            torch.save(
+                positive_test,
+                f"{path}/activation_{concept}_block_{self.block}.pt",
+            )
+
         assert isinstance(positive_test, torch.Tensor), "Positive_test must be a tensor"
 
     
@@ -151,7 +163,7 @@ class Cross_Map_CAV:
         cavs = self.build_cav_list()
 
         pca = PCA(
-            48
+            72
         )  # TODO: Some statistical analysis to determine the number of components coherence score??
         pca.fit(cavs)
 
@@ -384,6 +396,7 @@ def worker(
     episode,
     embedding,
     car=False,
+    cos_sim=False,
 ):
     cav_path = ""
     if car:
@@ -405,7 +418,7 @@ def worker(
             "model_path": f"../../../agent/ppo/models/transformers/{model_name}/actor/policy_network_{episode}.pth",
             "cav_model": f"./results/{model_name}/{source_map}/grid_length_{grid_length}/models{cav_path}/grid_observations_{i}/grid_observations_{i}_block_{block}_episode_{episode}.pkl",
             "target_cav_model": f"./results/{model_name}/{target_map}/grid_length_{grid_length}/models{cav_path}/",  # used for cosine similarity
-            "cos_sim": True,
+            "cos_sim": cos_sim,
             "car": car,
             "grid_length": grid_length,
             "block": block,
@@ -431,49 +444,64 @@ def worker(
 
 
 def main():
-
-    source_map = "map_two_rooms_18_19"
-    target_map = "map_two_rooms_horizontally_18_40"
+    
+    methods = ["CAV", "CAR", "Cos-sim (CAV)"]
+    source_map = "map_circular_4_19"
+    target_map = "map_circular_vertically_8_19"
     model_name = "helpful-bush-1369"
 
     grid_length = 6
 
     block = 2
-    episode = 1700
+    episode = 1700 #1025 #1000 #1200
 
-    car = False
+    for method in methods:
+        cos_sim = False
+        car = False
 
-    embedding = False
-    if block == 0:
-        embedding = True
+        if method == "CAV":
+            cos_sim = False
+            car = False
 
-    grids = np.arange(grid_length * grid_length)
-    grids_per_worker = np.array_split(grids, multiprocessing.cpu_count() - 2)
+        elif method == "CAR":
+            cos_sim = False
+            car = True
+        elif method == "Cos-sim (CAV)":
+            cos_sim = True
+            car = False
 
-    # print(grids_per_worker)
+        embedding = False
+        if block == 0:
+            embedding = True
 
-    q = Queue()
-    processes = []
-    for i in range(multiprocessing.cpu_count() - 2):
-        p = Process(
-            target=worker,
-            args=(
-                grids_per_worker[i],
-                source_map,
-                target_map,
-                model_name,
-                grid_length,
-                block,
-                episode,
-                embedding,
-                car
-            ),
-        )
-        p.start()
-        processes.append(p)
+        grids = np.arange(grid_length * grid_length)
+        grids_per_worker = np.array_split(grids, multiprocessing.cpu_count() - 2)
 
-    # accuracy_grid = cav.test_grids()
-    # cav.visualize_scores(accuracy_grid, grid_number)
+        # print(grids_per_worker)
+
+        q = Queue()
+        processes = []
+        for i in range(multiprocessing.cpu_count() - 2):
+            p = Process(
+                target=worker,
+                args=(
+                    grids_per_worker[i],
+                    source_map,
+                    target_map,
+                    model_name,
+                    grid_length,
+                    block,
+                    episode,
+                    embedding,
+                    car,
+                    cos_sim
+                ),
+            )
+            p.start()
+            processes.append(p)
+
+        # accuracy_grid = cav.test_grids()
+        # cav.visualize_scores(accuracy_grid, grid_number)
 
 
 
@@ -483,3 +511,5 @@ if __name__ == "__main__":
     # analysis()
 
     main()
+
+
